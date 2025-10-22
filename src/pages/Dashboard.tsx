@@ -1,20 +1,45 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, CheckCircle, AlertTriangle, Plus } from "lucide-react";
+import { Package, CheckCircle, AlertTriangle, Plus, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Dashboard() {
-  // Mock data - will be replaced with actual data from backend
-  const mockUser = {
-    name: "Usuário Demo",
-    plan: "free",
-    usedCredits: 3,
-    totalCredits: 5,
-    nextReset: "2025-11-01",
-  };
+  const { customer, plan, usage, loading, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const isQuotaExceeded = mockUser.usedCredits >= mockUser.totalCredits;
+  useEffect(() => {
+    if (!loading && !customer) {
+      navigate('/login');
+    }
+  }, [customer, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!customer || !plan) {
+    return null;
+  }
+
+  const totalCredits = plan.monthly_credits || 0;
+  const usedCredits = usage?.used_credits || 0;
+  const isQuotaExceeded = usedCredits >= totalCredits;
+  
+  const nextReset = new Date();
+  nextReset.setMonth(nextReset.getMonth() + 1);
+  nextReset.setDate(1);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,12 +54,16 @@ export default function Dashboard() {
           
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Créditos: <span className="font-semibold text-foreground">{mockUser.usedCredits}/{mockUser.totalCredits}</span>
-              <span className="ml-2">Reset: {new Date(mockUser.nextReset).toLocaleDateString('pt-BR')}</span>
+              Créditos: <span className="font-semibold text-foreground">{usedCredits}/{totalCredits}</span>
+              <span className="ml-2">Reset: {nextReset.toLocaleDateString('pt-BR')}</span>
             </div>
-            <Badge variant={mockUser.plan === "premium" ? "default" : "secondary"}>
-              {mockUser.plan === "free" ? "Free" : "Premium"}
+            <Badge variant={plan.id === "premium" ? "default" : "secondary"}>
+              {plan.name}
             </Badge>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
           </div>
         </div>
       </header>
@@ -47,13 +76,13 @@ export default function Dashboard() {
               <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-semibold text-foreground">
-                  Você atingiu seus {mockUser.totalCredits} créditos deste mês
+                  Você atingiu seus {totalCredits} créditos deste mês
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   Assine o Premium para continuar rastreando sem interrupções (1.500 créditos/mês).
                 </p>
                 <Button className="mt-3" asChild>
-                  <Link to="/signup?plan=premium">Assinar Premium</Link>
+                  <a href="/#pricing">Ver Planos</a>
                 </Button>
               </div>
             </div>
@@ -64,7 +93,7 @@ export default function Dashboard() {
         <div>
           <h2 className="text-3xl font-bold">Seu painel de rastreamento</h2>
           <p className="text-muted-foreground mt-2">
-            Bem-vindo, {mockUser.name}
+            Bem-vindo, {customer.name}
           </p>
         </div>
 
@@ -135,11 +164,11 @@ export default function Dashboard() {
               <Button variant="ghost" className="w-full justify-start" asChild>
                 <Link to="/dashboard">Rastreamentos</Link>
               </Button>
-              <Button variant="ghost" className="w-full justify-start" disabled={mockUser.plan === "free"}>
-                Relatórios {mockUser.plan === "free" && <Badge variant="secondary" className="ml-auto">Premium</Badge>}
+              <Button variant="ghost" className="w-full justify-start" disabled={plan.id === "free"}>
+                Relatórios {plan.id === "free" && <Badge variant="secondary" className="ml-auto">Premium</Badge>}
               </Button>
-              <Button variant="ghost" className="w-full justify-start" disabled={mockUser.plan === "free"}>
-                Integrações {mockUser.plan === "free" && <Badge variant="secondary" className="ml-auto">Premium</Badge>}
+              <Button variant="ghost" className="w-full justify-start" disabled={plan.id === "free"}>
+                Integrações {plan.id === "free" && <Badge variant="secondary" className="ml-auto">Premium</Badge>}
               </Button>
               <Button variant="ghost" className="w-full justify-start">
                 Configurações

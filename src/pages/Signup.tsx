@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,14 @@ export default function Signup() {
   const [plan, setPlan] = useState(planParam || "free");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { signup, customer } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (customer) {
+      navigate('/dashboard');
+    }
+  }, [customer, navigate]);
 
   useEffect(() => {
     if (planParam) {
@@ -34,14 +43,22 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
-    // TODO: Implement actual signup when backend is ready
-    setTimeout(() => {
+    try {
+      await signup(name, email, password, whatsapp, plan);
       toast({
-        title: "Cadastro pendente",
-        description: "O cadastro será implementado com o backend.",
+        title: "Conta criada!",
+        description: "Sua conta foi criada com sucesso.",
       });
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar conta",
+        description: error.message || "Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

@@ -1,28 +1,45 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const { login, customer } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (customer) {
+      navigate('/dashboard');
+    }
+  }, [customer, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    // TODO: Implement actual authentication when backend is ready
-    setTimeout(() => {
+    try {
+      await login(email, password);
       toast({
-        title: "Autenticação pendente",
-        description: "A autenticação será implementada com o backend.",
+        title: "Login realizado!",
+        description: "Você foi autenticado com sucesso.",
       });
+      navigate('/dashboard');
+    } catch (error: any) {
+      toast({
+        title: "Erro ao fazer login",
+        description: error.message || "Verifique suas credenciais e tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (
