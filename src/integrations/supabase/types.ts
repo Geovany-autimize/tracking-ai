@@ -158,6 +158,41 @@ export type Database = {
         }
         Relationships: []
       }
+      sessions: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          expires_at: string
+          ip: string | null
+          token_jti: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          expires_at: string
+          ip?: string | null
+          token_jti: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          expires_at?: string
+          ip?: string | null
+          token_jti?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string | null
