@@ -8,18 +8,32 @@ import { Testimonials } from "@/components/landing/Testimonials";
 import { FAQ } from "@/components/landing/FAQ";
 import { CTAFinal } from "@/components/landing/CTAFinal";
 import { Footer } from "@/components/landing/Footer";
+import { Navbar } from "@/components/ui/Navbar";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <Navbar />
       <Hero />
-      <Benefits />
-      <HowItWorks />
-      <Features />
-      <Integrations />
-      <Pricing />
+      <section id="beneficios">
+        <Benefits />
+      </section>
+      <section id="como-funciona">
+        <HowItWorks />
+      </section>
+      <section id="features">
+        <Features />
+      </section>
+      <section id="integracoes">
+        <Integrations />
+      </section>
+      <section id="precos">
+        <Pricing />
+      </section>
       <Testimonials />
-      <FAQ />
+      <section id="faq">
+        <FAQ />
+      </section>
       <CTAFinal />
       <Footer />
     </div>
