@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import PhoneFieldPro from "@/components/forms/PhoneFieldPro";
+import PasswordField from "@/components/forms/PasswordField";
 import { isValidE164 } from '@/lib/phone';
 
 const signupSchema = z.object({
@@ -147,22 +148,12 @@ export default function Signup() {
             helperText="Selecione o país ou digite o DDI (+55) e informe seu número."
           />
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-            {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
-            <p className="text-xs text-muted-foreground">
-              Mínimo 8 caracteres
-            </p>
-          </div>
+          <PasswordField
+            value={password}
+            onChange={setPassword}
+            error={errors.password}
+            minLength={8}
+          />
 
           <div className="space-y-2">
             <Label htmlFor="plan">Plano</Label>
