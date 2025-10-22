@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { getCountryList, formatNational, toE164OrNull } from '@/lib/phone';
+import { getCountryList, formatNational, toE164FromCountry, parseDirectE164 } from '@/lib/phone';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -26,7 +26,7 @@ export default function PhoneFieldPro({
   value,
   onChange,
   error,
-  helperText = 'Selecione o país (ou digite o DDI) e informe seu número.',
+  helperText = 'Selecione o país ou digite o DDI (+55) e informe seu número.',
   defaultCountry = 'BR',
   name = 'whatsapp_e164',
 }: Props) {
@@ -34,19 +34,12 @@ export default function PhoneFieldPro({
   const allCountries = useMemo(() => getCountryList(), []);
   const def = allCountries.find((c) => c.iso2.toUpperCase() === defaultCountry.toUpperCase()) || allCountries[0];
 
-  // Estado interno: país selecionado, DDI (editável), e dígitos do número
+  // Estado: país selecionado e dígitos do número (sem DDI visível/caixa)
   const [countryIso, setCountryIso] = useState(def.iso2);
-  const [ddi, setDdi] = useState(def.dialCode.replace('+',''));
-  const [digits, setDigits] = useState(''); // apenas números
+  const [digits, setDigits] = useState('');
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const popRef = useRef<HTMLDivElement>(null);
-
-  // Se "value" (E.164) vier preenchido externamente, derive os campos (opcional)
-  useEffect(() => {
-    if (!value) return;
-    // Mantemos simples: mostre apenas no input principal; edição posterior rederiva
-  }, [value]);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -58,7 +51,7 @@ export default function PhoneFieldPro({
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
-  // Lista filtrada por nome, iso ou DDI (+55, 55, br, brasil)
+  // Busca por país ou DDI
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase().replace('+','');
     if (!text) return allCountries;
@@ -72,18 +65,11 @@ export default function PhoneFieldPro({
     });
   }, [q, allCountries]);
 
-  // Atualiza E.164 sempre que DDI/dígitos mudarem
+  // Atualiza E.164 com base no país selecionado
   useEffect(() => {
-    const e164 = toE164OrNull(ddi, digits);
-    if (e164) onChange(e164);
-    else onChange('');
-  }, [ddi, digits, onChange]);
-
-  // Se o usuário editar o DDI manualmente e corresponder a algum país, sincronize a bandeira
-  useEffect(() => {
-    const match = allCountries.find((c) => c.dialCode.replace('+','') === ddi);
-    if (match) setCountryIso(match.iso2);
-  }, [ddi, allCountries]);
+    const e164 = toE164FromCountry(countryIso, digits);
+    onChange(e164);
+  }, [countryIso, digits, onChange]);
 
   const flag = isoToFlagEmoji(countryIso);
   const national = formatNational(digits, countryIso);
@@ -95,7 +81,7 @@ export default function PhoneFieldPro({
       </label>
 
       <div className="flex items-stretch gap-2">
-        {/* Seletor de país (abre dropdown) */}
+        {/* Botão de bandeira + dropdown com busca */}
         <div className="relative" ref={popRef}>
           <button
             type="button"
@@ -135,7 +121,6 @@ export default function PhoneFieldPro({
                     )}
                     onClick={() => {
                       setCountryIso(c.iso2);
-                      setDdi(c.dialCode.replace('+',''));
                       setOpen(false);
                       setQ('');
                     }}
@@ -152,32 +137,36 @@ export default function PhoneFieldPro({
           )}
         </div>
 
-        {/* DDI EDITÁVEL */}
-        <div className="flex items-center gap-1">
-          <span className="text-muted-foreground">+</span>
-          <input
-            inputMode="numeric"
-            pattern="[0-9]*"
-            maxLength={3}
-            value={ddi}
-            onChange={(e) => setDdi(e.target.value.replace(/\D/g, '').slice(0,3))}
-            className="w-16 h-10 rounded-md bg-background border border-input px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-            aria-label="Código do país (DDI)"
-          />
-        </div>
-
-        {/* Número nacional com máscara */}
-        <div className="flex-1">
+        {/* Campo único do telefone:
+            - exibe formato nacional
+            - se o usuário digitar/colar começando por '+', detecta país e formata */}
+        <div className="relative flex-1">
           <input
             id={id}
             name={name}
-            inputMode="numeric"
+            inputMode="tel"
             autoComplete="tel"
             placeholder="(62) 99291-5531"
             value={national}
             onChange={(e) => {
-              // Mantém apenas dígitos internamente
-              const onlyDigits = e.target.value.replace(/\D/g, '').slice(0, 20);
+              const val = e.target.value.trim();
+
+              // Se usuário digitar/colar com '+', tenta parsear direto e sincroniza a bandeira
+              if (val.startsWith('+')) {
+                const parsed = parseDirectE164(val.replace(/\s+/g, ''));
+                if (parsed && parsed.iso2) {
+                  // ajuste de estado para refletir o número colado
+                  setCountryIso(parsed.iso2);
+                  // extrai apenas os dígitos do nacional formatado para manter a máscara
+                  const onlyDigits = parsed.national.replace(/\D/g, '');
+                  setDigits(onlyDigits);
+                  onChange(parsed.e164);
+                  return;
+                }
+              }
+
+              // fluxo normal: digita nacional -> converte para E.164 usando país selecionado
+              const onlyDigits = val.replace(/\D/g, '').slice(0, 20);
               setDigits(onlyDigits);
             }}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

@@ -6,10 +6,8 @@ import {
   getCountryCallingCode,
 } from 'libphonenumber-js';
 
-// Nome do país a partir do código ISO (localizado)
 const regionNames = new Intl.DisplayNames(['pt-BR'], { type: 'region' });
 
-// Gera lista de países: { iso2, name, dialCode }
 export function getCountryList() {
   return getCountries()
     .map((iso2) => {
@@ -20,20 +18,37 @@ export function getCountryList() {
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 }
 
-// Formata número nacional ao digitar (com base no país)
-// digits: somente números (sem espaços/hífens)
 export function formatNational(digits: string, iso2?: string) {
   const typer = new AsYouType(iso2 as any);
   typer.input(digits);
-  // AsYouType com país definido já aplica formato nacional
   return typer.getNationalNumber();
 }
 
-// Constrói e valida E.164 a partir de DDI e dígitos
-export function toE164OrNull(ddi: string, digits: string) {
-  const raw = `+${ddi.replace(/\D/g, '')}${digits.replace(/\D/g, '')}`;
+// novo: obtém DDI pelo ISO2 (ex.: 'BR' -> '55')
+export function getDialFromIso(iso2?: string) {
+  try { return getCountryCallingCode((iso2 || '').toUpperCase() as any); }
+  catch { return ''; }
+}
+
+// constrói E.164 a partir de iso + dígitos
+export function toE164FromCountry(iso2: string, digits: string) {
+  const ddi = getDialFromIso(iso2);
+  const raw = `+${ddi}${digits.replace(/\D/g, '')}`;
   const pn = parsePhoneNumberFromString(raw as any);
-  if (pn && pn.isValid()) return pn.number; // E.164
+  if (pn && pn.isValid()) return pn.number;
+  return '';
+}
+
+// quando o usuário cola/digita algo começando por '+', tenta parsear direto
+export function parseDirectE164(input: string) {
+  const pn = parsePhoneNumberFromString(input);
+  if (pn && pn.isValid()) {
+    return {
+      e164: pn.number,
+      iso2: pn.country || null,
+      national: pn.formatNational(),
+    };
+  }
   return null;
 }
 
