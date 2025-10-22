@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PhoneField from "@/components/forms/PhoneField";
+import { isValidPhoneNumber } from 'libphonenumber-js';
+
+const signupSchema = z.object({
+  name: z.string().min(2, 'Informe seu nome completo'),
+  email: z.string().email('E-mail inválido'),
+  password: z.string().min(8, 'Mínimo de 8 caracteres'),
+  plan: z.enum(['free', 'premium']).default('free'),
+  whatsapp_e164: z.string().min(1, 'WhatsApp é obrigatório').refine(isValidPhoneNumber, 'WhatsApp inválido'),
+});
 
 export default function Signup() {
   const [searchParams] = useSearchParams();
@@ -19,10 +30,11 @@ export default function Signup() {
   
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
+  const [whatsappE164, setWhatsappE164] = useState("");
   const [password, setPassword] = useState("");
   const [plan, setPlan] = useState(planParam || "free");
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const { signup, customer } = useAuth();
   const navigate = useNavigate();
@@ -41,10 +53,34 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
+    
+    const parsed = signupSchema.safeParse({
+      name,
+      email,
+      password,
+      plan,
+      whatsapp_e164: whatsappE164,
+    });
+
+    if (!parsed.success) {
+      const errorMap: Record<string, string> = {};
+      parsed.error.issues.forEach((issue) => {
+        errorMap[issue.path.join('.')] = issue.message;
+      });
+      setErrors(errorMap);
+      toast({
+        title: "Erro de validação",
+        description: "Por favor, corrija os erros no formulário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await signup(name, email, password, whatsapp, plan);
+      await signup(name, email, password, whatsappE164, plan);
       toast({
         title: "Conta criada!",
         description: "Sua conta foi criada com sucesso.",
@@ -85,6 +121,7 @@ export default function Signup() {
               onChange={(e) => setName(e.target.value)}
               required
             />
+            {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
           </div>
 
           <div className="space-y-2">
@@ -97,21 +134,18 @@ export default function Signup() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+            {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="whatsapp">WhatsApp (opcional)</Label>
-            <Input
-              id="whatsapp"
-              type="tel"
-              placeholder="+55 11 99999-9999"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Formato internacional: +55 11 99999-9999
-            </p>
-          </div>
+          <PhoneField
+            label="WhatsApp"
+            required
+            value={whatsappE164}
+            onChange={setWhatsappE164}
+            error={errors.whatsapp_e164}
+            defaultCountry="BR"
+            helperText="Selecione o país e digite seu número. Enviaremos avisos importantes por WhatsApp."
+          />
 
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
@@ -124,6 +158,7 @@ export default function Signup() {
               required
               minLength={8}
             />
+            {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
             <p className="text-xs text-muted-foreground">
               Mínimo 8 caracteres
             </p>
@@ -140,6 +175,7 @@ export default function Signup() {
                 <SelectItem value="premium">Premium - R$ 249/mês (1.500 créditos)</SelectItem>
               </SelectContent>
             </Select>
+            {errors.plan && <p className="text-xs text-destructive">{errors.plan}</p>}
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>

@@ -16,9 +16,17 @@ serve(async (req) => {
     const { name, email, whatsapp_e164, password, plan } = await req.json();
 
     // Validate inputs
-    if (!email || !password || !name) {
+    if (!email || !password || !name || !whatsapp_e164) {
       return new Response(
-        JSON.stringify({ error: 'Nome, email e senha são obrigatórios' }),
+        JSON.stringify({ error: 'Nome, email, WhatsApp e senha são obrigatórios' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate WhatsApp format (E.164)
+    if (!whatsapp_e164.match(/^\+[1-9]\d{1,14}$/)) {
+      return new Response(
+        JSON.stringify({ error: 'WhatsApp inválido. Use o formato internacional (+55 11 99999-9999)' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
