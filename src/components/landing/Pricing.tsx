@@ -4,50 +4,36 @@ import { Check, Sparkles } from "lucide-react";
 
 const plans = [
   {
-    name: "Starter",
-    price: "99",
-    description: "Para lojas que estão começando",
+    name: "Free",
+    price: "0",
+    description: "Para começar a testar",
     features: [
-      "Até 300 rastreios/mês",
+      "5 créditos de rastreio/mês",
       "1 usuário",
       "WhatsApp e e-mail básicos",
       "Painel unificado",
-      "Suporte por e-mail",
+      "Sem SLA",
     ],
     badge: null,
-    cta: "Começar agora",
+    cta: "Começar grátis",
+    ctaLink: "/signup?plan=free",
   },
   {
-    name: "Core",
+    name: "Premium",
     price: "249",
     description: "Para operações em crescimento",
     features: [
-      "Até 1.500 rastreios/mês",
+      "1.500 créditos/mês",
       "3 usuários",
-      "Regras personalizadas",
+      "Regras e jornadas personalizadas",
       "Métricas e relatórios",
-      "Templates customizados",
+      "Webhooks & API",
       "Suporte prioritário",
     ],
     badge: "Mais popular",
-    cta: "Começar agora",
+    cta: "Assinar Premium",
+    ctaLink: "/signup?plan=premium",
     highlight: true,
-  },
-  {
-    name: "Pro",
-    price: "599",
-    description: "Para times que escalam rápido",
-    features: [
-      "Até 6.000 rastreios/mês",
-      "8 usuários",
-      "Webhooks e API",
-      "Domínios customizados",
-      "SLA garantido",
-      "Suporte dedicado",
-      "Onboarding guiado",
-    ],
-    badge: null,
-    cta: "Começar agora",
   },
   {
     name: "Enterprise",
@@ -64,6 +50,8 @@ const plans = [
     ],
     badge: null,
     cta: "Falar com vendas",
+    ctaLink: "https://wa.me/5511999999999?text=Quero%20conhecer%20o%20plano%20Enterprise",
+    isExternal: true,
   },
 ];
 
@@ -85,7 +73,7 @@ export const Pricing = () => {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {plans.map((plan, idx) => (
             <div
               key={idx}
@@ -127,8 +115,15 @@ export const Pricing = () => {
                   variant={plan.highlight ? "hero" : "outline"}
                   size="lg"
                   className="w-full"
+                  asChild
                 >
-                  {plan.cta}
+                  {plan.isExternal ? (
+                    <a href={plan.ctaLink} target="_blank" rel="noopener noreferrer">
+                      {plan.cta}
+                    </a>
+                  ) : (
+                    <a href={plan.ctaLink}>{plan.cta}</a>
+                  )}
                 </Button>
 
                 <div className="space-y-3 pt-4 border-t border-border/50">
@@ -144,23 +139,33 @@ export const Pricing = () => {
           ))}
         </div>
 
-        {/* Trust badges */}
-        <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-primary" />
-            <span>7 dias grátis</span>
+        {/* Trust badges and credit info */}
+        <div className="space-y-6 animate-fade-in-up" style={{ animationDelay: "0.5s" }}>
+          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              <span>Comece grátis (5 créditos/mês)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              <span>Sem fidelidade</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              <span>Upgrade/downgrade a qualquer momento</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-primary" />
+              <span>Cancele em 1 clique</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-primary" />
-            <span>Sem fidelidade</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-primary" />
-            <span>Upgrade/downgrade a qualquer momento</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Check className="w-4 h-4 text-primary" />
-            <span>Cancele em 1 clique</span>
+          
+          <div className="max-w-2xl mx-auto p-4 rounded-xl bg-card/30 border border-border/50">
+            <p className="text-sm text-muted-foreground text-center">
+              <strong className="text-foreground">Como funcionam os créditos:</strong> Cada rastreio criado consome 1 crédito. 
+              No plano Free você tem 5 créditos/mês que resetam no primeiro dia de cada mês. 
+              No Premium, 1.500 créditos/mês. Se exceder, será necessário fazer upgrade para continuar rastreando.
+            </p>
           </div>
         </div>
       </div>
