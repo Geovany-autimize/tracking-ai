@@ -13,15 +13,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import PhoneField from "@/components/forms/PhoneField";
-import { isValidPhoneNumber } from 'libphonenumber-js';
+import PhoneFieldPro from "@/components/forms/PhoneFieldPro";
+import { isValidE164 } from '@/lib/phone';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Informe seu nome completo'),
   email: z.string().email('E-mail inválido'),
   password: z.string().min(8, 'Mínimo de 8 caracteres'),
   plan: z.enum(['free', 'premium']).default('free'),
-  whatsapp_e164: z.string().min(1, 'WhatsApp é obrigatório').refine(isValidPhoneNumber, 'WhatsApp inválido'),
+  whatsapp_e164: z.string().min(1, 'WhatsApp é obrigatório').refine(isValidE164, 'WhatsApp inválido'),
 });
 
 export default function Signup() {
@@ -137,14 +137,14 @@ export default function Signup() {
             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
           </div>
 
-          <PhoneField
+          <PhoneFieldPro
             label="WhatsApp"
             required
             value={whatsappE164}
             onChange={setWhatsappE164}
             error={errors.whatsapp_e164}
             defaultCountry="BR"
-            helperText="Selecione o país e digite seu número. Enviaremos avisos importantes por WhatsApp."
+            helperText="Selecione o país ou digite o DDI (+55) e informe seu número."
           />
 
           <div className="space-y-2">
