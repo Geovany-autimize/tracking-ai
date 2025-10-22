@@ -88,9 +88,13 @@ export default function Signup() {
       });
       navigate('/dashboard');
     } catch (error: any) {
+      const msg = error?.message || "Tente novamente mais tarde.";
+      if (msg.toLowerCase().includes('já está cadastrado')) {
+        setErrors((prev) => ({ ...prev, email: msg }));
+      }
       toast({
         title: "Erro ao criar conta",
-        description: error.message || "Tente novamente mais tarde.",
+        description: msg,
         variant: "destructive",
       });
     } finally {

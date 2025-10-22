@@ -107,7 +107,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error || !data?.success) {
-      throw new Error(data?.error || 'Erro ao fazer login');
+      let message = 'Erro ao fazer login';
+      if (data?.error) {
+        message = data.error;
+      } else if (error) {
+        const raw = (error as any).message;
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error || raw;
+          } catch {
+            message = raw || message;
+          }
+        }
+      }
+      throw new Error(message);
     }
 
     setSessionToken(data.sessionToken);
@@ -126,7 +140,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (error || !data?.success) {
-      throw new Error(data?.error || 'Erro ao criar conta');
+      let message = 'Erro ao criar conta';
+      if (data?.error) {
+        message = data.error;
+      } else if (error) {
+        const raw = (error as any).message;
+        if (typeof raw === 'string') {
+          try {
+            const parsed = JSON.parse(raw);
+            message = parsed?.error || raw;
+          } catch {
+            message = raw || message;
+          }
+        }
+      }
+      throw new Error(message);
     }
 
     setSessionToken(data.sessionToken);
