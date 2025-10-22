@@ -57,7 +57,7 @@ serve(async (req) => {
       .from('customers')
       .select('id')
       .eq('email', email.toLowerCase())
-      .single();
+      .maybeSingle();
 
     if (existingCustomer) {
       return new Response(
