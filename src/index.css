@@ -40,6 +40,16 @@ All colors MUST be HSL.
 
     --radius: 1rem;
 
+    /* Sidebar */
+    --sidebar-background: 240 8% 3%;
+    --sidebar-foreground: 240 5% 90%;
+    --sidebar-primary: 262 52% 58%;
+    --sidebar-primary-foreground: 240 5% 96%;
+    --sidebar-accent: 240 6% 10%;
+    --sidebar-accent-foreground: 240 5% 96%;
+    --sidebar-border: 240 6% 12%;
+    --sidebar-ring: 262 52% 58%;
+
     /* TrackingAI Brand Colors */
     --brand-purple: 262 52% 58%;
     --brand-blue: 199 89% 48%;
