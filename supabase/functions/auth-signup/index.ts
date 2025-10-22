@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
+import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,7 +67,7 @@ serve(async (req) => {
     }
 
     // Hash password
-    const passwordHash = await bcrypt.hash(password);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     // Create customer
     const { data: customer, error: customerError } = await supabase
