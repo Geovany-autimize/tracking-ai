@@ -14,7 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          status: string | null
+          whatsapp_e164: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          name?: string | null
+          status?: string | null
+          whatsapp_e164?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          status?: string | null
+          whatsapp_e164?: string | null
+        }
+        Relationships: []
+      }
+      monthly_usage: {
+        Row: {
+          customer_id: string
+          id: string
+          period_ym: string
+          updated_at: string | null
+          used_credits: number | null
+        }
+        Insert: {
+          customer_id: string
+          id?: string
+          period_ym: string
+          updated_at?: string | null
+          used_credits?: number | null
+        }
+        Update: {
+          customer_id?: string
+          id?: string
+          period_ym?: string
+          updated_at?: string | null
+          used_credits?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_usage_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oauth_accounts: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          provider: string
+          provider_account_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          provider: string
+          provider_account_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          provider?: string
+          provider_account_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oauth_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      password_credentials: {
+        Row: {
+          customer_id: string
+          password_hash: string
+          updated_at: string | null
+        }
+        Insert: {
+          customer_id: string
+          password_hash: string
+          updated_at?: string | null
+        }
+        Update: {
+          customer_id?: string
+          password_hash?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "password_credentials_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          features: Json | null
+          id: string
+          is_public: boolean | null
+          monthly_credits: number | null
+          name: string
+          price_cents: number | null
+        }
+        Insert: {
+          features?: Json | null
+          id: string
+          is_public?: boolean | null
+          monthly_credits?: number | null
+          name: string
+          price_cents?: number | null
+        }
+        Update: {
+          features?: Json | null
+          id?: string
+          is_public?: boolean | null
+          monthly_credits?: number | null
+          name?: string
+          price_cents?: number | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          customer_id: string
+          id: string
+          plan_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          customer_id: string
+          id?: string
+          plan_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          customer_id?: string
+          id?: string
+          plan_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
