@@ -2,8 +2,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Store, ShoppingBag, ShoppingCart, Package } from 'lucide-react';
 import IntegrationCard from '@/components/settings/IntegrationCard';
+import { useWhatsApp } from '@/hooks/use-whatsapp';
 
 export default function SettingsPage() {
+  const { status, instanceData } = useWhatsApp();
+
+  // Determinar o status do WhatsApp para o IntegrationCard
+  const whatsappStatus = status === 'connected' ? 'ativo' : 'nao-configurado';
+  
   return (
     <div className="space-y-8 max-w-6xl">
       <header>
@@ -27,8 +33,12 @@ export default function SettingsPage() {
             <h3 className="text-sm font-medium text-muted-foreground">Disparo de Mensagens</h3>
             <IntegrationCard
               title="WhatsApp"
-              description="Envie notificações de rastreio para seus clientes"
-              status="nao-configurado"
+              description={
+                status === 'connected' && instanceData?.profileName
+                  ? `Conectado como ${instanceData.profileName}`
+                  : 'Envie notificações de rastreio para seus clientes'
+              }
+              status={whatsappStatus}
               href="/dashboard/settings/integrations/whatsapp"
               icon={<MessageSquare className="h-5 w-5" />}
             />
