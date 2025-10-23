@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,82 @@ import { toast } from '@/hooks/use-toast';
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
 
+interface InstanceData {
+  instanceName?: string;
+  phoneNumber?: string;
+}
+
 export default function WhatsAppSettings() {
   const { customer } = useAuth();
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [instanceData, setInstanceData] = useState<InstanceData | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const checkInstanceStatus = async () => {
+    if (!customer?.id) return;
+
+    try {
+      const response = await fetch('https://webhook-n8n.autimize.com.br/webhook/cbdf4e87-e7be-4064-b467-97d1275acc2b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: customer.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao verificar status');
+      }
+
+      const data = await response.json();
+      
+      if (data.status === 'connected' || data.state === 'open') {
+        setStatus('connected');
+        setInstanceData({
+          instanceName: data.instanceName || data.instance?.instanceName,
+          phoneNumber: data.phoneNumber || data.instance?.owner,
+        });
+        
+        // Limpar polling quando conectar
+        if (pollingIntervalRef.current) {
+          clearInterval(pollingIntervalRef.current);
+          pollingIntervalRef.current = null;
+        }
+        
+        // Fechar dialog se estiver aberto
+        if (showQRDialog) {
+          setShowQRDialog(false);
+          setQrCode(null);
+          toast({
+            title: 'WhatsApp conectado!',
+            description: 'Sua conta foi conectada com sucesso',
+          });
+        }
+      } else if (data.status === 'disconnected' || data.state === 'close') {
+        setStatus('disconnected');
+        setInstanceData(null);
+      }
+    } catch (error) {
+      console.error('Error checking status:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Verificar status ao montar o componente
+    checkInstanceStatus();
+
+    // Cleanup ao desmontar
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [customer?.id]);
 
   const handleConnect = async () => {
     if (!customer?.id) {
@@ -56,15 +126,27 @@ export default function WhatsAppSettings() {
         setQrCode(qrCodeDataUrl);
         setShowQRDialog(true);
         
-        // Simula polling para verificar conexão (ajuste conforme sua API)
-        const checkConnection = setInterval(() => {
-          // Aqui você deve verificar o status real via API
-          // Por enquanto, simula conexão após 10 segundos
+        // Iniciar polling para verificar conexão
+        pollingIntervalRef.current = setInterval(() => {
+          checkInstanceStatus();
         }, 3000);
 
         // Cleanup após 60 segundos
         setTimeout(() => {
-          clearInterval(checkConnection);
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          if (status === 'connecting') {
+            setStatus('disconnected');
+            setShowQRDialog(false);
+            setQrCode(null);
+            toast({
+              title: 'Tempo esgotado',
+              description: 'Tente conectar novamente',
+              variant: 'destructive',
+            });
+          }
         }, 60000);
       }
     } catch (error) {
@@ -80,13 +162,12 @@ export default function WhatsAppSettings() {
     }
   };
 
-  const handleConnectionSuccess = () => {
-    setStatus('connected');
-    setShowQRDialog(false);
-    setQrCode(null);
+  const handleDisconnect = async () => {
+    setStatus('disconnected');
+    setInstanceData(null);
     toast({
-      title: 'WhatsApp conectado!',
-      description: 'Sua conta foi conectada com sucesso',
+      title: 'WhatsApp desconectado',
+      description: 'Sua conta foi desconectada',
     });
   };
 
@@ -170,11 +251,39 @@ export default function WhatsAppSettings() {
             <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-6">
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-medium text-green-500 mb-1">WhatsApp Conectado</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Sua conta está conectada e pronta para enviar notificações
-                  </p>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-medium text-green-500 mb-1">WhatsApp Conectado</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Sua conta está conectada e pronta para enviar notificações
+                    </p>
+                  </div>
+                  
+                  {instanceData && (
+                    <div className="space-y-2 pt-2 border-t border-green-500/20">
+                      {instanceData.instanceName && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-muted-foreground">Instância:</span>
+                          <span className="font-medium">{instanceData.instanceName}</span>
+                        </div>
+                      )}
+                      {instanceData.phoneNumber && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="text-muted-foreground">Número:</span>
+                          <span className="font-medium">{instanceData.phoneNumber}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleDisconnect}
+                    className="mt-2"
+                  >
+                    Desconectar
+                  </Button>
                 </div>
               </div>
             </div>
@@ -230,15 +339,9 @@ export default function WhatsAppSettings() {
                 Configurações → Aparelhos conectados → Conectar aparelho
               </p>
             </div>
-            {/* Botão temporário para simular conexão bem-sucedida */}
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleConnectionSuccess}
-              className="mt-2"
-            >
-              Simular Conexão (Dev)
-            </Button>
+            <p className="text-xs text-muted-foreground mt-2">
+              Aguardando leitura do QR Code...
+            </p>
           </div>
         </DialogContent>
       </Dialog>
