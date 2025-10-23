@@ -6,6 +6,7 @@ interface Customer {
   email: string;
   name: string;
   whatsapp_e164?: string;
+  avatar_url?: string;
   status: string;
 }
 

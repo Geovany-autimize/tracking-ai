@@ -3,10 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import AvatarUploader from '@/components/profile/AvatarUploader';
+import { useState } from 'react';
 
 export default function ProfilePage() {
   const { customer } = useAuth();
+  const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(customer?.avatar_url);
 
   const initials = customer?.name
     ?.split(' ')
@@ -14,6 +16,14 @@ export default function ProfilePage() {
     .join('')
     .toUpperCase()
     .slice(0, 2) || 'U';
+
+  if (!customer) {
+    return (
+      <div className="space-y-6 max-w-2xl">
+        <p className="text-muted-foreground">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -32,17 +42,12 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback className="text-lg">{initials}</AvatarFallback>
-            </Avatar>
-            <div>
-              <Button variant="outline" size="sm">Alterar Foto</Button>
-              <p className="text-xs text-muted-foreground mt-1">
-                JPG, PNG ou GIF. Máx. 2MB
-              </p>
-            </div>
-          </div>
+          <AvatarUploader
+            customerId={customer.id}
+            initialUrl={avatarUrl}
+            initials={initials}
+            onUploadComplete={setAvatarUrl}
+          />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">

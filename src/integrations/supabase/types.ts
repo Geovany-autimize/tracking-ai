@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       customers: {
         Row: {
+          avatar_url: string | null
           created_at: string | null
           email: string
           id: string
@@ -24,6 +25,7 @@ export type Database = {
           whatsapp_e164: string | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string | null
           email: string
           id?: string
@@ -32,6 +34,7 @@ export type Database = {
           whatsapp_e164?: string | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string | null
           email?: string
           id?: string
