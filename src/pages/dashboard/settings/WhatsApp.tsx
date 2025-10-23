@@ -46,8 +46,14 @@ export default function WhatsAppSettings() {
 
       const data = await response.json();
       
-      if (data.qrCode) {
-        setQrCode(data.qrCode);
+      // O webhook retorna um array com a estrutura: [{ binary: { data: { data: "base64...", mimeType: "image/png" } } }]
+      if (data && data.length > 0 && data[0].binary?.data?.data) {
+        const base64Image = data[0].binary.data.data;
+        const mimeType = data[0].binary.data.mimeType || 'image/png';
+        
+        // Converte base64 para data URL
+        const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
+        setQrCode(qrCodeDataUrl);
         setShowQRDialog(true);
         
         // Simula polling para verificar conexão (ajuste conforme sua API)
