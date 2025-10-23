@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const QR_CODE_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/24d94ff6-e04f-4286-b83d-f645e6413a15';
+const DISCONNECT_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/cccbbb2d-275f-4444-9a0f-0491b2b24b38';
 
 export default function WhatsAppSettings() {
   const { customer } = useAuth();
@@ -20,7 +21,7 @@ export default function WhatsAppSettings() {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [qrTimestamp, setQrTimestamp] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [qrExpiresIn, setQrExpiresIn] = useState(30);
+  const [qrExpiresIn, setQrExpiresIn] = useState(60);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -39,7 +40,7 @@ export default function WhatsAppSettings() {
           if (prev <= 1) {
             // Solicitar novo QR Code silenciosamente
             handleGenerateNewQR(true);
-            return 30;
+            return 60;
           }
           return prev - 1;
         });
@@ -51,7 +52,7 @@ export default function WhatsAppSettings() {
         }
       };
     } else if (!showQRDialog) {
-      setQrExpiresIn(30);
+      setQrExpiresIn(60);
     }
   }, [showQRDialog, qrCode, qrTimestamp]);
 
@@ -130,7 +131,7 @@ export default function WhatsAppSettings() {
         // Atualizar QR Code (sem timestamp na URL para não corromper o Data URI)
         setQrCode(qrCodeDataUrl);
         setQrTimestamp(Date.now()); // Timestamp separado para forçar re-render
-        setQrExpiresIn(30);
+        setQrExpiresIn(60);
         
         // Mostrar toast apenas se não for renovação automática
         if (!silent) {
@@ -188,7 +189,7 @@ export default function WhatsAppSettings() {
         const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
         setQrCode(qrCodeDataUrl);
         setShowQRDialog(true);
-        setQrExpiresIn(30);
+        setQrExpiresIn(60);
         
         startPolling();
       }
@@ -206,13 +207,65 @@ export default function WhatsAppSettings() {
   };
 
   const handleDisconnect = async () => {
-    setStatus('disconnected');
-    setInstanceData(null);
-    stopPolling();
-    toast({
-      title: 'WhatsApp desconectado',
-      description: 'Sua conta foi desconectada',
-    });
+    if (!customer?.id || !instanceData) {
+      toast({
+        title: 'Erro',
+        description: 'Dados de usuário ou instância não encontrados',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Enviar requisição para webhook de desconexão
+      const response = await fetch(DISCONNECT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: customer.id,
+          instanceData: {
+            id: instanceData.id,
+            name: instanceData.name,
+            ownerJid: instanceData.ownerJid,
+            profileName: instanceData.profileName,
+            connectionStatus: instanceData.connectionStatus,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao desconectar WhatsApp');
+      }
+
+      // Atualizar status local
+      setStatus('disconnected');
+      setInstanceData(null);
+      stopPolling();
+      
+      toast({
+        title: 'WhatsApp desconectado',
+        description: 'Sua conta foi desconectada com sucesso',
+      });
+
+      // Verificar status após desconexão (aguardar 2s para webhook processar)
+      setTimeout(() => {
+        checkStatus(true);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error disconnecting WhatsApp:', error);
+      toast({
+        title: 'Erro ao desconectar',
+        description: error instanceof Error ? error.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleManualRefresh = () => {
@@ -529,23 +582,23 @@ export default function WhatsAppSettings() {
                     <Clock className="h-4 w-4" />
                     <span className={cn(
                       "text-sm font-medium",
-                      qrExpiresIn > 15 ? "text-green-500" :
-                      qrExpiresIn > 10 ? "text-amber-500" :
-                      qrExpiresIn > 5 ? "text-orange-500" :
+                      qrExpiresIn > 45 ? "text-green-500" :
+                      qrExpiresIn > 30 ? "text-amber-500" :
+                      qrExpiresIn > 15 ? "text-orange-500" :
                       "text-red-500"
                     )}>
                       {qrExpiresIn === 0 ? "Gerando novo QR Code..." : 
-                       qrExpiresIn <= 5 ? `Expira em ${qrExpiresIn}s! Escaneie rápido!` :
+                       qrExpiresIn <= 15 ? `Expira em ${qrExpiresIn}s! Escaneie rápido!` :
                        `Expira em: ${qrExpiresIn}s`}
                     </span>
                   </div>
                   <Progress 
-                    value={(qrExpiresIn / 30) * 100} 
-                    className="h-2"
+                    value={(qrExpiresIn / 60) * 100} 
+                    className="h-2 [&>div]:bg-primary bg-muted"
                   />
                 </div>
 
-                {qrExpiresIn <= 5 && (
+                {qrExpiresIn <= 15 && (
                   <div className="flex items-center gap-2 text-sm text-amber-500">
                     <AlertCircle className="h-4 w-4" />
                     <span>QR Code expirando, aguarde renovação automática...</span>
