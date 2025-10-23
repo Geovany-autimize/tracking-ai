@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/neon-button';
 import { Plus } from 'lucide-react';
 
 export default function ShipmentsPage() {
@@ -12,7 +12,7 @@ export default function ShipmentsPage() {
             Gerencie todos os seus rastreios de encomendas
           </p>
         </div>
-        <Button className="gap-2">
+        <Button variant="solid" className="gap-2">
           <Plus className="h-4 w-4" />
           Novo Rastreio
         </Button>

@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/neon-button';
 import { UserPlus } from 'lucide-react';
 
 export default function CustomersPage() {
@@ -12,7 +12,7 @@ export default function CustomersPage() {
             Cadastre e gerencie seus clientes
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="solid" className="gap-2">
           <UserPlus className="h-4 w-4" />
           Novo Cliente
         </Button>

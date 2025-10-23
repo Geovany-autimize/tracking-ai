@@ -29,6 +29,16 @@ export default function DashboardHome() {
   const usedCredits = usage?.used_credits || 0;
   const isQuotaExceeded = usedCredits >= totalCredits;
 
+  const getNextRenewalDate = () => {
+    const now = new Date();
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    return nextMonth.toLocaleDateString('pt-BR', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
   return (
     <div className="space-y-6">
       <section>
@@ -54,7 +64,7 @@ export default function DashboardHome() {
         </Card>
       )}
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <StatCard
           label="Plano Atual"
           value={
@@ -69,10 +79,30 @@ export default function DashboardHome() {
         <StatCard
           label="Créditos Usados"
           value={`${usedCredits} / ${totalCredits}`}
-          subtitle="Zera dia 01 do próximo mês"
+          subtitle={`Renova em ${getNextRenewalDate()}`}
         />
-        <StatCard label="Rastreios Ativos" value="12" />
-        <StatCard label="Entregues neste mês" value="37" />
+        <StatCard label="Rastreios Ativos" value="12" subtitle="Aguardando entrega" />
+        <StatCard 
+          label="Taxa de Entrega"
+          value="94.5%"
+          subtitle="↑ 2.3% vs mês anterior"
+        />
+        <StatCard 
+          label="Tempo Médio"
+          value="7.2 dias"
+          subtitle="Média de entrega"
+        />
+        <StatCard 
+          label="Clientes Ativos"
+          value="28"
+          subtitle="Com rastreios no mês"
+        />
+        <StatCard 
+          label="Taxa de Uso"
+          value={`${totalCredits > 0 ? Math.round((usedCredits / totalCredits) * 100) : 0}%`}
+          subtitle={`${totalCredits - usedCredits} créditos restantes`}
+        />
+        <StatCard label="Entregues neste mês" value="37" subtitle="Finalizados com sucesso" />
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">

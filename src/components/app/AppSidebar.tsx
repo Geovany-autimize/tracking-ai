@@ -1,6 +1,8 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import * as Icons from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { APP_NAV } from '@/config/site.config';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
 import Logo from './Logo';
@@ -17,6 +20,8 @@ import Logo from './Logo';
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const collapsed = state === 'collapsed';
 
   const isActive = (href: string) => {
@@ -26,21 +31,33 @@ export function AppSidebar() {
     return location.pathname.startsWith(href);
   };
 
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  const mainMenuItems = APP_NAV.filter(item => item.href !== '/dashboard/profile');
+  const profileItem = APP_NAV.find(item => item.href === '/dashboard/profile');
+
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent>
-        <div className="px-4 py-4">
-          {!collapsed && <Logo variant="app" />}
-          {collapsed && (
-            <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg" />
+      <SidebarContent className="flex flex-col h-full">
+        <div className="flex items-center justify-between px-4 py-4">
+          {!collapsed ? (
+            <Logo variant="app" />
+          ) : (
+            <Link to="/dashboard" className="block">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg cursor-pointer hover:scale-105 transition-transform" />
+            </Link>
           )}
+          <SidebarTrigger className={collapsed ? '' : 'ml-auto'} />
         </div>
 
         <SidebarGroup>
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {APP_NAV.map((item) => {
+              {mainMenuItems.map((item) => {
                 const Icon = (Icons[item.icon as keyof typeof Icons] || Icons.Circle) as any;
                 const active = isActive(item.href);
 
@@ -59,8 +76,43 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        <div className="flex-1" />
+
+        {profileItem && (
+          <SidebarGroup className="mt-auto">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive(profileItem.href)}>
+                    <Link to={profileItem.href}>
+                      {(() => {
+                        const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
+                        return <Icon className="h-4 w-4" />;
+                      })()}
+                      <span>{profileItem.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        <SidebarGroup className="mt-0">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  <span>Sair</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {!collapsed && (
-          <div className="mt-auto px-4 pb-4 text-xs text-muted-foreground">
+          <div className="px-4 pb-4 text-xs text-muted-foreground">
             © {new Date().getFullYear()} TrackingAI
           </div>
         )}
