@@ -61,17 +61,22 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
           connectionStatus: responseData.connectionStatus,
         };
         
-        // Mapear connectionStatus da API para nosso status interno
-        if (responseData.connectionStatus === 'open') {
-          setStatus('connected');
-          setInstanceData(instanceInfo);
-        } else if (responseData.connectionStatus === 'connecting') {
-          setStatus('connecting');
-          setInstanceData(instanceInfo); // Preservar dados da instância
-        } else {
-          setStatus('disconnected');
-          setInstanceData(instanceInfo); // Preservar dados mesmo desconectado
-        }
+      // Mapear connectionStatus da API para nosso status interno
+      if (responseData.connectionStatus === 'open') {
+        setStatus('connected');
+        setInstanceData(instanceInfo);
+      } else if (responseData.connectionStatus === 'connecting') {
+        setStatus('connecting');
+        setInstanceData(instanceInfo); // QR Code gerado, aguardando scan
+      } else if (responseData.connectionStatus === 'close') {
+        // Instância existe mas está desconectada
+        setStatus('disconnected');
+        setInstanceData(instanceInfo); // Preservar dados para mostrar na UI
+      } else {
+        // Estado desconhecido ou sem instância
+        setStatus('disconnected');
+        setInstanceData(null);
+      }
       } else {
         setStatus('disconnected');
         setInstanceData(null);

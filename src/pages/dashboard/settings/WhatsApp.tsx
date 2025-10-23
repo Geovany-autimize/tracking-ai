@@ -304,7 +304,8 @@ export default function WhatsAppSettings() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status === 'disconnected' && (
+          {/* Status: Desconectado (sem instância) */}
+          {status === 'disconnected' && !instanceData && (
             <div className="rounded-lg border bg-muted/50 p-6">
               <div className="space-y-4">
                 <div>
@@ -325,6 +326,62 @@ export default function WhatsAppSettings() {
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Conectar WhatsApp
                 </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Status: Desconectado (com instância - connectionStatus: "close") */}
+          {status === 'disconnected' && instanceData && (
+            <div className="rounded-lg border bg-red-500/10 border-red-500/20 p-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-16 w-16">
+                  {instanceData.profilePicUrl && (
+                    <AvatarImage src={instanceData.profilePicUrl} alt={instanceData.profileName || 'Profile'} />
+                  )}
+                  <AvatarFallback className="bg-red-500/20 text-red-500">
+                    <Smartphone className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-medium text-red-500 mb-1">WhatsApp Desconectado</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A instância existe mas o WhatsApp foi desconectado. Reconecte para continuar enviando notificações.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 pt-2 border-t border-red-500/20">
+                    {instanceData.profileName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Nome:</span>
+                        <span className="font-medium">{instanceData.profileName}</span>
+                      </div>
+                    )}
+                    {instanceData.ownerJid && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Número:</span>
+                        <span className="font-medium">{formatPhoneNumber(instanceData.ownerJid)}</span>
+                      </div>
+                    )}
+                    {instanceData.name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Instância:</span>
+                        <span className="font-mono text-xs">{instanceData.name}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleConnect}
+                    disabled={isLoading}
+                    className="mt-2"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Reconectar WhatsApp
+                  </Button>
+                </div>
               </div>
             </div>
           )}
