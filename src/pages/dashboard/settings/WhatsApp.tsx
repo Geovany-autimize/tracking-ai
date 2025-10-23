@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Loader2, CheckCircle2, XCircle, Smartphone, Clock, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Smartphone, Clock, RefreshCw, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const QR_CODE_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/24d94ff6-e04f-4286-b83d-f645e6413a15';
 const DISCONNECT_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/cccbbb2d-275f-4444-9a0f-0491b2b24b38';
+const DELETE_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/f412aea9-9156-43e5-ab00-564eaaab4ed0';
 
 export default function WhatsAppSettings() {
   const { customer } = useAuth();
@@ -241,9 +242,8 @@ export default function WhatsAppSettings() {
         throw new Error('Falha ao desconectar WhatsApp');
       }
 
-      // Atualizar status local
+      // Atualizar status local (manter instanceData para mostrar tela de desconectado)
       setStatus('disconnected');
-      setInstanceData(null);
       stopPolling();
       
       toast({
@@ -260,6 +260,68 @@ export default function WhatsAppSettings() {
       console.error('Error disconnecting WhatsApp:', error);
       toast({
         title: 'Erro ao desconectar',
+        description: error instanceof Error ? error.message : 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteInstance = async () => {
+    if (!customer?.id || !instanceData) {
+      toast({
+        title: 'Erro',
+        description: 'Dados de usuário ou instância não encontrados',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Enviar requisição para webhook de exclusão
+      const response = await fetch(DELETE_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: customer.id,
+          instanceData: {
+            id: instanceData.id,
+            name: instanceData.name,
+            ownerJid: instanceData.ownerJid,
+            profileName: instanceData.profileName,
+            connectionStatus: instanceData.connectionStatus,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao excluir instância do WhatsApp');
+      }
+
+      // Limpar tudo e voltar para tela inicial
+      setStatus('disconnected');
+      setInstanceData(null);
+      stopPolling();
+      
+      toast({
+        title: 'Instância excluída',
+        description: 'A instância do WhatsApp foi excluída com sucesso',
+      });
+
+      // Verificar status após exclusão (aguardar 2s para webhook processar)
+      setTimeout(() => {
+        checkStatus(true);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error deleting WhatsApp instance:', error);
+      toast({
+        title: 'Erro ao excluir instância',
         description: error instanceof Error ? error.message : 'Tente novamente',
         variant: 'destructive',
       });
@@ -388,25 +450,25 @@ export default function WhatsAppSettings() {
 
           {/* Status: Desconectado (com instância - connectionStatus: "close") */}
           {status === 'disconnected' && instanceData && (
-            <div className="rounded-lg border bg-red-500/10 border-red-500/20 p-6">
+            <div className="rounded-lg border bg-amber-500/10 border-amber-500/20 p-6">
               <div className="flex items-start gap-4">
                 <Avatar className="h-16 w-16">
                   {instanceData.profilePicUrl && (
                     <AvatarImage src={instanceData.profilePicUrl} alt={instanceData.profileName || 'Profile'} />
                   )}
-                  <AvatarFallback className="bg-red-500/20 text-red-500">
-                    <Smartphone className="h-8 w-8" />
+                  <AvatarFallback className="bg-amber-500/20 text-amber-500">
+                    <MessageSquare className="h-8 w-8" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-3">
                   <div>
-                    <h3 className="font-medium text-red-500 mb-1">WhatsApp Desconectado</h3>
+                    <h3 className="font-medium text-amber-500 mb-1">WhatsApp Desconectado</h3>
                     <p className="text-sm text-muted-foreground">
-                      A instância existe mas o WhatsApp foi desconectado. Reconecte para continuar enviando notificações.
+                      Sua conta foi desconectada. Você pode reconectar ou excluir permanentemente a instância.
                     </p>
                   </div>
                   
-                  <div className="space-y-2 pt-2 border-t border-red-500/20">
+                  <div className="space-y-2 pt-2 border-t border-amber-500/20">
                     {instanceData.profileName && (
                       <div className="flex items-center gap-2 text-sm">
                         <span className="text-muted-foreground">Nome:</span>
@@ -427,16 +489,31 @@ export default function WhatsAppSettings() {
                     )}
                   </div>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleConnect}
-                    disabled={isLoading}
-                    className="mt-2"
-                  >
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Reconectar WhatsApp
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleConnect}
+                      disabled={isLoading}
+                      className="flex-1"
+                    >
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Reconectar WhatsApp
+                    </Button>
+                    
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={handleDeleteInstance}
+                      disabled={isLoading}
+                      className="flex-1"
+                    >
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Excluir Instância
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
