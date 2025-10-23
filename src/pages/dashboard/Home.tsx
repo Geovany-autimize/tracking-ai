@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useWhatsApp } from '@/hooks/use-whatsapp';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle } from 'lucide-react';
+import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { ReactNode } from 'react';
 
 function StatCard({ label, value, subtitle }: { label: string; value: string | ReactNode; subtitle?: string }) {
@@ -22,6 +23,7 @@ function StatCard({ label, value, subtitle }: { label: string; value: string | R
 
 export default function DashboardHome() {
   const { customer, plan, usage } = useAuth();
+  const { status: whatsappStatus, isChecking } = useWhatsApp();
 
   const totalCredits = plan?.monthly_credits || 0;
   const usedCredits = usage?.used_credits || 0;
@@ -129,19 +131,41 @@ export default function DashboardHome() {
                 </Badge>
               </li>
               <li className="flex items-center justify-between">
-                <span>WhatsApp cadastrado</span>
-                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                  OK
-                </Badge>
+                <span>WhatsApp</span>
+                {isChecking ? (
+                  <Badge variant="outline">
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Verificando...
+                  </Badge>
+                ) : whatsappStatus === 'connected' ? (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Conectado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Desconectado
+                  </Badge>
+                )}
               </li>
               <li className="flex items-center justify-between">
                 <span>Integração de loja</span>
                 <Badge variant="outline">Não configurada</Badge>
               </li>
             </ul>
-            <Button asChild variant="outline" className="w-full mt-4">
-              <Link to="/dashboard/settings">Completar Configuração</Link>
-            </Button>
+            <div className="space-y-2 mt-4">
+              {whatsappStatus !== 'connected' && (
+                <Button asChild variant="outline" className="w-full" size="sm">
+                  <Link to="/dashboard/settings/integrations/whatsapp">
+                    Configurar WhatsApp
+                  </Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" className="w-full" size="sm">
+                <Link to="/dashboard/settings">Completar Configuração</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </section>

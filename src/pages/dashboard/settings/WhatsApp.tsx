@@ -1,33 +1,112 @@
 import { useState, useEffect, useRef } from 'react';
+import { useWhatsApp } from '@/hooks/use-whatsapp';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle2, XCircle, Smartphone } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Loader2, CheckCircle2, XCircle, Smartphone, Clock, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-type ConnectionStatus = 'connected' | 'disconnected' | 'connecting';
-
-interface InstanceData {
-  instanceName?: string;
-  phoneNumber?: string;
-}
+const QR_CODE_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/24d94ff6-e04f-4286-b83d-f645e6413a15';
 
 export default function WhatsAppSettings() {
   const { customer } = useAuth();
-  const [status, setStatus] = useState<ConnectionStatus>('disconnected');
+  const { status, instanceData, isChecking, checkStatus, setStatus, setInstanceData } = useWhatsApp();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [instanceData, setInstanceData] = useState<InstanceData | null>(null);
+  const [qrExpiresIn, setQrExpiresIn] = useState(30);
+  const [lastRefresh, setLastRefresh] = useState<number>(0);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const checkInstanceStatus = async () => {
+  // Timer do QR Code
+  useEffect(() => {
+    if (showQRDialog && qrCode) {
+      setQrExpiresIn(30);
+      
+      timerIntervalRef.current = setInterval(() => {
+        setQrExpiresIn((prev) => {
+          if (prev <= 1) {
+            // QR Code expirou, solicitar novo
+            if (timerIntervalRef.current) {
+              clearInterval(timerIntervalRef.current);
+            }
+            handleGenerateNewQR();
+            return 30;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [showQRDialog, qrCode]);
+
+  // Polling durante conexão
+  const startPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    pollingIntervalRef.current = setInterval(() => {
+      checkStatus(true);
+    }, 3000);
+
+    // Timeout de 30 segundos alinhado com expiração do QR
+    timeoutRef.current = setTimeout(() => {
+      stopPolling();
+    }, 30000);
+  };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  };
+
+  // Parar polling quando conectar
+  useEffect(() => {
+    if (status === 'connected' && showQRDialog) {
+      stopPolling();
+      setShowQRDialog(false);
+      setQrCode(null);
+      toast({
+        title: 'WhatsApp conectado!',
+        description: 'Sua conta foi conectada com sucesso',
+      });
+    }
+  }, [status, showQRDialog]);
+
+  // Cleanup ao desmontar
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const handleGenerateNewQR = async () => {
     if (!customer?.id) return;
 
     try {
-      const response = await fetch('https://webhook-n8n.autimize.com.br/webhook/cbdf4e87-e7be-4064-b467-97d1275acc2b', {
+      const response = await fetch(QR_CODE_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,53 +117,32 @@ export default function WhatsAppSettings() {
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao verificar status');
+        throw new Error('Falha ao gerar QR Code');
       }
 
       const data = await response.json();
       
-      if (data.status === 'connected' || data.state === 'open') {
-        setStatus('connected');
-        setInstanceData({
-          instanceName: data.instanceName || data.instance?.instanceName,
-          phoneNumber: data.phoneNumber || data.instance?.owner,
+      if (data && data.length > 0 && data[0].binary?.data?.data) {
+        const base64Image = data[0].binary.data.data;
+        const mimeType = data[0].binary.data.mimeType || 'image/png';
+        const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
+        setQrCode(qrCodeDataUrl);
+        setQrExpiresIn(30);
+        
+        toast({
+          title: 'Novo QR Code gerado',
+          description: 'Escaneie o código para conectar',
         });
-        
-        // Limpar polling quando conectar
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
-        
-        // Fechar dialog se estiver aberto
-        if (showQRDialog) {
-          setShowQRDialog(false);
-          setQrCode(null);
-          toast({
-            title: 'WhatsApp conectado!',
-            description: 'Sua conta foi conectada com sucesso',
-          });
-        }
-      } else if (data.status === 'disconnected' || data.state === 'close') {
-        setStatus('disconnected');
-        setInstanceData(null);
       }
     } catch (error) {
-      console.error('Error checking status:', error);
+      console.error('Error generating QR Code:', error);
+      toast({
+        title: 'Erro ao gerar QR Code',
+        description: 'Tente novamente',
+        variant: 'destructive',
+      });
     }
   };
-
-  useEffect(() => {
-    // Verificar status ao montar o componente
-    checkInstanceStatus();
-
-    // Cleanup ao desmontar
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, [customer?.id]);
 
   const handleConnect = async () => {
     if (!customer?.id) {
@@ -100,7 +158,7 @@ export default function WhatsAppSettings() {
     setStatus('connecting');
 
     try {
-      const response = await fetch('https://webhook-n8n.autimize.com.br/webhook/24d94ff6-e04f-4286-b83d-f645e6413a15', {
+      const response = await fetch(QR_CODE_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,38 +174,15 @@ export default function WhatsAppSettings() {
 
       const data = await response.json();
       
-      // O webhook retorna um array com a estrutura: [{ binary: { data: { data: "base64...", mimeType: "image/png" } } }]
       if (data && data.length > 0 && data[0].binary?.data?.data) {
         const base64Image = data[0].binary.data.data;
         const mimeType = data[0].binary.data.mimeType || 'image/png';
-        
-        // Converte base64 para data URL
         const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
         setQrCode(qrCodeDataUrl);
         setShowQRDialog(true);
+        setQrExpiresIn(30);
         
-        // Iniciar polling para verificar conexão
-        pollingIntervalRef.current = setInterval(() => {
-          checkInstanceStatus();
-        }, 3000);
-
-        // Cleanup após 60 segundos
-        setTimeout(() => {
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
-          if (status === 'connecting') {
-            setStatus('disconnected');
-            setShowQRDialog(false);
-            setQrCode(null);
-            toast({
-              title: 'Tempo esgotado',
-              description: 'Tente conectar novamente',
-              variant: 'destructive',
-            });
-          }
-        }, 60000);
+        startPolling();
       }
     } catch (error) {
       console.error('Error connecting WhatsApp:', error);
@@ -165,10 +200,25 @@ export default function WhatsAppSettings() {
   const handleDisconnect = async () => {
     setStatus('disconnected');
     setInstanceData(null);
+    stopPolling();
     toast({
       title: 'WhatsApp desconectado',
       description: 'Sua conta foi desconectada',
     });
+  };
+
+  const handleManualRefresh = () => {
+    const now = Date.now();
+    // Throttle de 3 segundos
+    if (now - lastRefresh < 3000) {
+      toast({
+        title: 'Aguarde',
+        description: 'Aguarde alguns segundos antes de verificar novamente',
+      });
+      return;
+    }
+    setLastRefresh(now);
+    checkStatus(true);
   };
 
   const statusConfig = {
@@ -190,9 +240,25 @@ export default function WhatsAppSettings() {
       variant: 'secondary' as const,
       color: 'text-blue-500',
     },
+    checking: {
+      icon: <Loader2 className="h-5 w-5 animate-spin" />,
+      label: 'Verificando...',
+      variant: 'secondary' as const,
+      color: 'text-blue-500',
+    },
   };
 
   const currentStatus = statusConfig[status];
+
+  // Extrair número formatado
+  const formatPhoneNumber = (jid?: string) => {
+    if (!jid) return null;
+    const number = jid.split('@')[0];
+    if (number.length >= 12) {
+      return `+${number.slice(0, 2)} (${number.slice(2, 4)}) ${number.slice(4, 9)}-${number.slice(9)}`;
+    }
+    return `+${number}`;
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -215,10 +281,21 @@ export default function WhatsAppSettings() {
                 Gerencie a conexão da sua conta do WhatsApp
               </CardDescription>
             </div>
-            <Badge variant={currentStatus.variant} className="gap-2">
-              <span className={currentStatus.color}>{currentStatus.icon}</span>
-              {currentStatus.label}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={currentStatus.variant} className="gap-2">
+                <span className={currentStatus.color}>{currentStatus.icon}</span>
+                {currentStatus.label}
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleManualRefresh}
+                disabled={isChecking}
+                title="Verificar status da conexão"
+              >
+                <RefreshCw className={cn("h-4 w-4", isChecking && "animate-spin")} />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -247,10 +324,17 @@ export default function WhatsAppSettings() {
             </div>
           )}
 
-          {status === 'connected' && (
+          {status === 'connected' && instanceData && (
             <div className="rounded-lg border bg-green-500/10 border-green-500/20 p-6">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+              <div className="flex items-start gap-4">
+                <Avatar className="h-16 w-16">
+                  {instanceData.profilePicUrl && (
+                    <AvatarImage src={instanceData.profilePicUrl} alt={instanceData.profileName || 'Profile'} />
+                  )}
+                  <AvatarFallback className="bg-green-500/20 text-green-500">
+                    <Smartphone className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 space-y-3">
                   <div>
                     <h3 className="font-medium text-green-500 mb-1">WhatsApp Conectado</h3>
@@ -259,22 +343,26 @@ export default function WhatsAppSettings() {
                     </p>
                   </div>
                   
-                  {instanceData && (
-                    <div className="space-y-2 pt-2 border-t border-green-500/20">
-                      {instanceData.instanceName && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">Instância:</span>
-                          <span className="font-medium">{instanceData.instanceName}</span>
-                        </div>
-                      )}
-                      {instanceData.phoneNumber && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">Número:</span>
-                          <span className="font-medium">{instanceData.phoneNumber}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-2 pt-2 border-t border-green-500/20">
+                    {instanceData.profileName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Nome:</span>
+                        <span className="font-medium">{instanceData.profileName}</span>
+                      </div>
+                    )}
+                    {instanceData.ownerJid && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Número:</span>
+                        <span className="font-medium">{formatPhoneNumber(instanceData.ownerJid)}</span>
+                      </div>
+                    )}
+                    {instanceData.name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Instância:</span>
+                        <span className="font-mono text-xs">{instanceData.name}</span>
+                      </div>
+                    )}
+                  </div>
                   
                   <Button 
                     variant="outline" 
@@ -319,29 +407,72 @@ export default function WhatsAppSettings() {
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 py-4">
             {qrCode ? (
-              <div className="rounded-lg border bg-white p-4">
-                <img 
-                  src={qrCode} 
-                  alt="QR Code WhatsApp" 
-                  className="w-64 h-64 object-contain"
-                />
-              </div>
+              <>
+                <div className="rounded-lg border bg-white p-4">
+                  <img 
+                    src={qrCode} 
+                    alt="QR Code WhatsApp" 
+                    className="w-64 h-64 object-contain"
+                  />
+                </div>
+                
+                {/* Timer Visual */}
+                <div className="w-full space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span className={cn(
+                      "text-sm font-medium",
+                      qrExpiresIn > 15 ? "text-green-500" :
+                      qrExpiresIn > 10 ? "text-amber-500" :
+                      "text-red-500"
+                    )}>
+                      Expira em: {qrExpiresIn}s
+                    </span>
+                  </div>
+                  <Progress 
+                    value={(qrExpiresIn / 30) * 100} 
+                    className="h-2"
+                  />
+                </div>
+
+                {qrExpiresIn <= 5 && (
+                  <div className="flex items-center gap-2 text-sm text-amber-500">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>QR Code expirando, aguarde renovação automática...</span>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="w-64 h-64 rounded-lg border bg-muted flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             )}
-            <div className="text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Abra o WhatsApp no seu celular
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Configurações → Aparelhos conectados → Conectar aparelho
-              </p>
+            
+            <div className="text-center space-y-2 max-w-xs">
+              <p className="text-sm font-medium">Como escanear:</p>
+              <ol className="text-xs text-muted-foreground space-y-1.5 text-left">
+                <li className="flex gap-2">
+                  <span className="font-medium">1.</span>
+                  <span>Abra o WhatsApp no celular</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-medium">2.</span>
+                  <span>Toque em <strong>Mais opções</strong> (⋮) ou <strong>Configurações</strong></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-medium">3.</span>
+                  <span>Selecione <strong>Aparelhos conectados</strong></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-medium">4.</span>
+                  <span>Toque em <strong>Conectar um aparelho</strong></span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="font-medium">5.</span>
+                  <span>Escaneie o QR Code acima</span>
+                </li>
+              </ol>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Aguardando leitura do QR Code...
-            </p>
           </div>
         </DialogContent>
       </Dialog>
