@@ -5,14 +5,14 @@ import { Plus } from 'lucide-react';
 export default function ShipmentsPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
           <h2 className="text-2xl font-semibold">Rastreios</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Gerencie todos os seus rastreios de encomendas
           </p>
         </div>
-        <Button variant="solid" className="gap-2">
+        <Button variant="solid" className="gap-2 shrink-0">
           <Plus className="h-4 w-4" />
           Novo Rastreio
         </Button>

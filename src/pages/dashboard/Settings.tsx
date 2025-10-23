@@ -1,12 +1,15 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare, Store, ShoppingBag, ShoppingCart, Package } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import IntegrationCard from '@/components/settings/IntegrationCard';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
+import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
   const { status, instanceData } = useWhatsApp();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'integrations';
 
   const whatsappStatus = status === 'connected' ? 'ativo' : 'nao-configurado';
   
@@ -19,7 +22,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <Tabs defaultValue="integrations" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="integrations">Integrações</TabsTrigger>
           <TabsTrigger value="billing">Faturamento</TabsTrigger>
@@ -59,48 +62,48 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <IntegrationCard
-                  title="Bling"
-                  description="Sincronize pedidos e notas fiscais"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/bling"
-                  icon={<Store className="h-5 w-5" />}
-                />
-                <IntegrationCard
-                  title="Tiny"
-                  description="Integração nativa com pedidos"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/tiny"
-                  icon={<ShoppingBag className="h-5 w-5" />}
-                />
-                <IntegrationCard
-                  title="Shopify"
-                  description="Conecte sua loja Shopify"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/shopify"
-                  icon={<ShoppingCart className="h-5 w-5" />}
-                />
-                <IntegrationCard
-                  title="Mercado Livre"
-                  description="Pedidos e rastreios do ML"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/mercado-livre"
-                  icon={<Package className="h-5 w-5" />}
-                />
-                <IntegrationCard
-                  title="Shopee"
-                  description="Rastreio e atualização de status"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/shopee"
-                  icon={<ShoppingBag className="h-5 w-5" />}
-                />
-                <IntegrationCard
-                  title="Shein"
-                  description="Importe pedidos da Shein"
-                  status="nao-configurado"
-                  href="/dashboard/settings/integrations/shein"
-                  icon={<Store className="h-5 w-5" />}
-                />
+                  <IntegrationCard
+                    title="Bling"
+                    description="Sincronize pedidos e notas fiscais"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/bling"
+                    logoUrl="/logos/bling.svg"
+                  />
+                  <IntegrationCard
+                    title="Tiny"
+                    description="Integração nativa com pedidos"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/tiny"
+                    logoUrl="/logos/tiny.svg"
+                  />
+                  <IntegrationCard
+                    title="Shopify"
+                    description="Conecte sua loja Shopify"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/shopify"
+                    logoUrl="/logos/shopify.svg"
+                  />
+                  <IntegrationCard
+                    title="Mercado Livre"
+                    description="Pedidos e rastreios do ML"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/mercado-livre"
+                    logoUrl="/logos/mercado-livre.svg"
+                  />
+                  <IntegrationCard
+                    title="Shopee"
+                    description="Rastreio e atualização de status"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/shopee"
+                    logoUrl="/logos/shopee.svg"
+                  />
+                  <IntegrationCard
+                    title="Shein"
+                    description="Importe pedidos da Shein"
+                    status="nao-configurado"
+                    href="/dashboard/settings/integrations/shein"
+                    logoUrl="/logos/shein.svg"
+                  />
               </div>
             </CardContent>
           </Card>

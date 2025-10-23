@@ -10,6 +10,7 @@ type Props = {
   status?: 'nao-configurado' | 'ativo' | 'inativo' | 'erro';
   href?: string;
   icon?: React.ReactNode;
+  logoUrl?: string;
   className?: string;
 };
 
@@ -25,7 +26,8 @@ export default function IntegrationCard({
   description, 
   status = 'nao-configurado', 
   href = '#', 
-  icon, 
+  icon,
+  logoUrl,
   className 
 }: Props) {
   const s = statusMap[status];
@@ -36,7 +38,11 @@ export default function IntegrationCard({
       className
     )}>
       <div className="h-12 w-12 rounded-lg bg-white dark:bg-muted flex items-center justify-center p-2 border shrink-0">
-        {icon ?? <span className="text-sm">⚙️</span>}
+        {logoUrl ? (
+          <img src={logoUrl} alt={`${title} logo`} className="w-full h-full object-contain p-0.5" />
+        ) : (
+          icon ?? <span className="text-sm">⚙️</span>
+        )}
       </div>
       
       <div className="flex-1 min-w-0">

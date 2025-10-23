@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/neon-button';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle, CheckCircle2, XCircle, Loader2, ArrowUpCircle } from 'lucide-react';
 import { ReactNode } from 'react';
 
 function StatCard({ label, value, subtitle }: { label: string; value: string | ReactNode; subtitle?: string }) {
@@ -39,6 +39,8 @@ export default function DashboardHome() {
     });
   };
 
+  const isFreeplan = plan?.name === 'Free';
+
   return (
     <div className="space-y-6">
       <section>
@@ -57,25 +59,40 @@ export default function DashboardHome() {
                 Faça upgrade do seu plano para continuar rastreando
               </p>
             </div>
-            <Button asChild>
-              <Link to="/dashboard/settings">Ver Planos</Link>
-            </Button>
+            <Link to="/dashboard/settings">
+              <Button variant="solid">Ver Planos</Button>
+            </Link>
           </CardContent>
         </Card>
       )}
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Plano Atual"
-          value={
-            <div className="flex items-center gap-2">
-              <span>{plan?.name || 'Free'}</span>
-              <Badge variant="outline" className="text-xs">
+        <div className="space-y-2">
+          <StatCard
+            label="Plano Atual"
+            value={
+              <div className="flex items-center gap-2">
+                <span>{plan?.name || 'Free'}</span>
+                <Badge variant="outline" className="text-xs">
                 {totalCredits} créditos/mês
               </Badge>
             </div>
           }
-        />
+          />
+          {isFreeplan && (
+            <Link to="/dashboard/settings?tab=billing" className="block">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                neon={false}
+                className="w-full text-xs h-8 border border-primary/20 hover:bg-primary/10"
+              >
+                <ArrowUpCircle className="h-3 w-3 mr-1" />
+                Fazer Upgrade
+              </Button>
+            </Link>
+          )}
+        </div>
         <StatCard
           label="Créditos Usados"
           value={`${usedCredits} / ${totalCredits}`}
@@ -113,36 +130,36 @@ export default function DashboardHome() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3">
-                <Link to="/dashboard/shipments">
+              <Link to="/dashboard/shipments">
+                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
                   <PackageSearch className="h-4 w-4" />
                   Ver Rastreios
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3">
-                <Link to="/dashboard/customers">
+                </Button>
+              </Link>
+              <Link to="/dashboard/customers">
+                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
                   <Users className="h-4 w-4" />
                   Clientes
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3">
-                <Link to="/dashboard/insights">
+                </Button>
+              </Link>
+              <Link to="/dashboard/insights">
+                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
                   <Sparkles className="h-4 w-4" />
                   Insights
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3">
-                <Link to="/dashboard/settings">
+                </Button>
+              </Link>
+              <Link to="/dashboard/settings">
+                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
                   <Settings className="h-4 w-4" />
                   Configurações
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="justify-start gap-2 h-auto py-3">
-                <Link to="/dashboard/profile">
+                </Button>
+              </Link>
+              <Link to="/dashboard/profile">
+                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
                   <User className="h-4 w-4" />
                   Meu Perfil
-                </Link>
-              </Button>
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -186,15 +203,17 @@ export default function DashboardHome() {
             </ul>
             <div className="space-y-2 mt-4">
               {whatsappStatus !== 'connected' && (
-                <Button asChild variant="outline" className="w-full" size="sm">
-                  <Link to="/dashboard/settings/integrations/whatsapp">
+                <Link to="/dashboard/settings/integrations/whatsapp" className="block">
+                  <Button variant="ghost" className="w-full" size="sm">
                     Configurar WhatsApp
-                  </Link>
-                </Button>
+                  </Button>
+                </Link>
               )}
-              <Button asChild variant="outline" className="w-full" size="sm">
-                <Link to="/dashboard/settings">Completar Configuração</Link>
-              </Button>
+              <Link to="/dashboard/settings" className="block">
+                <Button variant="ghost" className="w-full" size="sm">
+                  Completar Configuração
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

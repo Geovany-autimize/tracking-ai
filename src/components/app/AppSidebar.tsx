@@ -42,18 +42,28 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarContent className="flex flex-col h-full">
-        <div className="flex items-center justify-between px-4 py-4">
-          {!collapsed ? (
-            <Logo variant="app" />
-          ) : (
-            <Link to="/dashboard" className="block">
-              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg cursor-pointer hover:scale-105 transition-transform" />
-            </Link>
+        {/* Logo no topo */}
+        <div className="border-b border-sidebar-border">
+          <div className="flex items-center justify-between p-4">
+            {!collapsed ? (
+              <div className="flex-1 min-w-0">
+                <Logo variant="app" />
+              </div>
+            ) : (
+              <Link to="/dashboard" className="flex items-center justify-center w-full">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg cursor-pointer hover:scale-105 transition-transform" />
+              </Link>
+            )}
+            {!collapsed && <SidebarTrigger className="ml-2 shrink-0" />}
+          </div>
+          {collapsed && (
+            <div className="flex items-center justify-center pb-3">
+              <SidebarTrigger className="shrink-0" />
+            </div>
           )}
-          <SidebarTrigger className={collapsed ? '' : 'ml-auto'} />
         </div>
 
-        <SidebarGroup>
+        <SidebarGroup className="pt-4">
           <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

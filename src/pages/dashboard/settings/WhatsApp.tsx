@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Loader2, CheckCircle2, XCircle, Smartphone, Clock, RefreshCw, AlertCircle, Trash2, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import PageHeader from '@/components/app/PageHeader';
 
 const QR_CODE_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/24d94ff6-e04f-4286-b83d-f645e6413a15';
 const DISCONNECT_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/cccbbb2d-275f-4444-9a0f-0491b2b24b38';
@@ -385,12 +386,12 @@ export default function WhatsAppSettings() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <header>
-        <h2 className="text-2xl font-semibold">Configuração do WhatsApp</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Conecte sua conta do WhatsApp para enviar notificações aos clientes
-        </p>
-      </header>
+      <PageHeader
+        title="Configuração do WhatsApp"
+        description="Conecte sua conta do WhatsApp para enviar notificações aos clientes"
+        showBackButton
+        backHref="/dashboard/settings"
+      />
 
       <Card>
         <CardHeader>

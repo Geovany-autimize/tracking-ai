@@ -5,14 +5,14 @@ import { UserPlus } from 'lucide-react';
 export default function CustomersPage() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
           <h2 className="text-2xl font-semibold">Clientes</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Cadastre e gerencie seus clientes
           </p>
         </div>
-        <Button variant="solid" className="gap-2">
+        <Button variant="solid" className="gap-2 shrink-0">
           <UserPlus className="h-4 w-4" />
           Novo Cliente
         </Button>
