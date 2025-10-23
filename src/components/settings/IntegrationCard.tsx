@@ -37,9 +37,14 @@ export default function IntegrationCard({
       'flex items-start gap-3 rounded-xl border bg-card/50 p-4 hover:bg-card transition-colors',
       className
     )}>
-      <div className="h-12 w-12 rounded-lg bg-white dark:bg-muted flex items-center justify-center p-2 border shrink-0">
+      <div className="h-12 w-12 rounded-lg bg-muted/30 dark:bg-muted/50 flex items-center justify-center p-2.5 border border-border/50 shrink-0">
         {logoUrl ? (
-          <img src={logoUrl} alt={`${title} logo`} className="w-full h-full object-contain p-0.5" />
+          <img 
+            src={logoUrl} 
+            alt={`${title} logo`} 
+            className="w-full h-full object-contain"
+            style={{ mixBlendMode: 'multiply' }}
+          />
         ) : (
           icon ?? <span className="text-sm">⚙️</span>
         )}

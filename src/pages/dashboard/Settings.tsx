@@ -47,7 +47,7 @@ export default function SettingsPage() {
                 }
                 status={whatsappStatus}
                 href="/dashboard/settings/integrations/whatsapp"
-                icon={<MessageSquare className="h-5 w-5" />}
+                logoUrl="/logos/whatsapp.png"
               />
             </CardContent>
           </Card>
@@ -74,35 +74,35 @@ export default function SettingsPage() {
                     description="Integração nativa com pedidos"
                     status="nao-configurado"
                     href="/dashboard/settings/integrations/tiny"
-                    logoUrl="/logos/tiny.svg"
+                    logoUrl="/logos/tiny.jpg"
                   />
                   <IntegrationCard
                     title="Shopify"
                     description="Conecte sua loja Shopify"
                     status="nao-configurado"
                     href="/dashboard/settings/integrations/shopify"
-                    logoUrl="/logos/shopify.svg"
+                    logoUrl="/logos/shopify.png"
                   />
                   <IntegrationCard
                     title="Mercado Livre"
                     description="Pedidos e rastreios do ML"
                     status="nao-configurado"
                     href="/dashboard/settings/integrations/mercado-livre"
-                    logoUrl="/logos/mercado-livre.svg"
+                    logoUrl="/logos/mercado-livre.png"
                   />
                   <IntegrationCard
                     title="Shopee"
                     description="Rastreio e atualização de status"
                     status="nao-configurado"
                     href="/dashboard/settings/integrations/shopee"
-                    logoUrl="/logos/shopee.svg"
+                    logoUrl="/logos/shopee.png"
                   />
                   <IntegrationCard
                     title="Shein"
                     description="Importe pedidos da Shein"
                     status="nao-configurado"
                     href="/dashboard/settings/integrations/shein"
-                    logoUrl="/logos/shein.svg"
+                    logoUrl="/logos/shein.png"
                   />
               </div>
             </CardContent>

@@ -73,7 +73,7 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={active}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
                       <Link to={item.href}>
                         <Icon className="h-4 w-4" />
                         <span>{item.label}</span>
@@ -92,17 +92,17 @@ export function AppSidebar() {
           <SidebarGroup className="mt-auto">
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive(profileItem.href)}>
-                    <Link to={profileItem.href}>
-                      {(() => {
-                        const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
-                        return <Icon className="h-4 w-4" />;
-                      })()}
-                      <span>{profileItem.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive(profileItem.href)} tooltip={profileItem.label}>
+                <Link to={profileItem.href}>
+                  {(() => {
+                    const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
+                    return <Icon className="h-4 w-4" />;
+                  })()}
+                  <span>{profileItem.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -110,14 +110,14 @@ export function AppSidebar() {
 
         <SidebarGroup className="mt-0">
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                  <span>Sair</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleLogout} tooltip="Sair">
+                <LogOut className="h-4 w-4" />
+                <span>Sair</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 

@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/neon-button';
 import { UserPlus } from 'lucide-react';
+import CustomerForm from '@/components/forms/CustomerForm';
 
 export default function CustomersPage() {
+  const [formOpen, setFormOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -12,11 +16,13 @@ export default function CustomersPage() {
             Cadastre e gerencie seus clientes
           </p>
         </div>
-        <Button variant="solid" className="gap-2 shrink-0">
-          <UserPlus className="h-4 w-4" />
-          Novo Cliente
+        <Button variant="solid" className="gap-2 shrink-0 whitespace-nowrap" onClick={() => setFormOpen(true)}>
+          <UserPlus className="h-4 w-4 shrink-0" />
+          <span>Novo Cliente</span>
         </Button>
       </div>
+
+      <CustomerForm open={formOpen} onOpenChange={setFormOpen} />
 
       <Card>
         <CardHeader>

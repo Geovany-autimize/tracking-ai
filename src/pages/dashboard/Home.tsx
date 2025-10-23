@@ -82,13 +82,13 @@ export default function DashboardHome() {
           {isFreeplan && (
             <Link to="/dashboard/settings?tab=billing" className="block">
               <Button 
-                variant="ghost" 
+                variant="solid"
                 size="sm" 
-                neon={false}
-                className="w-full text-xs h-8 border border-primary/20 hover:bg-primary/10"
+                neon={true}
+                className="w-full text-xs h-9 bg-gradient-to-r from-primary to-secondary hover:opacity-90 shadow-md hover:shadow-lg"
               >
-                <ArrowUpCircle className="h-3 w-3 mr-1" />
-                Fazer Upgrade
+                <ArrowUpCircle className="h-4 w-4" />
+                <span className="font-semibold">Fazer Upgrade</span>
               </Button>
             </Link>
           )}

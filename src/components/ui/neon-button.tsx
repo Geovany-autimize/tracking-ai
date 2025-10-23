@@ -5,12 +5,12 @@ import { VariantProps, cva } from "class-variance-authority";
 const buttonVariants = cva(
     "relative group border text-foreground mx-auto text-center rounded-full",
     {
-        variants: {
-            variant: {
-                default: "bg-primary/5 hover:bg-primary/0 border-primary/20",
-                solid: "bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white border-transparent transition-all duration-200",
-                ghost: "border-transparent bg-transparent hover:border-border hover:bg-accent/50",
-            },
+  variants: {
+    variant: {
+      default: "bg-primary/10 hover:bg-primary/20 border-primary/30 hover:border-primary/50",
+      solid: "bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white border-transparent shadow-md hover:shadow-lg transition-all duration-200",
+      ghost: "border-border/50 bg-accent/10 hover:border-primary/30 hover:bg-accent/30",
+    },
             size: {
                 default: "px-7 py-1.5 ",
                 sm: "px-4 py-0.5 ",

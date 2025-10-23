@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/neon-button';
 import { Plus } from 'lucide-react';
+import ShipmentForm from '@/components/forms/ShipmentForm';
 
 export default function ShipmentsPage() {
+  const [formOpen, setFormOpen] = useState(false);
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -12,11 +16,13 @@ export default function ShipmentsPage() {
             Gerencie todos os seus rastreios de encomendas
           </p>
         </div>
-        <Button variant="solid" className="gap-2 shrink-0">
-          <Plus className="h-4 w-4" />
-          Novo Rastreio
+        <Button variant="solid" className="gap-2 shrink-0 whitespace-nowrap" onClick={() => setFormOpen(true)}>
+          <Plus className="h-4 w-4 shrink-0" />
+          <span>Novo Rastreio</span>
         </Button>
       </div>
+
+      <ShipmentForm open={formOpen} onOpenChange={setFormOpen} />
 
       <Card>
         <CardHeader>
