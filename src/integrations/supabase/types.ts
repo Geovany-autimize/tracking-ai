@@ -196,6 +196,101 @@ export type Database = {
           },
         ]
       }
+      shipment_customers: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_customers_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments: {
+        Row: {
+          auto_tracking: boolean
+          created_at: string | null
+          customer_id: string
+          id: string
+          last_update: string | null
+          shipment_customer_id: string | null
+          status: string | null
+          tracking_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          auto_tracking?: boolean
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          last_update?: string | null
+          shipment_customer_id?: string | null
+          status?: string | null
+          tracking_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          auto_tracking?: boolean
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          last_update?: string | null
+          shipment_customer_id?: string | null
+          status?: string | null
+          tracking_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipments_shipment_customer_id_fkey"
+            columns: ["shipment_customer_id"]
+            isOneToOne: false
+            referencedRelation: "shipment_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string | null
