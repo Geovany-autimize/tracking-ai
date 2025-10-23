@@ -18,6 +18,7 @@ export default function WhatsAppSettings() {
   const { status, instanceData, isChecking, checkStatus, setStatus, setInstanceData } = useWhatsApp();
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrTimestamp, setQrTimestamp] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(false);
   const [qrExpiresIn, setQrExpiresIn] = useState(30);
   const [lastRefresh, setLastRefresh] = useState<number>(0);
@@ -52,7 +53,7 @@ export default function WhatsAppSettings() {
     } else if (!showQRDialog) {
       setQrExpiresIn(30);
     }
-  }, [showQRDialog, qrCode]); // Removido qrExpiresIn das dependências
+  }, [showQRDialog, qrCode, qrTimestamp]);
 
   // Polling durante conexão
   const startPolling = () => {
@@ -125,8 +126,10 @@ export default function WhatsAppSettings() {
         const base64Image = data[0].binary.data.data;
         const mimeType = data[0].binary.data.mimeType || 'image/png';
         const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
-        // Adicionar timestamp para forçar re-render do useEffect
-        setQrCode(`${qrCodeDataUrl}?t=${Date.now()}`);
+        
+        // Atualizar QR Code (sem timestamp na URL para não corromper o Data URI)
+        setQrCode(qrCodeDataUrl);
+        setQrTimestamp(Date.now()); // Timestamp separado para forçar re-render
         setQrExpiresIn(30);
         
         // Mostrar toast apenas se não for renovação automática
@@ -513,6 +516,7 @@ export default function WhatsAppSettings() {
               <>
                 <div className="rounded-lg border bg-white p-4">
                   <img 
+                    key={qrTimestamp}
                     src={qrCode} 
                     alt="QR Code WhatsApp" 
                     className="w-64 h-64 object-contain"
