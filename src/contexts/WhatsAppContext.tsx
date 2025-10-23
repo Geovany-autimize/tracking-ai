@@ -51,16 +51,27 @@ export function WhatsAppProvider({ children }: { children: React.ReactNode }) {
       // Parse correto: data[0]?.data?.[0]
       const responseData = data?.[0]?.data?.[0];
       
-      if (responseData && responseData.connectionStatus === 'open') {
-        setStatus('connected');
-        setInstanceData({
+      if (responseData) {
+        const instanceInfo = {
           id: responseData.id,
           name: responseData.name,
           profileName: responseData.profileName,
           ownerJid: responseData.ownerJid,
           profilePicUrl: responseData.profilePicUrl,
           connectionStatus: responseData.connectionStatus,
-        });
+        };
+        
+        // Mapear connectionStatus da API para nosso status interno
+        if (responseData.connectionStatus === 'open') {
+          setStatus('connected');
+          setInstanceData(instanceInfo);
+        } else if (responseData.connectionStatus === 'connecting') {
+          setStatus('connecting');
+          setInstanceData(instanceInfo); // Preservar dados da instância
+        } else {
+          setStatus('disconnected');
+          setInstanceData(instanceInfo); // Preservar dados mesmo desconectado
+        }
       } else {
         setStatus('disconnected');
         setInstanceData(null);

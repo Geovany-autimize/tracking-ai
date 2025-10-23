@@ -27,30 +27,32 @@ export default function WhatsAppSettings() {
 
   // Timer do QR Code
   useEffect(() => {
-    if (showQRDialog && qrCode) {
-      setQrExpiresIn(30);
-      
+    // Limpar intervalos anteriores
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+    }
+
+    if (showQRDialog && qrCode && qrExpiresIn > 0) {
       timerIntervalRef.current = setInterval(() => {
-        setQrExpiresIn((prev) => {
+        setQrExpiresIn(prev => {
           if (prev <= 1) {
-            // QR Code expirou, solicitar novo
-            if (timerIntervalRef.current) {
-              clearInterval(timerIntervalRef.current);
-            }
-            handleGenerateNewQR();
+            // Solicitar novo QR Code silenciosamente
+            handleGenerateNewQR(true);
             return 30;
           }
           return prev - 1;
         });
       }, 1000);
-    }
 
-    return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-    };
-  }, [showQRDialog, qrCode]);
+      return () => {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+        }
+      };
+    } else if (!showQRDialog) {
+      setQrExpiresIn(30);
+    }
+  }, [showQRDialog, qrCode]); // Removido qrExpiresIn das dependências
 
   // Polling durante conexão
   const startPolling = () => {
@@ -62,10 +64,7 @@ export default function WhatsAppSettings() {
       checkStatus(true);
     }, 3000);
 
-    // Timeout de 30 segundos alinhado com expiração do QR
-    timeoutRef.current = setTimeout(() => {
-      stopPolling();
-    }, 30000);
+    // Removido timeout - polling continua até conectar ou fechar dialog
   };
 
   const stopPolling = () => {
@@ -102,7 +101,7 @@ export default function WhatsAppSettings() {
     };
   }, []);
 
-  const handleGenerateNewQR = async () => {
+  const handleGenerateNewQR = async (silent = false) => {
     if (!customer?.id) return;
 
     try {
@@ -126,21 +125,27 @@ export default function WhatsAppSettings() {
         const base64Image = data[0].binary.data.data;
         const mimeType = data[0].binary.data.mimeType || 'image/png';
         const qrCodeDataUrl = `data:${mimeType};base64,${base64Image}`;
-        setQrCode(qrCodeDataUrl);
+        // Adicionar timestamp para forçar re-render do useEffect
+        setQrCode(`${qrCodeDataUrl}?t=${Date.now()}`);
         setQrExpiresIn(30);
         
-        toast({
-          title: 'Novo QR Code gerado',
-          description: 'Escaneie o código para conectar',
-        });
+        // Mostrar toast apenas se não for renovação automática
+        if (!silent) {
+          toast({
+            title: 'Novo QR Code gerado',
+            description: 'Escaneie o código para conectar',
+          });
+        }
       }
     } catch (error) {
       console.error('Error generating QR Code:', error);
-      toast({
-        title: 'Erro ao gerar QR Code',
-        description: 'Tente novamente',
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Erro ao gerar QR Code',
+          description: 'Tente novamente',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
@@ -377,15 +382,56 @@ export default function WhatsAppSettings() {
             </div>
           )}
 
-          {status === 'connecting' && (
-            <div className="rounded-lg border bg-blue-500/10 border-blue-500/20 p-6">
-              <div className="flex items-start gap-3">
-                <Loader2 className="h-5 w-5 text-blue-500 mt-0.5 animate-spin" />
-                <div className="flex-1">
-                  <h3 className="font-medium text-blue-500 mb-1">Aguardando conexão...</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Escaneie o QR Code para conectar sua conta
-                  </p>
+          {status === 'connecting' && instanceData && (
+            <div className="rounded-lg border bg-amber-500/10 border-amber-500/20 p-6">
+              <div className="flex items-start gap-4">
+                <Avatar className="h-16 w-16">
+                  {instanceData.profilePicUrl && (
+                    <AvatarImage src={instanceData.profilePicUrl} alt={instanceData.profileName || 'Profile'} />
+                  )}
+                  <AvatarFallback className="bg-amber-500/20 text-amber-500">
+                    <Smartphone className="h-8 w-8" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <h3 className="font-medium text-amber-500 mb-1">WhatsApp Aguardando Conexão</h3>
+                    <p className="text-sm text-muted-foreground">
+                      A instância foi criada mas ainda não está conectada. Gere um QR Code para conectar seu número.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 pt-2 border-t border-amber-500/20">
+                    {instanceData.profileName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Nome:</span>
+                        <span className="font-medium">{instanceData.profileName}</span>
+                      </div>
+                    )}
+                    {instanceData.ownerJid && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Número:</span>
+                        <span className="font-medium">{formatPhoneNumber(instanceData.ownerJid)}</span>
+                      </div>
+                    )}
+                    {instanceData.name && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Instância:</span>
+                        <span className="font-mono text-xs">{instanceData.name}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleConnect}
+                    disabled={isLoading}
+                    className="mt-2"
+                  >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Gerar QR Code para Conectar
+                  </Button>
                 </div>
               </div>
             </div>
@@ -424,9 +470,12 @@ export default function WhatsAppSettings() {
                       "text-sm font-medium",
                       qrExpiresIn > 15 ? "text-green-500" :
                       qrExpiresIn > 10 ? "text-amber-500" :
+                      qrExpiresIn > 5 ? "text-orange-500" :
                       "text-red-500"
                     )}>
-                      Expira em: {qrExpiresIn}s
+                      {qrExpiresIn === 0 ? "Gerando novo QR Code..." : 
+                       qrExpiresIn <= 5 ? `Expira em ${qrExpiresIn}s! Escaneie rápido!` :
+                       `Expira em: ${qrExpiresIn}s`}
                     </span>
                   </div>
                   <Progress 
