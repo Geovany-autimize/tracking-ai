@@ -385,7 +385,7 @@ export default function WhatsAppSettings() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 w-full">
       <PageHeader
         title="Configuração do WhatsApp"
         description="Conecte sua conta do WhatsApp para enviar notificações aos clientes"
@@ -393,7 +393,7 @@ export default function WhatsAppSettings() {
         backHref="/dashboard/settings"
       />
 
-      <Card>
+      <Card className="w-full">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

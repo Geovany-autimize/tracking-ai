@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/neon-button';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle, CheckCircle2, XCircle, Loader2, ArrowUpCircle } from 'lucide-react';
 import { ReactNode } from 'react';
@@ -60,7 +60,7 @@ export default function DashboardHome() {
               </p>
             </div>
             <Link to="/dashboard/settings">
-              <Button variant="solid">Ver Planos</Button>
+              <Button variant="default">Ver Planos</Button>
             </Link>
           </CardContent>
         </Card>
@@ -82,10 +82,9 @@ export default function DashboardHome() {
           {isFreeplan && (
             <Link to="/dashboard/settings?tab=billing" className="block">
               <Button 
-                variant="solid"
+                variant="hero"
                 size="sm" 
-                neon={true}
-                className="w-full text-xs h-9 bg-gradient-to-r from-primary to-secondary hover:opacity-90 shadow-md hover:shadow-lg"
+                className="w-full text-xs h-9"
               >
                 <ArrowUpCircle className="h-4 w-4" />
                 <span className="font-semibold">Fazer Upgrade</span>

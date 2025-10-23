@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/neon-button';
+import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import CustomerForm from '@/components/forms/CustomerForm';
 
@@ -16,7 +16,7 @@ export default function CustomersPage() {
             Cadastre e gerencie seus clientes
           </p>
         </div>
-        <Button variant="solid" className="gap-2 shrink-0 whitespace-nowrap" onClick={() => setFormOpen(true)}>
+        <Button variant="default" className="gap-2 shrink-0 whitespace-nowrap" onClick={() => setFormOpen(true)}>
           <UserPlus className="h-4 w-4 shrink-0" />
           <span>Novo Cliente</span>
         </Button>

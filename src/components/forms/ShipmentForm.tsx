@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/neon-button';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -8,47 +8,130 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 interface ShipmentFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-// Mock de clientes (substituir por dados reais da API)
-const mockCustomers = [
-  { id: '1', name: 'João Silva' },
-  { id: '2', name: 'Maria Santos' },
-  { id: '3', name: 'Pedro Oliveira' },
-];
+type Customer = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+};
 
 export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) {
+  const { customer } = useAuth();
   const [trackingCode, setTrackingCode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [customerSearch, setCustomerSearch] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
   const [comboOpen, setComboOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // TODO: Implementar lógica de criação de rastreio
-    console.log({
-      trackingCode,
-      customerId: selectedCustomer,
-      customerSearch,
-      autoTracking,
-    });
+  useEffect(() => {
+    if (open && customer?.id) {
+      loadCustomers();
+    }
+  }, [open, customer?.id]);
 
-    // Resetar e fechar
-    setTrackingCode('');
-    setSelectedCustomer('');
-    setCustomerSearch('');
-    setAutoTracking(true);
-    onOpenChange(false);
+  const loadCustomers = async () => {
+    if (!customer?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('shipment_customers')
+        .select('id, first_name, last_name, email')
+        .eq('customer_id', customer.id)
+        .order('first_name');
+
+      if (error) throw error;
+      setCustomers(data || []);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+    }
   };
 
-  const filteredCustomers = mockCustomers.filter((customer) =>
-    customer.name.toLowerCase().includes(customerSearch.toLowerCase())
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!customer?.id) {
+      toast({
+        title: 'Erro',
+        description: 'Usuário não autenticado',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      let shipmentCustomerId = selectedCustomer;
+
+      // Se não selecionou cliente existente, criar novo
+      if (!shipmentCustomerId && customerSearch) {
+        const names = customerSearch.split(' ');
+        const firstName = names[0];
+        const lastName = names.slice(1).join(' ') || firstName;
+
+        const { data: newCustomer, error: customerError } = await supabase
+          .from('shipment_customers')
+          .insert({
+            customer_id: customer.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: `${firstName.toLowerCase()}@temp.com`, // Email temporário
+          })
+          .select()
+          .single();
+
+        if (customerError) throw customerError;
+        shipmentCustomerId = newCustomer.id;
+      }
+
+      const { error } = await supabase
+        .from('shipments')
+        .insert({
+          customer_id: customer.id,
+          shipment_customer_id: shipmentCustomerId || null,
+          tracking_code: trackingCode,
+          auto_tracking: autoTracking,
+          status: 'pending',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Rastreio adicionado',
+        description: `Código ${trackingCode} adicionado com sucesso`,
+      });
+
+      // Resetar e fechar
+      setTrackingCode('');
+      setSelectedCustomer('');
+      setCustomerSearch('');
+      setAutoTracking(true);
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating shipment:', error);
+      toast({
+        title: 'Erro ao criar rastreio',
+        description: 'Tente novamente',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredCustomers = customers.filter((c) =>
+    `${c.first_name} ${c.last_name}`.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
   return (
@@ -80,14 +163,15 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
             <Popover open={comboOpen} onOpenChange={setComboOpen}>
               <PopoverTrigger asChild>
                 <Button
-                  variant="ghost"
-                  neon={false}
+                  variant="outline"
                   role="combobox"
                   aria-expanded={comboOpen}
-                  className="w-full justify-between border border-input bg-background hover:bg-accent h-10"
+                  className="w-full justify-between"
                 >
                   {selectedCustomer
-                    ? mockCustomers.find((c) => c.id === selectedCustomer)?.name
+                    ? customers.find((c) => c.id === selectedCustomer)
+                      ? `${customers.find((c) => c.id === selectedCustomer)?.first_name} ${customers.find((c) => c.id === selectedCustomer)?.last_name}`
+                      : 'Selecione ou digite um cliente...'
                     : 'Selecione ou digite um cliente...'}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -108,10 +192,9 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
                         <div className="text-center py-2">
                           <p className="text-sm text-muted-foreground mb-2">Cliente não encontrado</p>
                           <Button
-                            variant="solid"
+                            variant="default"
                             size="sm"
                             onClick={() => {
-                              setSelectedCustomer(`new-${customerSearch}`);
                               setComboOpen(false);
                             }}
                           >
@@ -122,10 +205,10 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
                     )}
                     {filteredCustomers.length > 0 && (
                       <CommandGroup>
-                        {filteredCustomers.map((customer) => (
+                        {filteredCustomers.map((c) => (
                           <CommandItem
-                            key={customer.id}
-                            value={customer.id}
+                            key={c.id}
+                            value={c.id}
                             onSelect={(value) => {
                               setSelectedCustomer(value);
                               setCustomerSearch('');
@@ -135,10 +218,10 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
                             <Check
                               className={cn(
                                 'mr-2 h-4 w-4',
-                                selectedCustomer === customer.id ? 'opacity-100' : 'opacity-0'
+                                selectedCustomer === c.id ? 'opacity-100' : 'opacity-0'
                               )}
                             />
-                            {customer.name}
+                            {c.first_name} {c.last_name}
                           </CommandItem>
                         ))}
                       </CommandGroup>
@@ -170,13 +253,13 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
             <Button
               type="button"
               variant="ghost"
-              neon={false}
               onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="solid">
-              Adicionar Rastreio
+            <Button type="submit" variant="default" disabled={isLoading}>
+              {isLoading ? 'Salvando...' : 'Adicionar Rastreio'}
             </Button>
           </DialogFooter>
         </form>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/neon-button';
+import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
 
 type Props = {
@@ -61,7 +61,7 @@ export default function IntegrationCard({
       </div>
       
       <Link to={href} className="shrink-0">
-        <Button variant="ghost" size="sm" className="shrink-0">
+        <Button variant="ghost" size="icon" className="h-9 w-9">
           <Settings className="h-4 w-4" />
         </Button>
       </Link>
