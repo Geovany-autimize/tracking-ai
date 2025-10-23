@@ -16,6 +16,7 @@ import CustomersPage from "./pages/dashboard/Customers";
 import InsightsPage from "./pages/dashboard/Insights";
 import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
+import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="customers" element={<CustomersPage />} />
               <Route path="insights" element={<InsightsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
