@@ -248,8 +248,11 @@ export type Database = {
           id: string
           last_update: string | null
           shipment_customer_id: string | null
+          shipment_data: Json | null
           status: string | null
+          tracker_id: string | null
           tracking_code: string
+          tracking_events: Json | null
           updated_at: string | null
         }
         Insert: {
@@ -259,8 +262,11 @@ export type Database = {
           id?: string
           last_update?: string | null
           shipment_customer_id?: string | null
+          shipment_data?: Json | null
           status?: string | null
+          tracker_id?: string | null
           tracking_code: string
+          tracking_events?: Json | null
           updated_at?: string | null
         }
         Update: {
@@ -270,8 +276,11 @@ export type Database = {
           id?: string
           last_update?: string | null
           shipment_customer_id?: string | null
+          shipment_data?: Json | null
           status?: string | null
+          tracker_id?: string | null
           tracking_code?: string
+          tracking_events?: Json | null
           updated_at?: string | null
         }
         Relationships: [

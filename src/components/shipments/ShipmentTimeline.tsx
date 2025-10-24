@@ -1,85 +1,136 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle2, Package, Truck, Home, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { TrackingEvent, ShipmentData } from '@/lib/tracking-api';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-// Preview component - dados serão carregados da API futuramente
-const mockTimelineEvents = [
-  {
-    id: '1',
-    status: 'pending',
-    title: 'Pedido Criado',
-    description: 'Rastreio iniciado no sistema',
-    date: new Date(),
-    icon: Package,
-  },
-  {
-    id: '2',
-    status: 'in_transit',
-    title: 'Em Trânsito',
-    description: 'Objeto saiu para entrega',
-    date: new Date(Date.now() - 86400000),
-    icon: Truck,
-  },
-  {
-    id: '3',
-    status: 'delivered',
-    title: 'Entregue',
-    description: 'Objeto entregue ao destinatário',
-    date: null,
-    icon: CheckCircle,
-  },
-];
+interface ShipmentTimelineProps {
+  events?: TrackingEvent[];
+  shipmentData?: ShipmentData;
+}
 
-export default function ShipmentTimeline() {
+const getStatusIcon = (milestone: string) => {
+  switch (milestone) {
+    case 'delivered':
+      return Home;
+    case 'out_for_delivery':
+      return Truck;
+    case 'in_transit':
+      return Package;
+    case 'exception':
+      return AlertCircle;
+    default:
+      return Clock;
+  }
+};
+
+const getStatusVariant = (milestone: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  switch (milestone) {
+    case 'delivered':
+      return 'default';
+    case 'out_for_delivery':
+      return 'secondary';
+    case 'exception':
+      return 'destructive';
+    default:
+      return 'outline';
+  }
+};
+
+export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimelineProps) {
+  // Ordenar eventos do mais recente para o mais antigo
+  const sortedEvents = [...events].sort((a, b) => 
+    new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+  );
+
+  if (events.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Histórico de Rastreamento</CardTitle>
+          <CardDescription>
+            Acompanhe o status e movimentações do seu pacote
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Package className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum evento registrado</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Clique no botão de atualizar para buscar os eventos de rastreamento mais recentes
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Histórico de Rastreamento</CardTitle>
         <CardDescription>
-          Timeline das etapas do rastreio (preview - será integrado com API)
+          {sortedEvents.length} {sortedEvents.length === 1 ? 'evento registrado' : 'eventos registrados'}
+          {shipmentData && ` • Status: ${shipmentData.statusMilestone}`}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="relative space-y-6 before:absolute before:left-[15px] before:top-2 before:h-[calc(100%-1rem)] before:w-0.5 before:bg-border">
-          {mockTimelineEvents.map((event, index) => {
-            const Icon = event.icon;
-            const isCompleted = event.date !== null;
-            const isCurrent = index === mockTimelineEvents.findIndex(e => e.date === null) - 1;
-            
+        <div className="space-y-6">
+          {sortedEvents.map((event, index) => {
+            const Icon = getStatusIcon(event.statusMilestone);
+            const isFirstEvent = index === 0;
+
             return (
-              <div key={event.id} className="relative flex gap-4 pl-10">
-                <div
-                  className={`absolute left-0 flex h-8 w-8 items-center justify-center rounded-full border-2 ${
-                    isCompleted
-                      ? 'border-primary bg-primary text-primary-foreground'
-                      : isCurrent
-                      ? 'border-primary bg-background text-primary'
-                      : 'border-muted bg-background text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
+              <div key={event.eventId} className="flex gap-4">
+                {/* Timeline Line */}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`
+                      flex h-10 w-10 items-center justify-center rounded-full border-2
+                      ${isFirstEvent 
+                        ? 'border-primary bg-primary text-primary-foreground' 
+                        : 'border-muted bg-background text-muted-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  {index < sortedEvents.length - 1 && (
+                    <div className="h-full w-px bg-border mt-2" />
+                  )}
                 </div>
-                
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold">{event.title}</h4>
-                    {isCurrent && (
-                      <Badge variant="outline" className="gap-1">
-                        <Clock className="h-3 w-3" />
-                        Atual
+
+                {/* Event Content */}
+                <div className="flex-1 pb-6">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h4 className="font-semibold">{event.status}</h4>
+                    {isFirstEvent && (
+                      <Badge variant="default" className="text-xs">
+                        Mais Recente
+                      </Badge>
+                    )}
+                    {event.statusMilestone && (
+                      <Badge variant={getStatusVariant(event.statusMilestone)} className="text-xs">
+                        {event.statusMilestone}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{event.description}</p>
-                  {event.date && (
-                    <p className="text-xs text-muted-foreground">
-                      {event.date.toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                  
+                  {event.location && (
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
+                      <MapPin className="h-3 w-3" />
+                      <span>{event.location}</span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(event.datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+
+                  {event.courierCode && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Transportadora: {event.courierCode}
                     </p>
                   )}
                 </div>

@@ -18,11 +18,18 @@ export interface UseTrackingRefreshReturn {
   isRefreshing: boolean;
 }
 
+export interface UseTrackingRefreshOptions {
+  onSuccess?: (data: any) => void;
+}
+
 /**
  * Hook para gerenciar atualização manual de rastreios
  * Implementa throttle de 3 segundos entre requisições
  */
-export function useTrackingRefresh(userId?: string): UseTrackingRefreshReturn {
+export function useTrackingRefresh(
+  userId?: string,
+  options?: UseTrackingRefreshOptions
+): UseTrackingRefreshReturn {
   const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
   const [timeUntilNext, setTimeUntilNext] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -81,12 +88,17 @@ export function useTrackingRefresh(userId?: string): UseTrackingRefreshReturn {
     setLastRefreshTime(Date.now());
 
     try {
-      await sendToTrackingAPI(userId, trackingCode, 'atualization');
+      const response = await sendToTrackingAPI(userId, trackingCode, 'atualization');
       
       toast({
         title: 'Rastreio atualizado',
         description: 'Status consultado com sucesso',
       });
+
+      // Chamar callback de sucesso se fornecido
+      if (options?.onSuccess && response.data) {
+        options.onSuccess(response.data);
+      }
     } catch (error) {
       console.error('Refresh error:', error);
       
