@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -13,6 +16,7 @@ interface CustomerListProps {
 
 export default function CustomerList({ refreshTrigger }: CustomerListProps) {
   const { customer } = useAuth();
+  const navigate = useNavigate();
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ['shipment_customers', customer?.id, refreshTrigger],
@@ -86,6 +90,7 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
+                <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -98,6 +103,15 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
                   <TableCell>{c.phone || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {format(new Date(c.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate(`/dashboard/customers/${c.id}`)}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}

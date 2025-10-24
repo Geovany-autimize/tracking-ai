@@ -14,6 +14,7 @@ import AppLayout from "./components/app/AppLayout";
 import DashboardHome from "./pages/dashboard/Home";
 import ShipmentsPage from "./pages/dashboard/Shipments";
 import CustomersPage from "./pages/dashboard/Customers";
+import CustomerDetails from "./pages/dashboard/CustomerDetails";
 import InsightsPage from "./pages/dashboard/Insights";
 import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
@@ -37,6 +38,7 @@ const App = () => (
               <Route index element={<DashboardHome />} />
               <Route path="shipments" element={<ShipmentsPage />} />
               <Route path="customers" element={<CustomersPage />} />
+              <Route path="customers/:id" element={<CustomerDetails />} />
               <Route path="insights" element={<InsightsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
