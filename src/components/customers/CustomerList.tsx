@@ -5,8 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -90,12 +88,15 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Data de Cadastro</TableHead>
-                <TableHead className="w-[100px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {customers.map((c) => (
-                <TableRow key={c.id}>
+                <TableRow 
+                  key={c.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/dashboard/customers/${c.id}`)}
+                >
                   <TableCell className="font-medium">
                     {c.first_name} {c.last_name}
                   </TableCell>
@@ -103,15 +104,6 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
                   <TableCell>{c.phone || '—'}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {format(new Date(c.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => navigate(`/dashboard/customers/${c.id}`)}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
