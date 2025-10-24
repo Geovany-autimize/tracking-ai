@@ -19,7 +19,7 @@ export default function PhoneField({
   value,
   onChange,
   error,
-  defaultCountry = 'BR',
+  defaultCountry = 'br',
   helperText = 'Selecione o país e digite seu número. Enviaremos avisos importantes por WhatsApp.',
   name = 'whatsapp_e164',
 }: Props) {

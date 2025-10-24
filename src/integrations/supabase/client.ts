@@ -13,5 +13,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
+  global: {
+    // Injeta Authorization em cada requisição REST/Functions
+    fetch: (input, init = {}) => {
+      const token = localStorage.getItem('session_token');
+      const headers = new Headers((init as RequestInit)?.headers || {});
+      if (token) headers.set('authorization', `Bearer ${token}`);
+      return fetch(input as RequestInfo, { ...init, headers });
+    },
+  },
 });
