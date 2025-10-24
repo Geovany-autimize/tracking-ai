@@ -23,8 +23,10 @@ const statusConfig = {
 export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
   const { customer } = useAuth();
   const navigate = useNavigate();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
-  const { data: shipments, isLoading } = useQuery({
+  const { data: shipments, isLoading, refetch } = useQuery({
     queryKey: ['shipments', customer?.id, refreshTrigger],
     queryFn: async () => {
       if (!customer?.id) throw new Error('Not authenticated');
@@ -48,6 +50,36 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
       return data;
     },
     enabled: !!customer?.id,
+  });
+
+  const { sortColumn, sortDirection, toggleSort, sortedData } = useTableSorting(shipments, 'created_at');
+  const allIds = sortedData?.map(s => s.id) || [];
+  const { selectedIds, toggleSelect, toggleSelectAll, clearSelection, isAllSelected, isIndeterminate, selectedCount } = useTableSelection(allIds);
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (updates: { status?: string; auto_tracking?: boolean }) => {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase.from('shipments').update(updates).in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Rastreios atualizados com sucesso' });
+      clearSelection();
+      refetch();
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async () => {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase.from('shipments').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Rastreios excluídos com sucesso' });
+      clearSelection();
+      refetch();
+    },
   });
 
   if (isLoading) {
@@ -93,23 +125,32 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
       <CardHeader>
         <CardTitle>Lista de Rastreios</CardTitle>
         <CardDescription>
-          Total de {shipments.length} rastreio{shipments.length !== 1 ? 's' : ''} cadastrado{shipments.length !== 1 ? 's' : ''}
+          Total de {sortedData.length} rastreio{sortedData.length !== 1 ? 's' : ''} cadastrado{sortedData.length !== 1 ? 's' : ''}
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <BulkActionsBar
+          selectedCount={selectedCount}
+          onEdit={() => setEditDialogOpen(true)}
+          onDelete={() => setDeleteDialogOpen(true)}
+          onClear={clearSelection}
+        />
         <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Auto-tracking</TableHead>
-                <TableHead>Criado em</TableHead>
+                <TableHead className="w-[50px]">
+                  <Checkbox checked={isAllSelected} ref={(el) => el && (el.indeterminate = isIndeterminate)} onCheckedChange={() => toggleSelectAll(allIds)} />
+                </TableHead>
+                <SortableTableHead column="tracking_code" label="Código" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
+                <SortableTableHead column="shipment_customer.first_name" label="Cliente" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
+                <SortableTableHead column="status" label="Status" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
+                <SortableTableHead column="auto_tracking" label="Auto-tracking" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
+                <SortableTableHead column="created_at" label="Criado em" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {shipments.map((s) => {
+              {sortedData.map((s) => {
                 const status = statusConfig[s.status as keyof typeof statusConfig] || statusConfig.pending;
                 const customerName = s.shipment_customer 
                   ? `${s.shipment_customer.first_name} ${s.shipment_customer.last_name}`
@@ -147,6 +188,23 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
           </Table>
         </div>
       </CardContent>
+      
+      <BulkEditShipmentDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} selectedCount={selectedCount} onConfirm={bulkUpdateMutation.mutateAsync} />
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir {selectedCount} rastreio{selectedCount !== 1 ? 's' : ''}? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => bulkDeleteMutation.mutate()}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
