@@ -242,29 +242,21 @@ export default function ShipmentDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="border-b bg-card">
-          <div className="container mx-auto px-6 py-4">
-            <Skeleton className="h-8 w-64" />
-          </div>
-        </div>
-        <div className="container mx-auto px-6 py-6 space-y-6">
-          <Skeleton className="h-[400px] w-full" />
-        </div>
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-[400px] w-full" />
       </div>
     );
   }
 
   if (!shipmentData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Rastreio não encontrado</p>
-          <Button onClick={() => navigate('/dashboard/shipments')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar para Rastreios
-          </Button>
-        </div>
+      <div className="flex flex-col items-center justify-center h-[400px]">
+        <p className="text-muted-foreground mb-4">Rastreio não encontrado</p>
+        <Button onClick={() => navigate('/dashboard/shipments')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Voltar para Rastreios
+        </Button>
       </div>
     );
   }
@@ -274,58 +266,52 @@ export default function ShipmentDetails() {
     : 'Não vinculado';
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header com ações */}
-      <div className="border-b">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/dashboard/shipments')}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold font-mono">{shipmentData.tracking_code}</h1>
-                {shipmentData.tracker_id && (
-                  <p className="text-sm text-muted-foreground">
-                    ID: {shipmentData.tracker_id}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => refreshTracking(shipmentData.tracking_code)}
-                disabled={!canRefresh || isRefreshing}
-                title={!canRefresh ? `Aguarde ${timeUntilNextRefresh}s` : 'Atualizar rastreio'}
-              >
-                {isRefreshing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-5 w-5" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowDeleteDialog(true)}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-5 w-5" />
-              </Button>
-            </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/dashboard/shipments')}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold font-mono">{shipmentData.tracking_code}</h1>
+            <p className="text-muted-foreground">
+              {shipmentData.tracker_id ? `ID: ${shipmentData.tracker_id}` : 'Detalhes do rastreio'}
+            </p>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => refreshTracking(shipmentData.tracking_code)}
+            disabled={!canRefresh || isRefreshing}
+            title={!canRefresh ? `Aguarde ${timeUntilNextRefresh}s` : 'Atualizar rastreio'}
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-5 w-5" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDeleteDialog(true)}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
       {/* Conteúdo Principal */}
-      <div className="container mx-auto px-6 py-6 space-y-6">
+      <div className="space-y-6">
         {/* Informações do Cliente e Rastreio - Layout de Fora a Fora */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Cliente Vinculado */}
