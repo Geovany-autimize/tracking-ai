@@ -328,12 +328,11 @@ export default function ShipmentDetails() {
                   </>}
 
                 <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)} className="flex-1 px-0 mx-0">
-                    <RefreshIcon className="h-4 w-4 mr-2" />
+                  <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)} className="flex-1">
                     Trocar Cliente
                   </Button>
                   {shipmentData.shipment_customer && <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/customers/${shipmentData.shipment_customer.id}`)}>
-                      <ExternalLink className="h-4 w-4" />
+                      Ver Perfil
                     </Button>}
                 </div>
               </div>
