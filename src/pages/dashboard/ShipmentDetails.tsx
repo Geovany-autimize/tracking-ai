@@ -261,16 +261,18 @@ export default function ShipmentDetails() {
             <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               {/* Status Badge - Destaque Principal */}
               <div className="flex-shrink-0 lg:w-[240px]">
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Status Atual</Label>
-                  <Badge className={cn("gap-2 px-3 py-1.5 text-sm", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || '')}>
-                    <span className="flex-shrink-0">
-                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
-                    </span>
-                    <span className="font-semibold">
-                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
-                    </span>
-                  </Badge>
+                  <div className="flex items-center h-[28px]">
+                    <Badge className={cn("gap-2 px-3 py-1.5 text-sm", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || '')}>
+                      <span className="flex-shrink-0">
+                        {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                      </span>
+                      <span className="font-semibold">
+                        {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
+                      </span>
+                    </Badge>
+                  </div>
                 </div>
               </div>
 
