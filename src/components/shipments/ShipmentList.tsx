@@ -1,4 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,8 +7,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useTableSorting } from '@/hooks/use-table-sorting';
+import { useTableSelection } from '@/hooks/use-table-selection';
+import { SortableTableHead } from '@/components/ui/sortable-table-head';
+import { BulkActionsBar } from '@/components/ui/bulk-actions-bar';
+import { BulkEditShipmentDialog } from '@/components/dialogs/BulkEditDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
 
 interface ShipmentListProps {
   refreshTrigger?: number;
@@ -140,7 +149,10 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[50px]">
-                  <Checkbox checked={isAllSelected} ref={(el) => el && (el.indeterminate = isIndeterminate)} onCheckedChange={() => toggleSelectAll(allIds)} />
+                  <Checkbox 
+                    checked={isAllSelected} 
+                    onCheckedChange={() => toggleSelectAll(allIds)} 
+                  />
                 </TableHead>
                 <SortableTableHead column="tracking_code" label="Código" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
                 <SortableTableHead column="shipment_customer.first_name" label="Cliente" currentColumn={sortColumn} currentDirection={sortDirection} onSort={toggleSort} />
@@ -157,28 +169,29 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
                   : '—';
 
                 return (
-                  <TableRow 
-                    key={s.id}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/dashboard/shipments/${s.id}`)}
-                  >
-                    <TableCell className="font-mono font-medium">
+                  <TableRow key={s.id} className="hover:bg-muted/50">
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.has(s.id)} onCheckedChange={() => toggleSelect(s.id)} />
+                    </TableCell>
+                    <TableCell className="font-mono font-medium cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
                       {s.tracking_code}
                     </TableCell>
-                    <TableCell>{customerName}</TableCell>
-                    <TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
+                      {customerName}
+                    </TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
                       <Badge variant={status.variant}>
                         {status.label}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
                       {s.auto_tracking ? (
                         <Badge variant="outline">Ativo</Badge>
                       ) : (
                         <Badge variant="secondary">Desativado</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-muted-foreground cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
                       {format(new Date(s.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </TableCell>
                   </TableRow>
