@@ -89,6 +89,24 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
     setIsLoading(true);
 
     try {
+      // Verificar se o tracking code já existe para este cliente
+      const { data: existingShipment } = await supabase
+        .from('shipments')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .eq('tracking_code', trackingCode)
+        .maybeSingle();
+
+      if (existingShipment) {
+        toast({
+          title: 'Código de rastreio duplicado',
+          description: 'Este código de rastreio já existe para você',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('shipments')
         .insert({

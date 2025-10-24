@@ -47,13 +47,53 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
     setIsLoading(true);
 
     try {
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Verificar se já existe cliente com o mesmo email
+      const { data: existingByEmail } = await supabase
+        .from('shipment_customers')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .eq('email', normalizedEmail)
+        .maybeSingle();
+
+      if (existingByEmail) {
+        toast({
+          title: 'E-mail duplicado',
+          description: 'Já existe um cliente com este e-mail',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar se já existe cliente com o mesmo telefone (se fornecido)
+      if (phone) {
+        const { data: existingByPhone } = await supabase
+          .from('shipment_customers')
+          .select('id')
+          .eq('customer_id', customer.id)
+          .eq('phone', phone)
+          .maybeSingle();
+
+        if (existingByPhone) {
+          toast({
+            title: 'Telefone duplicado',
+            description: 'Já existe um cliente com este telefone',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const { error } = await supabase
         .from('shipment_customers')
         .insert({
           customer_id: customer.id,
           first_name: firstName,
           last_name: lastName,
-          email: email,
+          email: normalizedEmail,
           phone: phone || null,
           notes: notes || null,
         });

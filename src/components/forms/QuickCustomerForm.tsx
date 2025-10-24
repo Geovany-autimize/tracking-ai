@@ -92,6 +92,42 @@ export default function QuickCustomerForm({
         ? email.trim().toLowerCase()
         : `${firstName.toLowerCase()}.${lastName.toLowerCase()}@cliente.temp`;
 
+      // Verificar se já existe cliente com o mesmo email
+      const { data: existingByEmail } = await supabase
+        .from('shipment_customers')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .eq('email', finalEmail)
+        .maybeSingle();
+
+      if (existingByEmail) {
+        toast({
+          title: 'E-mail duplicado',
+          description: 'Já existe um cliente com este e-mail',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar se já existe cliente com o mesmo telefone
+      const { data: existingByPhone } = await supabase
+        .from('shipment_customers')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .eq('phone', phone)
+        .maybeSingle();
+
+      if (existingByPhone) {
+        toast({
+          title: 'Telefone duplicado',
+          description: 'Já existe um cliente com este telefone',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const { data: newCustomer, error } = await supabase
         .from('shipment_customers')
         .insert({
