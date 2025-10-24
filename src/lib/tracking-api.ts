@@ -178,13 +178,29 @@ export function isTimeoutError(error: any): boolean {
  * Helper: Extrai dados de rastreio da resposta da API
  */
 export function parseTrackingResponse(response: TrackingAPIResponse | any): TrackingDataItem | null {
-  // Se a resposta for um array (formato do webhook), pega o primeiro item
-  const data = Array.isArray(response) ? response[0] : response;
-  
-  if (!data?.data?.trackings || data.data.trackings.length === 0) {
-    return null;
+  // Caso 1: Resposta padrão da função sendToTrackingAPI ({ success, data: [...] })
+  if (response && Array.isArray(response.data)) {
+    const first = response.data[0];
+    if (first?.data?.trackings?.length) return first.data.trackings[0];
   }
-  return data.data.trackings[0];
+
+  // Caso 2: Resposta direta do webhook (array na raiz)
+  if (Array.isArray(response)) {
+    const first = response[0];
+    if (first?.data?.trackings?.length) return first.data.trackings[0];
+  }
+
+  // Caso 3: Objeto com data.trackings
+  if (response?.data?.trackings?.length) {
+    return response.data.trackings[0];
+  }
+
+  // Caso 4: Objeto com trackings na raiz
+  if (response?.trackings?.length) {
+    return response.trackings[0];
+  }
+
+  return null;
 }
 
 /**

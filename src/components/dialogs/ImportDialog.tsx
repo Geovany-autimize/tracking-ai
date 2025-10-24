@@ -95,9 +95,8 @@ export function ImportDialog({ type, open, onOpenChange, onImport }: ImportDialo
           try {
             const apiResponse = await sendToTrackingAPI(customer.id, shipment.tracking_code, 'new_track');
             
-            // Processar dados da API
-            const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
-            const trackingData = parseTrackingResponse(apiData);
+            // Processar dados da API padronizados
+            const trackingData = parseTrackingResponse(apiResponse);
             
             if (trackingData) {
               // Buscar o ID do shipment recém-criado

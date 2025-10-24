@@ -66,9 +66,8 @@ export default function QuickShipmentForm({
       try {
         const apiResponse = await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
         
-        // Processar dados da API
-        const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
-        const trackingData = parseTrackingResponse(apiData);
+        // Processar dados da API padronizados
+        const trackingData = parseTrackingResponse(apiResponse);
         
         if (trackingData && insertedData) {
           // Atualizar registro com dados da API

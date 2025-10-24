@@ -126,12 +126,10 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
       try {
         const apiResponse = await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
         
-        // Processar dados da API
-        const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
-        const trackingData = parseTrackingResponse(apiData);
+        // Processar dados padronizados
+        const trackingData = parseTrackingResponse(apiResponse);
         
         if (trackingData && insertedData) {
-          // Atualizar registro com dados da API
           await supabase.from('shipments').update({
             tracker_id: trackingData.tracker.trackerId,
             tracking_events: trackingData.events as any,
