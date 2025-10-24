@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -21,6 +22,7 @@ const statusConfig = {
 
 export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
   const { customer } = useAuth();
+  const navigate = useNavigate();
 
   const { data: shipments, isLoading } = useQuery({
     queryKey: ['shipments', customer?.id, refreshTrigger],
@@ -114,7 +116,11 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
                   : '—';
 
                 return (
-                  <TableRow key={s.id}>
+                  <TableRow 
+                    key={s.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/dashboard/shipments/${s.id}`)}
+                  >
                     <TableCell className="font-mono font-medium">
                       {s.tracking_code}
                     </TableCell>

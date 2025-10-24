@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import AppLayout from "./components/app/AppLayout";
 import DashboardHome from "./pages/dashboard/Home";
 import ShipmentsPage from "./pages/dashboard/Shipments";
+import ShipmentDetails from "./pages/dashboard/ShipmentDetails";
 import CustomersPage from "./pages/dashboard/Customers";
 import CustomerDetails from "./pages/dashboard/CustomerDetails";
 import InsightsPage from "./pages/dashboard/Insights";
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/dashboard" element={<AppLayout />}>
               <Route index element={<DashboardHome />} />
               <Route path="shipments" element={<ShipmentsPage />} />
+              <Route path="shipments/:id" element={<ShipmentDetails />} />
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetails />} />
               <Route path="insights" element={<InsightsPage />} />
