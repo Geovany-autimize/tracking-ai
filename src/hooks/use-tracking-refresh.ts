@@ -12,7 +12,7 @@ export interface UseTrackingRefreshReturn {
   timeUntilNextRefresh: number;
   
   /** Função para atualizar rastreio */
-  refreshTracking: (trackingCode: string) => Promise<void>;
+  refreshTracking: (trackingCode: string, trackerId?: string) => Promise<void>;
   
   /** Se está processando requisição */
   isRefreshing: boolean;
@@ -66,7 +66,7 @@ export function useTrackingRefresh(
 
   const canRefresh = timeUntilNext === 0 && !isRefreshing;
 
-  const refreshTracking = async (trackingCode: string) => {
+  const refreshTracking = async (trackingCode: string, trackerId?: string) => {
     if (!userId) {
       toast({
         title: 'Erro',
@@ -88,7 +88,7 @@ export function useTrackingRefresh(
     setLastRefreshTime(Date.now());
 
     try {
-      const response = await sendToTrackingAPI(userId, trackingCode, 'atualization');
+      const response = await sendToTrackingAPI(userId, trackingCode, 'atualization', trackerId);
       
       toast({
         title: 'Rastreio atualizado',

@@ -5,6 +5,7 @@ export interface TrackingAPIRequest {
   user_id: string;
   tracking_code: string;
   action: 'new_track' | 'atualization';
+  tracker_id?: string;
 }
 
 // Interfaces para dados da API externa
@@ -98,28 +99,36 @@ export class TrackingAPIError extends Error {
  * @param userId - ID do usuário autenticado
  * @param trackingCode - Código de rastreio
  * @param action - Tipo de ação: novo rastreio ou atualização
+ * @param trackerId - ID do tracker (opcional)
  * @param retryCount - Tentativas de retry (máx 1)
  */
 export async function sendToTrackingAPI(
   userId: string,
   trackingCode: string,
   action: 'new_track' | 'atualization',
+  trackerId?: string,
   retryCount = 0
 ): Promise<TrackingAPIResponse> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+    const payload: TrackingAPIRequest = {
+      user_id: userId,
+      tracking_code: trackingCode,
+      action,
+    };
+
+    if (trackerId) {
+      payload.tracker_id = trackerId;
+    }
+
     const response = await fetch(TRACKING_WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        user_id: userId,
-        tracking_code: trackingCode,
-        action,
-      } as TrackingAPIRequest),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
@@ -148,7 +157,7 @@ export async function sendToTrackingAPI(
     if (retryCount === 0 && error instanceof TypeError) {
       console.log('[Tracking API] Retrying...');
       await new Promise(resolve => setTimeout(resolve, 1000));
-      return sendToTrackingAPI(userId, trackingCode, action, 1);
+      return sendToTrackingAPI(userId, trackingCode, action, trackerId, 1);
     }
 
     throw new TrackingAPIError(

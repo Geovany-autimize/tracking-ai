@@ -241,14 +241,12 @@ export default function ShipmentDetails() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold font-mono">{shipmentData.tracking_code}</h1>
-            <p className="text-muted-foreground">
-              {shipmentData.tracker_id ? `ID: ${shipmentData.tracker_id}` : 'Detalhes do rastreio'}
-            </p>
+            <p className="text-muted-foreground">Detalhes do rastreio</p>
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={() => refreshTracking(shipmentData.tracking_code)} disabled={!canRefresh || isRefreshing} title={!canRefresh ? `Aguarde ${timeUntilNextRefresh}s` : 'Atualizar rastreio'}>
+          <Button variant="ghost" size="icon" onClick={() => refreshTracking(shipmentData.tracking_code, shipmentData.tracker_id || undefined)} disabled={!canRefresh || isRefreshing} title={!canRefresh ? `Aguarde ${timeUntilNextRefresh}s` : 'Atualizar rastreio'}>
             {isRefreshing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => setShowDeleteDialog(true)} className="text-destructive hover:text-destructive">
