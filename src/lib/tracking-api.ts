@@ -168,11 +168,14 @@ export function isTimeoutError(error: any): boolean {
 /**
  * Helper: Extrai dados de rastreio da resposta da API
  */
-export function parseTrackingResponse(response: TrackingAPIResponse): TrackingDataItem | null {
-  if (!response.data?.trackings || response.data.trackings.length === 0) {
+export function parseTrackingResponse(response: TrackingAPIResponse | any): TrackingDataItem | null {
+  // Se a resposta for um array (formato do webhook), pega o primeiro item
+  const data = Array.isArray(response) ? response[0] : response;
+  
+  if (!data?.data?.trackings || data.data.trackings.length === 0) {
     return null;
   }
-  return response.data.trackings[0];
+  return data.data.trackings[0];
 }
 
 /**

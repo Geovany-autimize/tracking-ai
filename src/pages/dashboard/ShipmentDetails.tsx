@@ -63,9 +63,7 @@ export default function ShipmentDetails() {
   const {
     customer
   } = useAuth();
-  const [status, setStatus] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
-  const [isEdited, setIsEdited] = useState(false);
 
   // Estado para gerenciar o diálogo de trocar cliente
   const [showChangeCustomerDialog, setShowChangeCustomerDialog] = useState(false);
@@ -95,7 +93,6 @@ export default function ShipmentDetails() {
   });
   useEffect(() => {
     if (shipmentData) {
-      setStatus(shipmentData.status || '');
       setAutoTracking(shipmentData.auto_tracking ?? true);
     }
   }, [shipmentData]);
@@ -108,9 +105,19 @@ export default function ShipmentDetails() {
     isRefreshing
   } = useTrackingRefresh(customer?.id, {
     onSuccess: async data => {
-      // Processar dados da API
-      const trackingData = parseTrackingResponse(data);
-      if (!trackingData) return;
+      console.log('[ShipmentDetails] Received tracking data:', data);
+      
+      // Processar dados da API - a resposta vem dentro de um array
+      const apiData = Array.isArray(data) ? data[0] : data;
+      const trackingData = parseTrackingResponse(apiData);
+      
+      if (!trackingData) {
+        console.error('[ShipmentDetails] Failed to parse tracking data');
+        toast.error('Erro ao processar dados do rastreio');
+        return;
+      }
+
+      console.log('[ShipmentDetails] Parsed tracking data:', trackingData);
 
       // Atualizar banco de dados
       const {
@@ -122,7 +129,13 @@ export default function ShipmentDetails() {
         status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
         last_update: new Date().toISOString()
       }).eq('id', id);
-      if (!error) {
+      
+      if (error) {
+        console.error('[ShipmentDetails] Database update error:', error);
+        toast.error('Erro ao salvar dados do rastreio');
+      } else {
+        console.log('[ShipmentDetails] Database updated successfully');
+        toast.success('Rastreio atualizado com sucesso!');
         queryClient.invalidateQueries({
           queryKey: ['shipment', id]
         });
@@ -141,13 +154,13 @@ export default function ShipmentDetails() {
       loadCustomers();
     }
   }, [showChangeCustomerDialog]);
-  const updateMutation = useMutation({
-    mutationFn: async () => {
+  // Mutation para atualizar auto_tracking
+  const updateAutoTrackingMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
       const {
         error
       } = await supabase.from('shipments').update({
-        status,
-        auto_tracking: autoTracking,
+        auto_tracking: enabled,
         updated_at: new Date().toISOString()
       }).eq('id', id);
       if (error) throw error;
@@ -156,14 +169,10 @@ export default function ShipmentDetails() {
       queryClient.invalidateQueries({
         queryKey: ['shipment', id]
       });
-      queryClient.invalidateQueries({
-        queryKey: ['shipments']
-      });
-      toast.success('Rastreio atualizado com sucesso!');
-      setIsEdited(false);
+      toast.success('Configuração atualizada!');
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Erro ao atualizar rastreio');
+      toast.error('Erro ao atualizar configuração');
     }
   });
 
@@ -203,12 +212,9 @@ export default function ShipmentDetails() {
       toast.error('Erro ao atualizar cliente');
     }
   });
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateMutation.mutate();
-  };
-  const handleFieldChange = () => {
-    setIsEdited(true);
+  const handleAutoTrackingChange = (checked: boolean) => {
+    setAutoTracking(checked);
+    updateAutoTrackingMutation.mutate(checked);
   };
   if (isLoading) {
     return <div className="space-y-6">
@@ -299,43 +305,40 @@ export default function ShipmentDetails() {
             <CardHeader>
               <CardTitle className="text-lg">Informações do Rastreio</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="tracking-code">Código de Rastreio</Label>
+                <Input id="tracking-code" value={shipmentData.tracking_code} disabled className="font-mono bg-muted" />
+              </div>
+
+              {shipmentData.tracker_id && (
                 <div className="space-y-2">
-                  <Label htmlFor="tracking-code">Código de Rastreio</Label>
-                  <Input id="tracking-code" value={shipmentData.tracking_code} disabled className="font-mono bg-muted" />
-                  <p className="text-xs text-muted-foreground">
-                    O código de rastreio não pode ser alterado
-                  </p>
+                  <Label htmlFor="tracker-id">Tracker ID</Label>
+                  <Input id="tracker-id" value={shipmentData.tracker_id} disabled className="font-mono text-xs bg-muted" />
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <div>
-                    <Badge variant={statusConfig[status as keyof typeof statusConfig]?.variant || 'outline'} className="gap-2">
-                      <span className={statusConfig[status as keyof typeof statusConfig]?.color}>
-                        {statusConfig[status as keyof typeof statusConfig]?.icon}
-                      </span>
-                      {statusConfig[status as keyof typeof statusConfig]?.label || status}
-                    </Badge>
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <div>
+                  <Badge variant={statusConfig[shipmentData.status as keyof typeof statusConfig]?.variant || 'outline'} className="gap-2">
+                    <span className={statusConfig[shipmentData.status as keyof typeof statusConfig]?.color}>
+                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                    </span>
+                    {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
+                  </Badge>
                 </div>
+              </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch id="auto-tracking" checked={autoTracking} onCheckedChange={checked => {
-                  setAutoTracking(checked);
-                  handleFieldChange();
-                }} />
-                  <Label htmlFor="auto-tracking">Rastreamento Automático</Label>
-                </div>
-
-                <Button type="submit" disabled={!isEdited || updateMutation.isPending} className="w-full">
-                  {updateMutation.isPending ? <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Salvando...
-                    </> : 'Salvar Alterações'}
-                </Button>
-              </form>
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  id="auto-tracking" 
+                  checked={autoTracking} 
+                  onCheckedChange={handleAutoTrackingChange}
+                  disabled={updateAutoTrackingMutation.isPending}
+                />
+                <Label htmlFor="auto-tracking">Rastreamento Automático</Label>
+              </div>
             </CardContent>
           </Card>
         </div>
