@@ -4,6 +4,7 @@ import { CheckCircle2, Package, Truck, Home, AlertCircle, Clock, MapPin } from '
 import { TrackingEvent, ShipmentData } from '@/lib/tracking-api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ShipmentTimelineProps {
   events?: TrackingEvent[];
@@ -25,16 +26,20 @@ const getStatusIcon = (milestone: string) => {
   }
 };
 
-const getStatusVariant = (milestone: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+const getStatusClass = (milestone: string): string => {
   switch (milestone) {
     case 'delivered':
-      return 'default';
+      return 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20';
     case 'out_for_delivery':
-      return 'secondary';
+      return 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20';
+    case 'in_transit':
+      return 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20';
     case 'exception':
-      return 'destructive';
+      return 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20';
+    case 'pending':
+      return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20';
     default:
-      return 'outline';
+      return 'bg-muted text-muted-foreground border-muted';
   }
 };
 
@@ -111,7 +116,7 @@ export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimeline
                       </Badge>
                     )}
                     {event.statusMilestone && (
-                      <Badge variant={getStatusVariant(event.statusMilestone)} className="text-xs">
+                      <Badge className={cn("text-xs", getStatusClass(event.statusMilestone))}>
                         {event.statusMilestone}
                       </Badge>
                     )}

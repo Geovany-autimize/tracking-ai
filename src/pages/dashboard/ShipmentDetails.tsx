@@ -25,33 +25,28 @@ import { cn } from '@/lib/utils';
 const statusConfig = {
   pending: {
     label: 'Pendente',
-    variant: 'outline' as const,
-    icon: <Clock className="h-4 w-4" />,
-    color: 'text-muted-foreground'
+    icon: <Clock className="h-5 w-5" />,
+    badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20 text-base px-4 py-2'
   },
   in_transit: {
     label: 'Em Trânsito',
-    variant: 'secondary' as const,
-    icon: <Package className="h-4 w-4" />,
-    color: 'text-blue-500'
+    icon: <Package className="h-5 w-5" />,
+    badgeClass: 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20 text-base px-4 py-2'
   },
   out_for_delivery: {
     label: 'Saiu para Entrega',
-    variant: 'secondary' as const,
-    icon: <Truck className="h-4 w-4" />,
-    color: 'text-blue-500'
+    icon: <Truck className="h-5 w-5" />,
+    badgeClass: 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20 text-base px-4 py-2'
   },
   delivered: {
     label: 'Entregue',
-    variant: 'default' as const,
-    icon: <CheckCircle2 className="h-4 w-4" />,
-    color: 'text-green-500'
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    badgeClass: 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20 text-base px-4 py-2'
   },
   exception: {
     label: 'Exceção',
-    variant: 'destructive' as const,
-    icon: <AlertCircle className="h-4 w-4" />,
-    color: 'text-destructive'
+    icon: <AlertCircle className="h-5 w-5" />,
+    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20 text-base px-4 py-2'
   }
 };
 export default function ShipmentDetails() {
@@ -257,88 +252,112 @@ export default function ShipmentDetails() {
 
       {/* Conteúdo Principal */}
       <div className="space-y-6">
-        {/* Informações do Cliente e Rastreio - Layout de Fora a Fora */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Informações do Rastreio */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Informações do Rastreio</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="tracking-code">Código de Rastreio</Label>
-                <Input id="tracking-code" value={shipmentData.tracking_code} disabled className="font-mono bg-muted" />
-              </div>
-
-              {shipmentData.tracker_id && (
+        {/* Informações do Rastreio - Full Width */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Informações do Rastreio</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+              {/* Status Badge - Destaque Principal */}
+              <div className="flex-shrink-0">
                 <div className="space-y-2">
-                  <Label htmlFor="tracker-id">Tracker ID</Label>
-                  <Input id="tracker-id" value={shipmentData.tracker_id} disabled className="font-mono text-xs bg-muted" />
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <div>
-                  <Badge variant={statusConfig[shipmentData.status as keyof typeof statusConfig]?.variant || 'outline'} className="gap-2">
-                    <span className={statusConfig[shipmentData.status as keyof typeof statusConfig]?.color}>
-                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                  <Label className="text-xs text-muted-foreground">Status Atual</Label>
+                  <Badge className={cn("gap-3", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || 'text-base px-4 py-2')}>
+                    {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                    <span className="font-semibold">
+                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
                     </span>
-                    {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
                   </Badge>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Switch 
-                  id="auto-tracking" 
-                  checked={autoTracking} 
-                  onCheckedChange={handleAutoTrackingChange}
-                  disabled={updateAutoTrackingMutation.isPending}
-                />
-                <Label htmlFor="auto-tracking">Rastreamento Automático</Label>
-              </div>
-            </CardContent>
-          </Card>
+              {/* Informações do Código - Layout Horizontal */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Código de Rastreio</Label>
+                  <p className="font-mono font-semibold text-lg">{shipmentData.tracking_code}</p>
+                </div>
 
-          {/* Cliente Vinculado */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5" />
-                Cliente Vinculado
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="py-8">
-              <div className="space-y-6">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Nome</p>
-                  <p className="text-lg font-semibold">{customerName}</p>
+                {shipmentData.tracker_id && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Tracker ID</Label>
+                    <p className="font-mono text-sm text-muted-foreground">{shipmentData.tracker_id}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Rastreamento Automático */}
+              <div className="flex-shrink-0 border-l pl-6">
+                <div className="flex flex-col items-center gap-2">
+                  <Label htmlFor="auto-tracking" className="text-xs text-muted-foreground text-center">
+                    Rastreamento<br/>Automático
+                  </Label>
+                  <Switch 
+                    id="auto-tracking" 
+                    checked={autoTracking} 
+                    onCheckedChange={handleAutoTrackingChange}
+                    disabled={updateAutoTrackingMutation.isPending}
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cliente Vinculado - Full Width */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <User className="h-5 w-5" />
+              Cliente Vinculado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+              {/* Avatar Placeholder */}
+              <div className="flex-shrink-0">
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                  <User className="h-8 w-8 text-muted-foreground" />
+                </div>
+              </div>
+
+              {/* Informações do Cliente - Grid Compacto */}
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Nome</Label>
+                  <p className="font-semibold">{customerName}</p>
                 </div>
                 
-                {shipmentData.shipment_customer && <>
-                    {shipmentData.shipment_customer.email && <div>
-                        <p className="text-sm text-muted-foreground mb-1">Email</p>
-                        <p className="text-sm">{shipmentData.shipment_customer.email}</p>
-                      </div>}
-                    {shipmentData.shipment_customer.phone && <div>
-                        <p className="text-sm text-muted-foreground mb-1">Telefone</p>
-                        <p className="text-sm">{shipmentData.shipment_customer.phone}</p>
-                      </div>}
-                  </>}
+                {shipmentData.shipment_customer?.email && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Email</Label>
+                    <p className="text-sm">{shipmentData.shipment_customer.email}</p>
+                  </div>
+                )}
 
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)} className="flex-1">
-                    Trocar Cliente
-                  </Button>
-                  {shipmentData.shipment_customer && <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/customers/${shipmentData.shipment_customer.id}`)}>
-                      Ver Perfil
-                    </Button>}
-                </div>
+                {shipmentData.shipment_customer?.phone && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Telefone</Label>
+                    <p className="text-sm">{shipmentData.shipment_customer.phone}</p>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              {/* Ações - Botões com Hierarquia */}
+              <div className="flex-shrink-0 flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)}>
+                  Trocar Cliente
+                </Button>
+                {shipmentData.shipment_customer && (
+                  <Button variant="default" size="sm" onClick={() => navigate(`/dashboard/customers/${shipmentData.shipment_customer.id}`)}>
+                    Ver Perfil
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Histórico de Rastreio - Full Width */}
         <ShipmentTimeline events={shipmentData.tracking_events as any || []} shipmentData={shipmentData.shipment_data as any} />
