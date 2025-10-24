@@ -329,7 +329,11 @@ export default function CustomerDetails() {
                     const status = statusConfig[shipment.status as keyof typeof statusConfig] || statusConfig.pending;
                     
                     return (
-                      <TableRow key={shipment.id}>
+                      <TableRow 
+                        key={shipment.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/dashboard/shipments/${shipment.id}`)}
+                      >
                         <TableCell className="font-mono font-medium">
                           {shipment.tracking_code}
                         </TableCell>
