@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import CustomerForm from '@/components/forms/CustomerForm';
+import CustomerList from '@/components/customers/CustomerList';
 
 export default function CustomersPage() {
   const [formOpen, setFormOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleFormClose = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) {
+      // Refresh list when form closes
+      setRefreshTrigger(prev => prev + 1);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -22,21 +31,9 @@ export default function CustomersPage() {
         </Button>
       </div>
 
-      <CustomerForm open={formOpen} onOpenChange={setFormOpen} />
+      <CustomerForm open={formOpen} onOpenChange={handleFormClose} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Clientes</CardTitle>
-          <CardDescription>
-            Gerencie contatos e preferências de notificação dos seus clientes
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-40 text-muted-foreground">
-            <p>Nenhum cliente cadastrado ainda.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <CustomerList refreshTrigger={refreshTrigger} />
     </div>
   );
 }

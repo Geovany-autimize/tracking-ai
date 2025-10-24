@@ -3,24 +3,53 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import PhoneField from './PhoneField';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { z } from 'zod';
 
-interface CustomerFormProps {
+interface QuickCustomerFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCustomerCreated?: (customerId: string) => void;
+  initialName?: string;
 }
 
-export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) {
+const quickCustomerSchema = z.object({
+  first_name: z.string()
+    .trim()
+    .min(1, 'Nome é obrigatório')
+    .max(100, 'Nome muito longo'),
+  last_name: z.string()
+    .trim()
+    .min(1, 'Sobrenome é obrigatório')
+    .max(100, 'Sobrenome muito longo'),
+  phone: z.string()
+    .regex(/^\+[1-9]\d{1,14}$/, 'Telefone inválido (formato internacional)'),
+  email: z.string()
+    .email('Email inválido')
+    .optional()
+    .or(z.literal('')),
+});
+
+export default function QuickCustomerForm({ 
+  open, 
+  onOpenChange, 
+  onCustomerCreated,
+  initialName = '' 
+}: QuickCustomerFormProps) {
   const { customer } = useAuth();
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  
+  // Parse initial name into first and last name
+  const names = initialName.split(' ');
+  const initialFirstName = names[0] || '';
+  const initialLastName = names.slice(1).join(' ') || '';
+
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,43 +64,64 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
       return;
     }
 
-    if (!phone) {
-      toast({
-        title: 'Erro',
-        description: 'Telefone/WhatsApp é obrigatório',
-        variant: 'destructive',
+    // Client-side validation
+    try {
+      quickCustomerSchema.parse({
+        first_name: firstName,
+        last_name: lastName,
+        phone: phone,
+        email: email || undefined,
       });
-      return;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        toast({
+          title: 'Erro de validação',
+          description: firstError.message,
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
+      // Generate email if not provided
+      const finalEmail = email.trim() 
+        ? email.trim().toLowerCase()
+        : `${firstName.toLowerCase()}.${lastName.toLowerCase()}@cliente.temp`;
+
+      const { data: newCustomer, error } = await supabase
         .from('shipment_customers')
         .insert({
           customer_id: customer.id,
-          first_name: firstName,
-          last_name: lastName,
-          email: email,
-          phone: phone || null,
-          notes: notes || null,
-        });
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: finalEmail,
+          phone: phone,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
       toast({
-        title: 'Cliente adicionado',
+        title: 'Cliente criado',
         description: `${firstName} ${lastName} foi adicionado com sucesso`,
       });
 
-      // Resetar e fechar
+      // Reset and close
       setFirstName('');
       setLastName('');
       setEmail('');
       setPhone('');
-      setNotes('');
       onOpenChange(false);
+      
+      // Notify parent component
+      if (onCustomerCreated && newCustomer) {
+        onCustomerCreated(newCustomer.id);
+      }
     } catch (error) {
       console.error('Error creating customer:', error);
       toast({
@@ -88,9 +138,9 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Novo Cliente</DialogTitle>
+          <DialogTitle>Criar Novo Cliente</DialogTitle>
           <DialogDescription>
-            Adicione as informações do cliente para começar a rastrear encomendas
+            Preencha os dados obrigatórios do cliente para continuar
           </DialogDescription>
         </DialogHeader>
 
@@ -98,9 +148,9 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
           {/* Nome e Sobrenome */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="first-name">Nome *</Label>
+              <Label htmlFor="quick-first-name">Nome *</Label>
               <Input
-                id="first-name"
+                id="quick-first-name"
                 placeholder="João"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -108,9 +158,9 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="last-name">Sobrenome *</Label>
+              <Label htmlFor="quick-last-name">Sobrenome *</Label>
               <Input
-                id="last-name"
+                id="quick-last-name"
                 placeholder="Silva"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -119,20 +169,7 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
             </div>
           </div>
 
-          {/* E-mail */}
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail *</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="joao@exemplo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Telefone (usando PhoneField existente) */}
+          {/* Telefone (obrigatório) */}
           <PhoneField
             label="Telefone / WhatsApp *"
             required={true}
@@ -141,16 +178,19 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
             helperText="Número para contato e notificações"
           />
 
-          {/* Observação */}
+          {/* E-mail (opcional) */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Observação</Label>
-            <Textarea
-              id="notes"
-              placeholder="Informações adicionais sobre o cliente..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
+            <Label htmlFor="quick-email">E-mail (opcional)</Label>
+            <Input
+              id="quick-email"
+              type="email"
+              placeholder="joao@exemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              Se não informado, será gerado automaticamente
+            </p>
           </div>
 
           <DialogFooter>
@@ -163,7 +203,7 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
               Cancelar
             </Button>
             <Button type="submit" variant="default" disabled={isLoading}>
-              {isLoading ? 'Salvando...' : 'Adicionar Cliente'}
+              {isLoading ? 'Criando...' : 'Criar Cliente'}
             </Button>
           </DialogFooter>
         </form>

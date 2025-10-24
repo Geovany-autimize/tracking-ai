@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import ShipmentForm from '@/components/forms/ShipmentForm';
+import ShipmentList from '@/components/shipments/ShipmentList';
 
 export default function ShipmentsPage() {
   const [formOpen, setFormOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleFormClose = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) {
+      // Refresh list when form closes
+      setRefreshTrigger(prev => prev + 1);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -22,21 +31,9 @@ export default function ShipmentsPage() {
         </Button>
       </div>
 
-      <ShipmentForm open={formOpen} onOpenChange={setFormOpen} />
+      <ShipmentForm open={formOpen} onOpenChange={handleFormClose} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Rastreios</CardTitle>
-          <CardDescription>
-            Tabela com filtros por status, busca por código/PLP e timeline lateral nos detalhes
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-40 text-muted-foreground">
-            <p>Nenhum rastreio cadastrado. Clique em "Novo Rastreio" para começar.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <ShipmentList refreshTrigger={refreshTrigger} />
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import QuickCustomerForm from './QuickCustomerForm';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -33,6 +34,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
   const [comboOpen, setComboOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [quickFormOpen, setQuickFormOpen] = useState(false);
 
   useEffect(() => {
     if (open && customer?.id) {
@@ -57,6 +59,12 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
     }
   };
 
+  const handleQuickCustomerCreated = (customerId: string) => {
+    setSelectedCustomer(customerId);
+    setQuickFormOpen(false);
+    loadCustomers(); // Reload customer list
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -69,37 +77,23 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
       return;
     }
 
+    if (!selectedCustomer) {
+      toast({
+        title: 'Cliente obrigatório',
+        description: 'Selecione ou crie um cliente antes de continuar',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      let shipmentCustomerId = selectedCustomer;
-
-      // Se não selecionou cliente existente, criar novo
-      if (!shipmentCustomerId && customerSearch) {
-        const names = customerSearch.split(' ');
-        const firstName = names[0];
-        const lastName = names.slice(1).join(' ') || firstName;
-
-        const { data: newCustomer, error: customerError } = await supabase
-          .from('shipment_customers')
-          .insert({
-            customer_id: customer.id,
-            first_name: firstName,
-            last_name: lastName,
-            email: `${firstName.toLowerCase()}@temp.com`, // Email temporário
-          })
-          .select()
-          .single();
-
-        if (customerError) throw customerError;
-        shipmentCustomerId = newCustomer.id;
-      }
-
       const { error } = await supabase
         .from('shipments')
         .insert({
           customer_id: customer.id,
-          shipment_customer_id: shipmentCustomerId || null,
+          shipment_customer_id: selectedCustomer,
           tracking_code: trackingCode,
           auto_tracking: autoTracking,
           status: 'pending',
@@ -135,8 +129,16 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+    <>
+      <QuickCustomerForm
+        open={quickFormOpen}
+        onOpenChange={setQuickFormOpen}
+        onCustomerCreated={handleQuickCustomerCreated}
+        initialName={customerSearch}
+      />
+      
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Novo Rastreio</DialogTitle>
           <DialogDescription>
@@ -196,6 +198,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
                             size="sm"
                             onClick={() => {
                               setComboOpen(false);
+                              setQuickFormOpen(true);
                             }}
                           >
                             Criar "{customerSearch}"
@@ -265,5 +268,6 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
