@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Loader2, Trash2, RefreshCw, ExternalLink, RefreshCw as RefreshIcon } from 'lucide-react';
+import { ArrowLeft, User, Loader2, Trash2, RefreshCw, ExternalLink, RefreshCw as RefreshIcon, Package, Truck, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShipmentTimeline } from '@/components/shipments/ShipmentTimeline';
 import {
@@ -50,11 +50,36 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const statusConfig = {
-  pending: { label: 'Pendente', variant: 'secondary' as const },
-  in_transit: { label: 'Em Trânsito', variant: 'default' as const },
-  out_for_delivery: { label: 'Saiu para Entrega', variant: 'default' as const },
-  delivered: { label: 'Entregue', variant: 'default' as const },
-  exception: { label: 'Exceção', variant: 'destructive' as const },
+  pending: { 
+    label: 'Pendente', 
+    variant: 'outline' as const,
+    icon: <Clock className="h-4 w-4" />,
+    color: 'text-muted-foreground',
+  },
+  in_transit: { 
+    label: 'Em Trânsito', 
+    variant: 'secondary' as const,
+    icon: <Package className="h-4 w-4" />,
+    color: 'text-blue-500',
+  },
+  out_for_delivery: { 
+    label: 'Saiu para Entrega', 
+    variant: 'secondary' as const,
+    icon: <Truck className="h-4 w-4" />,
+    color: 'text-blue-500',
+  },
+  delivered: { 
+    label: 'Entregue', 
+    variant: 'default' as const,
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    color: 'text-green-500',
+  },
+  exception: { 
+    label: 'Exceção', 
+    variant: 'destructive' as const,
+    icon: <AlertCircle className="h-4 w-4" />,
+    color: 'text-destructive',
+  },
 };
 
 export default function ShipmentDetails() {
@@ -251,7 +276,7 @@ export default function ShipmentDetails() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header com ações */}
-      <div className="border-b bg-card">
+      <div className="border-b">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -381,18 +406,14 @@ export default function ShipmentDetails() {
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
-                  <Select value={status} onValueChange={(value) => { setStatus(value); handleFieldChange(); }}>
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="in_transit">Em Trânsito</SelectItem>
-                      <SelectItem value="out_for_delivery">Saiu para Entrega</SelectItem>
-                      <SelectItem value="delivered">Entregue</SelectItem>
-                      <SelectItem value="exception">Exceção</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Badge variant={statusConfig[status as keyof typeof statusConfig]?.variant || 'outline'} className="gap-2">
+                      <span className={statusConfig[status as keyof typeof statusConfig]?.color}>
+                        {statusConfig[status as keyof typeof statusConfig]?.icon}
+                      </span>
+                      {statusConfig[status as keyof typeof statusConfig]?.label || status}
+                    </Badge>
+                  </div>
                 </div>
 
                 <div className="flex items-center space-x-2">
