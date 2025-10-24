@@ -19,7 +19,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: (input, init = {}) => {
       const token = localStorage.getItem('session_token');
       const headers = new Headers((init as RequestInit)?.headers || {});
-      if (token) headers.set('authorization', `Bearer ${token}`);
+      if (token) headers.set('x-session-token', token);
       return fetch(input as RequestInfo, { ...init, headers });
     },
   },
