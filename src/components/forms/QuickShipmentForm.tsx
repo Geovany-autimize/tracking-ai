@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { sendToTrackingAPI } from '@/lib/tracking-api';
 
 interface QuickShipmentFormProps {
   open: boolean;
@@ -51,21 +52,33 @@ export default function QuickShipmentForm({
         return;
       }
 
-      const { error } = await supabase.from('shipments').insert({
-        customer_id: customer.id,
-        shipment_customer_id: customerId,
-        tracking_code: trackingCode,
-        auto_tracking: autoTracking,
-        status: 'pending',
-      });
+        const { error } = await supabase.from('shipments').insert({
+          customer_id: customer.id,
+          shipment_customer_id: customerId,
+          tracking_code: trackingCode,
+          auto_tracking: autoTracking,
+          status: 'pending',
+        });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({ title: 'Rastreio criado com sucesso' });
-      setTrackingCode('');
-      setAutoTracking(true);
-      onOpenChange(false);
-      onShipmentCreated();
+        // Enviar para API de rastreio
+        try {
+          await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
+          toast({ title: 'Rastreio criado e sincronizado com sucesso' });
+        } catch (apiError) {
+          console.error('Tracking API error:', apiError);
+          toast({ 
+            title: 'Rastreio criado',
+            description: 'Use o botão Atualizar para sincronizar',
+            variant: 'destructive'
+          });
+        }
+
+        setTrackingCode('');
+        setAutoTracking(true);
+        onOpenChange(false);
+        onShipmentCreated();
     } catch (error) {
       console.error(error);
       toast({

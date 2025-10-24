@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
+import { sendToTrackingAPI } from '@/lib/tracking-api';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -119,10 +120,22 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
 
       if (error) throw error;
 
-      toast({
-        title: 'Rastreio adicionado',
-        description: `Código ${trackingCode} adicionado com sucesso`,
-      });
+      // Enviar para API de rastreio
+      try {
+        await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
+        toast({
+          title: 'Rastreio adicionado',
+          description: 'Código enviado para processamento',
+        });
+      } catch (apiError) {
+        // Não bloquear o fluxo se API falhar
+        console.error('Tracking API error:', apiError);
+        toast({
+          title: 'Rastreio adicionado',
+          description: 'Porém houve erro ao sincronizar com a API. Use o botão Atualizar',
+          variant: 'destructive',
+        });
+      }
 
       // Resetar e fechar
       setTrackingCode('');

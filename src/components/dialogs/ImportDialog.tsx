@@ -13,6 +13,8 @@ import {
 } from '@/lib/import-processor';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { sendToTrackingAPI } from '@/lib/tracking-api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ImportDialogProps {
   type: 'shipments' | 'customers';
@@ -37,6 +39,7 @@ const CUSTOMER_FIELDS = [
 ];
 
 export function ImportDialog({ type, open, onOpenChange, onImport }: ImportDialogProps) {
+  const { customer } = useAuth();
   const [step, setStep] = useState(1);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
@@ -85,10 +88,40 @@ export function ImportDialog({ type, open, onOpenChange, onImport }: ImportDialo
       const validData = getValidRows(processedRows);
       await onImport(validData);
       
-      toast({
-        title: 'Importação concluída',
-        description: `${validData.length} registros importados com sucesso`,
-      });
+      // Sincronizar com API de rastreio em background (apenas para shipments)
+      if (type === 'shipments' && customer?.id) {
+        const syncPromises = validData.map(async (shipment: any) => {
+          try {
+            await sendToTrackingAPI(customer.id, shipment.tracking_code, 'new_track');
+            return { success: true, code: shipment.tracking_code };
+          } catch (error) {
+            return { success: false, code: shipment.tracking_code };
+          }
+        });
+        
+        // Não aguardar (assíncrono)
+        Promise.allSettled(syncPromises).then((results) => {
+          const synced = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+          const failed = results.length - synced;
+          
+          if (failed > 0) {
+            toast({
+              title: `${validData.length} rastreios importados`,
+              description: `${synced} sincronizados, ${failed} pendentes de sincronização`,
+            });
+          } else {
+            toast({
+              title: 'Importação concluída',
+              description: `${validData.length} rastreios sincronizados com sucesso`,
+            });
+          }
+        });
+      } else {
+        toast({
+          title: 'Importação concluída',
+          description: `${validData.length} registros importados com sucesso`,
+        });
+      }
       
       handleClose();
     } catch (error: any) {

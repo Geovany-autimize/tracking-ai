@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import ShipmentTimeline from '@/components/shipments/ShipmentTimeline';
+import { useTrackingRefresh } from '@/hooks/use-tracking-refresh';
 
 const statusConfig = {
   pending: { label: 'Pendente', variant: 'secondary' as const },
@@ -43,6 +44,9 @@ export default function ShipmentDetails() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [comboOpen, setComboOpen] = useState(false);
+  
+  // Hook para atualização manual de rastreio
+  const { canRefresh, timeUntilNextRefresh, refreshTracking, isRefreshing } = useTrackingRefresh(customer?.id);
 
   // Carregar dados do rastreio
   const { data: shipmentData, isLoading } = useQuery({
@@ -278,6 +282,37 @@ export default function ShipmentDetails() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Botão de Atualizar Rastreio */}
+            <div className="mb-4 p-4 rounded-lg border bg-muted/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium">Atualizar Rastreio</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Consultar status mais recente na API
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refreshTracking(trackingCode)}
+                  disabled={!canRefresh || isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Atualizando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Atualizar
+                      {!canRefresh && ` (${timeUntilNextRefresh}s)`}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="trackingCode">Código de Rastreio *</Label>
