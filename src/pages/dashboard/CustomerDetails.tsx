@@ -11,9 +11,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PhoneField from '@/components/forms/PhoneField';
+import QuickShipmentForm from '@/components/forms/QuickShipmentForm';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -36,6 +37,7 @@ export default function CustomerDetails() {
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
   const [isEdited, setIsEdited] = useState(false);
+  const [shipmentFormOpen, setShipmentFormOpen] = useState(false);
 
   // Carregar dados do cliente
   const { data: customerData, isLoading: isLoadingCustomer } = useQuery({
@@ -298,10 +300,22 @@ export default function CustomerDetails() {
       {/* Lista de Rastreios */}
       <Card>
         <CardHeader>
-          <CardTitle>Rastreios do Cliente</CardTitle>
-          <CardDescription>
-            {shipments?.length || 0} rastreio{shipments?.length !== 1 ? 's' : ''} cadastrado{shipments?.length !== 1 ? 's' : ''}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Rastreios do Cliente</CardTitle>
+              <CardDescription>
+                {shipments?.length || 0} rastreio{shipments?.length !== 1 ? 's' : ''} cadastrado{shipments?.length !== 1 ? 's' : ''}
+              </CardDescription>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShipmentFormOpen(true)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Rastreio
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoadingShipments ? (
@@ -361,6 +375,15 @@ export default function CustomerDetails() {
           )}
         </CardContent>
       </Card>
+
+      <QuickShipmentForm
+        open={shipmentFormOpen}
+        onOpenChange={setShipmentFormOpen}
+        customerId={id!}
+        onShipmentCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ['customer_shipments', id] });
+        }}
+      />
     </div>
   );
 }

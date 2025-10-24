@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { ArrowRight, Sparkles, X } from 'lucide-react';
 import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/core';
 
 interface ImportMappingStepProps {
@@ -11,19 +12,22 @@ interface ImportMappingStepProps {
   onBack: () => void;
 }
 
-function DraggableHeader({ header }: { header: string }) {
+function DraggableHeader({ header, disabled = false }: { header: string; disabled?: boolean }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: header,
+    disabled,
   });
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
+      {...(disabled ? {} : listeners)}
       {...attributes}
-      className={`p-3 bg-accent rounded-md border cursor-move hover:bg-accent/80 transition-colors ${
-        isDragging ? 'opacity-50' : ''
-      }`}
+      className={`p-3 bg-accent rounded-md border transition-colors ${
+        disabled 
+          ? 'opacity-50 cursor-not-allowed' 
+          : 'cursor-move hover:bg-accent/80'
+      } ${isDragging ? 'opacity-50' : ''}`}
     >
       {header}
     </div>
@@ -32,31 +36,45 @@ function DraggableHeader({ header }: { header: string }) {
 
 function DroppableField({ 
   field, 
-  mappedHeader 
+  mappedHeader,
+  onClear
 }: { 
   field: { id: string; label: string; required: boolean }; 
   mappedHeader: string | null;
+  onClear?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: field.id,
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`p-4 border-2 border-dashed rounded-md min-h-[60px] flex items-center justify-between transition-colors ${
-        isOver ? 'border-primary bg-primary/5' : 'border-border'
-      } ${field.required ? 'border-orange-500/50' : ''}`}
-    >
-      <div>
-        <div className="font-medium">
-          {field.label}
-          {field.required && <span className="text-destructive ml-1">*</span>}
+    <div className="relative">
+      <div
+        ref={setNodeRef}
+        className={`p-4 border-2 border-dashed rounded-md min-h-[60px] flex items-center justify-between transition-colors ${
+          isOver ? 'border-primary bg-primary/5' : 'border-border'
+        } ${field.required ? 'border-orange-500/50' : ''}`}
+      >
+        <div>
+          <div className="font-medium">
+            {field.label}
+            {field.required && <span className="text-destructive ml-1">*</span>}
+          </div>
+          {mappedHeader && (
+            <div className="text-sm text-muted-foreground mt-1">← {mappedHeader}</div>
+          )}
         </div>
-        {mappedHeader && (
-          <div className="text-sm text-muted-foreground mt-1">← {mappedHeader}</div>
-        )}
       </div>
+      {mappedHeader && onClear && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute -top-2 -right-2 h-6 w-6"
+          onClick={onClear}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
@@ -112,11 +130,22 @@ export function ImportMappingStep({
     });
   };
 
+  const handleClearMapping = (fieldId: string) => {
+    setMapping(prev => {
+      const newMapping = { ...prev };
+      const headerToRemove = Object.keys(newMapping).find(
+        key => newMapping[key] === fieldId
+      );
+      if (headerToRemove) {
+        delete newMapping[headerToRemove];
+      }
+      return newMapping;
+    });
+  };
+
   const isValid = requiredFields
     .filter(f => f.required)
     .every(f => Object.values(mapping).includes(f.id));
-
-  const unmappedHeaders = csvHeaders.filter(h => !mapping[h]);
 
   useEffect(() => {
     autoDetectMapping();
@@ -142,14 +171,25 @@ export function ImportMappingStep({
           <div>
             <h4 className="font-medium mb-3">Colunas do CSV</h4>
             <div className="space-y-2">
-              {unmappedHeaders.map(header => (
-                <DraggableHeader key={header} header={header} />
-              ))}
-              {unmappedHeaders.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Todas as colunas foram mapeadas
-                </p>
-              )}
+              {csvHeaders.map(header => {
+                const isMapped = !!mapping[header];
+                return (
+                  <div key={header} className="relative">
+                    <DraggableHeader 
+                      header={header} 
+                      disabled={isMapped}
+                    />
+                    {isMapped && (
+                      <Badge 
+                        variant="secondary" 
+                        className="absolute -top-2 -right-2 text-xs"
+                      >
+                        Mapeado
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -163,6 +203,7 @@ export function ImportMappingStep({
                   mappedHeader={
                     Object.keys(mapping).find(k => mapping[k] === field.id) || null
                   }
+                  onClear={() => handleClearMapping(field.id)}
                 />
               ))}
             </div>

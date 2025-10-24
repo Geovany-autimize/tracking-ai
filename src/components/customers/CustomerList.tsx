@@ -13,6 +13,7 @@ import { useTableSorting } from '@/hooks/use-table-sorting';
 import { useTableSelection } from '@/hooks/use-table-selection';
 import { SortableTableHead } from '@/components/ui/sortable-table-head';
 import { BulkActionsBar } from '@/components/ui/bulk-actions-bar';
+import { BulkEditCustomerDialog } from '@/components/dialogs/BulkEditCustomerDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 
@@ -23,6 +24,7 @@ interface CustomerListProps {
 export default function CustomerList({ refreshTrigger }: CustomerListProps) {
   const { customer } = useAuth();
   const navigate = useNavigate();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const { data: customers, isLoading, refetch } = useQuery({
@@ -45,6 +47,27 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
   const { sortColumn, sortDirection, toggleSort, sortedData } = useTableSorting(customers, 'created_at');
   const allIds = sortedData?.map(c => c.id) || [];
   const { selectedIds, toggleSelect, toggleSelectAll, clearSelection, isAllSelected, selectedCount } = useTableSelection(allIds);
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async (updates: { phone?: string; notes?: string }) => {
+      const ids = Array.from(selectedIds);
+      const updateData: any = {};
+      if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+      
+      const { error } = await supabase
+        .from('shipment_customers')
+        .update(updateData)
+        .in('id', ids);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: 'Clientes atualizados com sucesso' });
+      clearSelection();
+      refetch();
+    },
+  });
 
   const bulkDeleteMutation = useMutation({
     mutationFn: async () => {
@@ -108,6 +131,7 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
       <CardContent>
         <BulkActionsBar
           selectedCount={selectedCount}
+          onEdit={() => setEditDialogOpen(true)}
           onDelete={() => setDeleteDialogOpen(true)}
           onClear={clearSelection}
         />
@@ -148,6 +172,16 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
         </div>
       </CardContent>
       
+      <BulkEditCustomerDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        selectedCount={selectedCount}
+        onConfirm={async (data) => {
+          await bulkUpdateMutation.mutateAsync(data);
+          setEditDialogOpen(false);
+        }}
+      />
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
