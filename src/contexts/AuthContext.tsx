@@ -103,11 +103,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    setLoading(true);
+    
     const { data, error } = await supabase.functions.invoke('auth-login', {
       body: { email, password },
     });
 
     if (error || !data?.success) {
+      setLoading(false);
       let message = 'Erro ao fazer login';
       if (data?.error) {
         message = data.error;
@@ -136,11 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     whatsapp_e164?: string,
     plan?: string
   ) => {
+    setLoading(true);
+    
     const { data, error } = await supabase.functions.invoke('auth-signup', {
       body: { name, email, password, whatsapp_e164, plan },
     });
 
     if (error || !data?.success) {
+      setLoading(false);
       let message = 'Erro ao criar conta';
       if (data?.error) {
         message = data.error;

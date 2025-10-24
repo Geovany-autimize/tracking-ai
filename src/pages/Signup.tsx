@@ -42,7 +42,8 @@ export default function Signup() {
 
   useEffect(() => {
     if (customer) {
-      navigate('/dashboard');
+      setLoading(false);
+      navigate('/dashboard', { replace: true });
     }
   }, [customer, navigate]);
 
@@ -86,7 +87,7 @@ export default function Signup() {
         title: "Conta criada!",
         description: "Sua conta foi criada com sucesso.",
       });
-      navigate('/dashboard');
+      // Redirecionamento agora é feito pelo useEffect quando customer for atualizado
     } catch (error: any) {
       const msg = error?.message || "Tente novamente mais tarde.";
       if (msg.toLowerCase().includes('já está cadastrado')) {
@@ -97,7 +98,6 @@ export default function Signup() {
         description: msg,
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };

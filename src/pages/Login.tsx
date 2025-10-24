@@ -16,7 +16,8 @@ export default function Login() {
 
   useEffect(() => {
     if (customer) {
-      navigate('/dashboard');
+      setLoading(false);
+      navigate('/dashboard', { replace: true });
     }
   }, [customer, navigate]);
 
@@ -30,14 +31,13 @@ export default function Login() {
         title: "Login realizado!",
         description: "Você foi autenticado com sucesso.",
       });
-      navigate('/dashboard');
+      // Redirecionamento agora é feito pelo useEffect quando customer for atualizado
     } catch (error: any) {
       toast({
         title: "Erro ao fazer login",
         description: error.message || "Verifique suas credenciais e tente novamente.",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
