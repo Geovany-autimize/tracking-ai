@@ -8,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { sendToTrackingAPI } from '@/lib/tracking-api';
+import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 
 interface QuickShipmentFormProps {
   open: boolean;
@@ -52,28 +52,44 @@ export default function QuickShipmentForm({
         return;
       }
 
-        const { error } = await supabase.from('shipments').insert({
-          customer_id: customer.id,
-          shipment_customer_id: customerId,
-          tracking_code: trackingCode,
-          auto_tracking: autoTracking,
-          status: 'pending',
-        });
+      const { data: insertedData, error } = await supabase.from('shipments').insert({
+        customer_id: customer.id,
+        shipment_customer_id: customerId,
+        tracking_code: trackingCode,
+        auto_tracking: autoTracking,
+        status: 'pending',
+      }).select().single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Enviar para API de rastreio
-        try {
-          await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
-          toast({ title: 'Rastreio criado e sincronizado com sucesso' });
-        } catch (apiError) {
-          console.error('Tracking API error:', apiError);
-          toast({ 
-            title: 'Rastreio criado',
-            description: 'Use o botão Atualizar para sincronizar',
-            variant: 'destructive'
-          });
+      // Enviar para API de rastreio e processar resposta
+      try {
+        const apiResponse = await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
+        
+        // Processar dados da API
+        const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
+        const trackingData = parseTrackingResponse(apiData);
+        
+        if (trackingData && insertedData) {
+          // Atualizar registro com dados da API
+          await supabase.from('shipments').update({
+            tracker_id: trackingData.tracker.trackerId,
+            tracking_events: trackingData.events as any,
+            shipment_data: trackingData.shipment as any,
+            status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
+            last_update: new Date().toISOString()
+          }).eq('id', insertedData.id);
         }
+        
+        toast({ title: 'Rastreio criado e sincronizado com sucesso' });
+      } catch (apiError) {
+        console.error('Tracking API error:', apiError);
+        toast({ 
+          title: 'Rastreio criado',
+          description: 'Use o botão Atualizar para sincronizar',
+          variant: 'destructive'
+        });
+      }
 
         setTrackingCode('');
         setAutoTracking(true);

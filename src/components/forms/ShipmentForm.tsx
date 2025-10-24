@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
-import { sendToTrackingAPI } from '@/lib/tracking-api';
+import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -108,7 +108,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
         return;
       }
 
-      const { error } = await supabase
+      const { data: insertedData, error } = await supabase
         .from('shipments')
         .insert({
           customer_id: customer.id,
@@ -116,13 +116,31 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
           tracking_code: trackingCode,
           auto_tracking: autoTracking,
           status: 'pending',
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Enviar para API de rastreio
+      // Enviar para API de rastreio e processar resposta
       try {
-        await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
+        const apiResponse = await sendToTrackingAPI(customer.id, trackingCode, 'new_track');
+        
+        // Processar dados da API
+        const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
+        const trackingData = parseTrackingResponse(apiData);
+        
+        if (trackingData && insertedData) {
+          // Atualizar registro com dados da API
+          await supabase.from('shipments').update({
+            tracker_id: trackingData.tracker.trackerId,
+            tracking_events: trackingData.events as any,
+            shipment_data: trackingData.shipment as any,
+            status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
+            last_update: new Date().toISOString()
+          }).eq('id', insertedData.id);
+        }
+        
         toast({
           title: 'Rastreio adicionado',
           description: 'Código enviado para processamento',

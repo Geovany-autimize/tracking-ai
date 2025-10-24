@@ -13,8 +13,9 @@ import {
 } from '@/lib/import-processor';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
-import { sendToTrackingAPI } from '@/lib/tracking-api';
+import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ImportDialogProps {
   type: 'shipments' | 'customers';
@@ -92,7 +93,33 @@ export function ImportDialog({ type, open, onOpenChange, onImport }: ImportDialo
       if (type === 'shipments' && customer?.id) {
         const syncPromises = validData.map(async (shipment: any) => {
           try {
-            await sendToTrackingAPI(customer.id, shipment.tracking_code, 'new_track');
+            const apiResponse = await sendToTrackingAPI(customer.id, shipment.tracking_code, 'new_track');
+            
+            // Processar dados da API
+            const apiData = Array.isArray(apiResponse) ? apiResponse[0] : apiResponse;
+            const trackingData = parseTrackingResponse(apiData);
+            
+            if (trackingData) {
+              // Buscar o ID do shipment recém-criado
+              const { data: shipmentRecord } = await supabase
+                .from('shipments')
+                .select('id')
+                .eq('customer_id', customer.id)
+                .eq('tracking_code', shipment.tracking_code)
+                .single();
+              
+              if (shipmentRecord) {
+                // Atualizar com dados da API
+                await supabase.from('shipments').update({
+                  tracker_id: trackingData.tracker.trackerId,
+                  tracking_events: trackingData.events as any,
+                  shipment_data: trackingData.shipment as any,
+                  status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
+                  last_update: new Date().toISOString()
+                }).eq('id', shipmentRecord.id);
+              }
+            }
+            
             return { success: true, code: shipment.tracking_code };
           } catch (error) {
             return { success: false, code: shipment.tracking_code };
