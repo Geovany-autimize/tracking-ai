@@ -25,28 +25,28 @@ import { cn } from '@/lib/utils';
 const statusConfig = {
   pending: {
     label: 'Pendente',
-    icon: <Clock className="h-5 w-5" />,
-    badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20 text-base px-4 py-2'
+    icon: <Clock className="h-4 w-4" />,
+    badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20'
   },
   in_transit: {
     label: 'Em Trânsito',
-    icon: <Package className="h-5 w-5" />,
-    badgeClass: 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20 text-base px-4 py-2'
+    icon: <Package className="h-4 w-4" />,
+    badgeClass: 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20'
   },
   out_for_delivery: {
     label: 'Saiu para Entrega',
-    icon: <Truck className="h-5 w-5" />,
-    badgeClass: 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20 text-base px-4 py-2'
+    icon: <Truck className="h-4 w-4" />,
+    badgeClass: 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20'
   },
   delivered: {
     label: 'Entregue',
-    icon: <CheckCircle2 className="h-5 w-5" />,
-    badgeClass: 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20 text-base px-4 py-2'
+    icon: <CheckCircle2 className="h-4 w-4" />,
+    badgeClass: 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20'
   },
   exception: {
     label: 'Exceção',
-    icon: <AlertCircle className="h-5 w-5" />,
-    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20 text-base px-4 py-2'
+    icon: <AlertCircle className="h-4 w-4" />,
+    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'
   }
 };
 export default function ShipmentDetails() {
@@ -260,11 +260,13 @@ export default function ShipmentDetails() {
           <CardContent>
             <div className="flex flex-col lg:flex-row lg:items-center gap-6">
               {/* Status Badge - Destaque Principal */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 lg:w-[240px]">
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Status Atual</Label>
-                  <Badge className={cn("gap-3", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || 'text-base px-4 py-2')}>
-                    {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                  <Badge className={cn("gap-2 px-3 py-1.5 text-sm", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || '')}>
+                    <span className="flex-shrink-0">
+                      {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                    </span>
                     <span className="font-semibold">
                       {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
                     </span>
@@ -273,7 +275,7 @@ export default function ShipmentDetails() {
               </div>
 
               {/* Informações do Código - Layout Horizontal */}
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 lg:pl-6">
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Código de Rastreio</Label>
                   <p className="font-mono font-semibold text-lg">{shipmentData.tracking_code}</p>
@@ -290,8 +292,8 @@ export default function ShipmentDetails() {
               {/* Rastreamento Automático */}
               <div className="flex-shrink-0 border-l pl-6">
                 <div className="flex flex-col items-center gap-2">
-                  <Label htmlFor="auto-tracking" className="text-xs text-muted-foreground text-center">
-                    Rastreamento<br/>Automático
+                  <Label htmlFor="auto-tracking" className="text-xs text-muted-foreground whitespace-nowrap">
+                    Auto Tracking
                   </Label>
                   <Switch 
                     id="auto-tracking" 
