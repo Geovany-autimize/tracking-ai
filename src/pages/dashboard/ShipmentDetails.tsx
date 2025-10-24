@@ -259,45 +259,6 @@ export default function ShipmentDetails() {
       <div className="space-y-6">
         {/* Informações do Cliente e Rastreio - Layout de Fora a Fora */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cliente Vinculado */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5" />
-                Cliente Vinculado
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="py-[30px]">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Nome</p>
-                  <p className="text-lg font-semibold">{customerName}</p>
-                </div>
-                
-                {shipmentData.shipment_customer && <>
-                    {shipmentData.shipment_customer.email && <div>
-                        <p className="text-sm text-muted-foreground mb-1">Email</p>
-                        <p className="text-sm">{shipmentData.shipment_customer.email}</p>
-                      </div>}
-                    {shipmentData.shipment_customer.phone && <div>
-                        <p className="text-sm text-muted-foreground mb-1">Telefone</p>
-                        <p className="text-sm">{shipmentData.shipment_customer.phone}</p>
-                      </div>}
-                  </>}
-
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)} className="flex-1 px-0 mx-0">
-                    <RefreshIcon className="h-4 w-4 mr-2" />
-                    Trocar Cliente
-                  </Button>
-                  {shipmentData.shipment_customer && <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/customers/${shipmentData.shipment_customer.id}`)}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Informações do Rastreio */}
           <Card>
             <CardHeader>
@@ -336,6 +297,45 @@ export default function ShipmentDetails() {
                   disabled={updateAutoTrackingMutation.isPending}
                 />
                 <Label htmlFor="auto-tracking">Rastreamento Automático</Label>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cliente Vinculado */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5" />
+                Cliente Vinculado
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="py-8">
+              <div className="space-y-6">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Nome</p>
+                  <p className="text-lg font-semibold">{customerName}</p>
+                </div>
+                
+                {shipmentData.shipment_customer && <>
+                    {shipmentData.shipment_customer.email && <div>
+                        <p className="text-sm text-muted-foreground mb-1">Email</p>
+                        <p className="text-sm">{shipmentData.shipment_customer.email}</p>
+                      </div>}
+                    {shipmentData.shipment_customer.phone && <div>
+                        <p className="text-sm text-muted-foreground mb-1">Telefone</p>
+                        <p className="text-sm">{shipmentData.shipment_customer.phone}</p>
+                      </div>}
+                  </>}
+
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowChangeCustomerDialog(true)} className="flex-1 px-0 mx-0">
+                    <RefreshIcon className="h-4 w-4 mr-2" />
+                    Trocar Cliente
+                  </Button>
+                  {shipmentData.shipment_customer && <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/customers/${shipmentData.shipment_customer.id}`)}>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>}
+                </div>
               </div>
             </CardContent>
           </Card>
