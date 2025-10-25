@@ -71,19 +71,29 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error creating template:', error);
-      let message = 'Erro ao criar template';
+      let message = 'Não foi possível criar o template. Por favor, tente novamente.';
       
       // Handle unique constraint violation
       if (error instanceof Error) {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
-          message = 'Já existe um template com este nome. Escolha um nome diferente.';
+          const slug = generateSlug((error as any).template?.name || '');
+          message = `⚠️ Template não criado: Já existe um template com o nome "${slug}". Por favor, escolha um nome diferente.`;
+        } else if (error.message.includes('Nome do template inválido')) {
+          message = '⚠️ Template não criado: ' + error.message;
         } else {
-          message = error.message;
+          message = '⚠️ Erro ao criar template: ' + error.message;
         }
       }
       
-      toast.error(message);
+      toast.error(message, {
+        duration: 5000,
+        style: {
+          background: 'hsl(var(--destructive))',
+          color: 'hsl(var(--destructive-foreground))',
+          border: '1px solid hsl(var(--destructive))',
+        },
+      });
     },
   });
 
@@ -124,19 +134,28 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error updating template:', error);
-      let message = 'Erro ao atualizar template';
+      let message = 'Não foi possível atualizar o template. Por favor, tente novamente.';
       
       // Handle unique constraint violation
       if (error instanceof Error) {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
-          message = 'Já existe um template com este nome. Escolha um nome diferente.';
+          message = '⚠️ Template não atualizado: Já existe outro template com este nome. Por favor, escolha um nome diferente.';
+        } else if (error.message.includes('Nome do template inválido')) {
+          message = '⚠️ Template não atualizado: ' + error.message;
         } else {
-          message = error.message;
+          message = '⚠️ Erro ao atualizar template: ' + error.message;
         }
       }
       
-      toast.error(message);
+      toast.error(message, {
+        duration: 5000,
+        style: {
+          background: 'hsl(var(--destructive))',
+          color: 'hsl(var(--destructive-foreground))',
+          border: '1px solid hsl(var(--destructive))',
+        },
+      });
     },
   });
 
