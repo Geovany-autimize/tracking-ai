@@ -167,25 +167,64 @@ function translateStatus(statusMilestone: string): string {
   return statusMap[statusMilestone] || 'Em processamento';
 }
 
-// Envia mensagem WhatsApp (via N8N/Evolution API)
-async function sendWhatsAppMessage(
-  phone: string,
-  message: string,
-  customerId: string
-): Promise<void> {
-  // TODO: Implementar integração real com N8N/Evolution API
-  // Por enquanto, apenas log
-  console.log(`[WhatsApp] Sending to ${phone} (customer: ${customerId}):`, message);
+// Busca dados da instância WhatsApp
+async function getWhatsAppInstanceData(customerId: string): Promise<any | null> {
+  try {
+    const response = await fetch('https://webhook-n8n.autimize.com.br/webhook/cbdf4e87-e7be-4064-b467-97d1275acc2b', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: customerId }),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch WhatsApp instance data');
+      return null;
+    }
+
+    const data = await response.json();
+    const instanceData = data?.[0]?.data?.[0];
+    
+    return instanceData || null;
+  } catch (error) {
+    console.error('Error fetching WhatsApp instance data:', error);
+    return null;
+  }
+}
+
+// Envia dados para N8N webhook
+async function sendToN8NWebhook(data: {
+  customer: {
+    full_name: string;
+    phone: string;
+  };
+  tracking: {
+    tracking_code: string;
+    tracker_id: string;
+    latest_event: any;
+  };
+  template: {
+    name: string;
+    content: string;
+  };
+  whatsapp_instance: any;
+}): Promise<void> {
+  const webhookUrl = 'https://webhook-n8n.autimize.com.br/webhook/037e0082-799c-4fd9-8521-0e3a60cc1eb8';
   
-  // Exemplo de como seria a chamada real:
-  // const n8nWebhookUrl = Deno.env.get('N8N_WHATSAPP_WEBHOOK_URL');
-  // if (!n8nWebhookUrl) return;
-  // 
-  // await fetch(n8nWebhookUrl, {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ phone, message, customerId }),
-  // });
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      console.error('Failed to send data to N8N webhook:', await response.text());
+    } else {
+      console.log('Successfully sent data to N8N webhook');
+    }
+  } catch (error) {
+    console.error('Error sending to N8N webhook:', error);
+  }
 }
 
 // Enriquece eventos com nomes das transportadoras
@@ -400,6 +439,9 @@ Deno.serve(async (req) => {
             if (customerError) {
               console.error('Error fetching shipment customer:', customerError);
             } else if (shipmentCustomer && shipmentCustomer.phone) {
+              // Buscar dados da instância WhatsApp
+              const whatsappInstance = await getWhatsAppInstanceData(shipment.customer_id);
+              
               // Processar cada template
               for (const template of templates) {
                 const templateVars = {
@@ -419,14 +461,25 @@ Deno.serve(async (req) => {
 
                 const processedMessage = processTemplate(template.message_content, templateVars);
                 
-                // Enviar mensagem
-                await sendWhatsAppMessage(
-                  shipmentCustomer.phone,
-                  processedMessage,
-                  shipment.customer_id
-                );
+                // Enviar dados completos para N8N webhook
+                await sendToN8NWebhook({
+                  customer: {
+                    full_name: `${shipmentCustomer.first_name} ${shipmentCustomer.last_name}`,
+                    phone: shipmentCustomer.phone,
+                  },
+                  tracking: {
+                    tracking_code: tracking.tracker.trackingNumber,
+                    tracker_id: trackerId,
+                    latest_event: latestEvent,
+                  },
+                  template: {
+                    name: template.name,
+                    content: processedMessage,
+                  },
+                  whatsapp_instance: whatsappInstance,
+                });
 
-                console.log(`Sent WhatsApp message for template: ${template.name}`);
+                console.log(`Sent data to N8N webhook for template: ${template.name}`);
               }
             } else {
               console.log('No phone number found for shipment customer');
