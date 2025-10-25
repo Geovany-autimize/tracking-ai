@@ -43,8 +43,6 @@ export function CreateEditTemplateDialog({
   viewOnly = false,
 }: CreateEditTemplateDialogProps) {
   const [name, setName] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [trigger, setTrigger] = useState<NotificationTrigger | ''>('');
   const [message, setMessage] = useState('');
   const [showVariables, setShowVariables] = useState(false);
   const [isEditing, setIsEditing] = useState(!viewOnly);
@@ -78,14 +76,10 @@ export function CreateEditTemplateDialog({
   useEffect(() => {
     if (template) {
       setName(template.name);
-      setIsActive(template.is_active);
-      setTrigger(template.notification_type);
       setMessage(template.message_content);
       setIsEditing(!viewOnly);
     } else {
       setName('');
-      setIsActive(true);
-      setTrigger('');
       setMessage('');
       setIsEditing(true);
     }
@@ -154,7 +148,6 @@ export function CreateEditTemplateDialog({
   };
 
   const canSave = name.trim() !== '' && 
-    trigger !== '' && 
     message.trim() !== '' && 
     validateMessage(message) &&
     !nameError;
@@ -164,13 +157,17 @@ export function CreateEditTemplateDialog({
 
     const data = {
       name: name.trim(),
-      is_active: isActive,
-      notification_type: trigger as NotificationTrigger,
       message_content: message.trim(),
+      notification_type: [] as any,
+      is_active: false,
     };
 
     if (template) {
-      onUpdate({ ...data, id: template.id });
+      onUpdate({ 
+        name: data.name,
+        message_content: data.message_content,
+        id: template.id 
+      });
     } else {
       onSave(data);
     }
@@ -213,38 +210,6 @@ export function CreateEditTemplateDialog({
                   Use apenas letras minúsculas, números, hífens (-) e underscores (_)
                 </p>
               )}
-            </div>
-
-            {/* Template Ativo */}
-            <div className="flex items-center gap-2">
-              <Switch
-                id="active"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-                disabled={viewOnly && !isEditing}
-              />
-              <Label htmlFor="active">Template Ativo</Label>
-            </div>
-
-            {/* Gatilho */}
-            <div className="space-y-2">
-              <Label htmlFor="trigger">Gatilho de Envio</Label>
-              <Select 
-                value={trigger} 
-                onValueChange={(value) => setTrigger(value as NotificationTrigger)}
-                disabled={viewOnly && !isEditing}
-              >
-                <SelectTrigger id="trigger">
-                  <SelectValue placeholder="Selecione um gatilho" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRIGGER_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Mensagem */}

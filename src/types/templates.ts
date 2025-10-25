@@ -13,7 +13,7 @@ export interface MessageTemplate {
   id: string;
   customer_id: string;
   name: string;
-  notification_type: NotificationTrigger;
+  notification_type: string[];
   is_active: boolean;
   message_content: string;
   created_at: string;

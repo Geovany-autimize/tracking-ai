@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageTemplate } from '@/types/templates';
+import { MessageTemplate, NotificationTrigger } from '@/types/templates';
 import { toast } from 'sonner';
 
 export function useTemplates() {
@@ -16,13 +16,70 @@ export function useTemplates() {
 
       if (error) throw error;
       
-      // Convert notification_type from array to single value for compatibility
-      return data.map(template => ({
-        ...template,
-        notification_type: Array.isArray(template.notification_type) 
-          ? template.notification_type[0] 
-          : template.notification_type
-      })) as MessageTemplate[];
+      return data as MessageTemplate[];
+    },
+  });
+
+  // Obter template ativo para um gatilho específico
+  const getActiveTemplateForTrigger = (trigger: NotificationTrigger): MessageTemplate | null => {
+    if (!templates) return null;
+    
+    return templates.find(t => 
+      t.is_active && 
+      Array.isArray(t.notification_type) && 
+      t.notification_type.includes(trigger)
+    ) || null;
+  };
+
+  // Atribuir template a um gatilho
+  const assignTemplateMutation = useMutation({
+    mutationFn: async ({ trigger, templateId }: { trigger: NotificationTrigger; templateId: string | null }) => {
+      // 1. Desativar template atual desse trigger (se existir)
+      const activeTemplate = getActiveTemplateForTrigger(trigger);
+      if (activeTemplate) {
+        const updatedTypes = (activeTemplate.notification_type as string[]).filter(t => t !== trigger);
+        const shouldDeactivate = updatedTypes.length === 0;
+        
+        await supabase
+          .from('message_templates')
+          .update({ 
+            notification_type: updatedTypes.length > 0 ? updatedTypes : [],
+            is_active: !shouldDeactivate
+          })
+          .eq('id', activeTemplate.id);
+      }
+      
+      // 2. Ativar novo template (se templateId não for null)
+      if (templateId) {
+        const { data: template } = await supabase
+          .from('message_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+        
+        if (template) {
+          const currentTypes = Array.isArray(template.notification_type) ? template.notification_type : [];
+          const newTypes = [...new Set([...currentTypes, trigger])]; // Remove duplicatas
+          
+          const { error } = await supabase
+            .from('message_templates')
+            .update({ 
+              notification_type: newTypes,
+              is_active: true
+            })
+            .eq('id', templateId);
+          
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+      toast.success('Template atribuído com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Error assigning template:', error);
+      toast.error('Erro ao atribuir template');
     },
   });
 
@@ -31,10 +88,8 @@ export function useTemplates() {
       const payload: any = {
         ...template,
         name: template.name.trim(),
-        // DB expects text[]; UI uses single value
-        notification_type: Array.isArray((template as any).notification_type)
-          ? (template as any).notification_type
-          : [template.notification_type as any],
+        notification_type: [], // Templates criados sem gatilho inicialmente
+        is_active: false,
       };
 
       const { data, error } = await supabase
@@ -54,7 +109,6 @@ export function useTemplates() {
       console.error('Error creating template:', error);
       let message = 'Não foi possível criar o template. Por favor, tente novamente.';
       
-      // Handle unique constraint violation
       if (error instanceof Error) {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
@@ -79,15 +133,8 @@ export function useTemplates() {
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
       const payload: any = { ...template };
       
-      // Se está mudando o nome, trim e valida
       if (template.name) {
         payload.name = template.name.trim();
-      }
-
-      if (template.notification_type) {
-        payload.notification_type = Array.isArray((template as any).notification_type)
-          ? (template as any).notification_type
-          : [template.notification_type as any];
       }
 
       const { data, error } = await supabase
@@ -108,7 +155,6 @@ export function useTemplates() {
       console.error('Error updating template:', error);
       let message = 'Não foi possível atualizar o template. Por favor, tente novamente.';
       
-      // Handle unique constraint violation
       if (error instanceof Error) {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
@@ -158,15 +204,10 @@ export function useTemplates() {
 
       if (fetchError) throw fetchError;
 
-      const notificationType = Array.isArray(original.notification_type)
-        ? original.notification_type
-        : [original.notification_type];
-
       // Generate unique name for duplicate
       let copyName = `${original.name}_copia`;
       let counter = 1;
       
-      // Check if name exists, increment counter until we find unique name
       while (true) {
         const { data: existing } = await supabase
           .from('message_templates')
@@ -184,7 +225,7 @@ export function useTemplates() {
         .from('message_templates')
         .insert([{
           name: copyName,
-          notification_type: notificationType,
+          notification_type: [], // Duplicatas criadas sem gatilho
           is_active: false,
           message_content: original.message_content,
           customer_id: original.customer_id,
@@ -205,46 +246,14 @@ export function useTemplates() {
     },
   });
 
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ id, isActive, notificationType }: { id: string; isActive: boolean; notificationType: string }) => {
-      // Se estiver ativando, desativa outros templates do mesmo tipo primeiro
-      if (isActive) {
-        const { error: deactivateError } = await supabase
-          .from('message_templates')
-          .update({ is_active: false })
-          .contains('notification_type', [notificationType])
-          .neq('id', id);
-
-        if (deactivateError) throw deactivateError;
-      }
-
-      const { data, error } = await supabase
-        .from('message_templates')
-        .update({ is_active: isActive })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
-      toast.success('Status atualizado com sucesso!');
-    },
-    onError: (error) => {
-      console.error('Error toggling template:', error);
-      toast.error('Erro ao atualizar status');
-    },
-  });
-
   return {
     templates: templates || [],
     isLoading,
+    getActiveTemplateForTrigger,
+    assignTemplate: assignTemplateMutation.mutate,
     createTemplate: createMutation.mutate,
     updateTemplate: updateMutation.mutate,
     deleteTemplate: deleteMutation.mutate,
     duplicateTemplate: duplicateMutation.mutate,
-    toggleActive: toggleActiveMutation.mutate,
   };
 }
