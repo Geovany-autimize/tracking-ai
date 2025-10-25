@@ -21,6 +21,7 @@ import TemplatesPage from "./pages/dashboard/Templates";
 import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
+import BillingPage from "./pages/dashboard/Billing";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="insights" element={<InsightsPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="settings/billing" element={<BillingPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
