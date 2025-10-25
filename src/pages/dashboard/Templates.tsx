@@ -1,153 +1,310 @@
 import { useState } from 'react';
-import PageHeader from '@/components/app/PageHeader';
-import { TemplatesList } from '@/components/templates/TemplatesList';
-import { TemplateEditor } from '@/components/templates/TemplateEditor';
-import { WhatsAppPreview } from '@/components/templates/WhatsAppPreview';
-import { useTemplates } from '@/hooks/use-templates';
-import { MessageTemplate } from '@/types/templates';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Search, MoreVertical, Eye, Pencil, Copy, Trash2, MessageSquare } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { useTemplates } from '@/hooks/use-templates';
+import { MessageTemplate, TRIGGER_OPTIONS } from '@/types/templates';
+import { CreateEditTemplateDialog } from '@/components/templates/CreateEditTemplateDialog';
+import { ViewTemplateDialog } from '@/components/templates/ViewTemplateDialog';
 
-export default function Templates() {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useTemplates();
+export default function TemplatesPage() {
+  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate } = useTemplates();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
-  const [isNew, setIsNew] = useState(false);
-  const [message, setMessage] = useState('');
-  const isMobile = useIsMobile();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
+
+  const filteredTemplates = templates.filter((template) => {
+    const matchesSearch = template.name.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = 
+      statusFilter === 'all' ||
+      (statusFilter === 'active' && template.is_active) ||
+      (statusFilter === 'inactive' && !template.is_active);
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleView = (template: MessageTemplate) => {
+    setSelectedTemplate(template);
+    setShowViewDialog(true);
+  };
+
+  const handleEdit = (template: MessageTemplate) => {
+    setSelectedTemplate(template);
+    setShowCreateDialog(true);
+    setShowViewDialog(false);
+  };
 
   const handleNew = () => {
     setSelectedTemplate(null);
-    setIsNew(true);
-    setMessage('');
+    setShowCreateDialog(true);
   };
 
-  const handleSelect = (template: MessageTemplate) => {
-    setSelectedTemplate(template);
-    setIsNew(false);
-    setMessage(template.message_content);
-  };
-
-  const handleCancel = () => {
-    setSelectedTemplate(null);
-    setIsNew(false);
-    setMessage('');
-  };
-
-  const handleSave = (template: Omit<MessageTemplate, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => {
-    createTemplate(template);
-    handleCancel();
-  };
-
-  const handleUpdate = (template: Partial<MessageTemplate> & { id: string }) => {
-    updateTemplate(template);
-    handleCancel();
+  const handleDuplicate = (template: MessageTemplate) => {
+    duplicateTemplate(template.id);
   };
 
   const handleDelete = (id: string) => {
-    deleteTemplate(id);
-    handleCancel();
+    setTemplateToDelete(id);
+    setDeleteDialogOpen(true);
   };
 
-  if (isMobile) {
+  const confirmDelete = () => {
+    if (templateToDelete) {
+      deleteTemplate(templateToDelete);
+      setTemplateToDelete(null);
+    }
+    setDeleteDialogOpen(false);
+  };
+
+  const getTriggerLabel = (trigger: string) => {
+    const option = TRIGGER_OPTIONS.find((t) => t.value === trigger);
+    return option?.label || trigger;
+  };
+
+  if (isLoading) {
     return (
-      <div className="container mx-auto p-4 md:p-6 space-y-6">
-        <PageHeader
-          title="Templates de Mensagens"
-          description="Crie e gerencie templates de mensagens WhatsApp para seus clientes"
-        />
-
-        <Tabs defaultValue="list" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="list">Templates</TabsTrigger>
-            <TabsTrigger value="editor" disabled={!selectedTemplate && !isNew}>
-              Editor
-            </TabsTrigger>
-            <TabsTrigger value="preview" disabled={!message}>
-              Preview
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="list" className="mt-4">
-            <TemplatesList
-              templates={templates}
-              selectedId={selectedTemplate?.id}
-              onSelect={handleSelect}
-              onNew={handleNew}
-            />
-          </TabsContent>
-
-          <TabsContent value="editor" className="mt-4">
-            <TemplateEditor
-              template={isNew ? null : selectedTemplate}
-              onSave={handleSave}
-              onUpdate={handleUpdate}
-              onDelete={handleDelete}
-              onCancel={handleCancel}
-              onMessageChange={setMessage}
-            />
-          </TabsContent>
-
-          <TabsContent value="preview" className="mt-4">
-            <WhatsAppPreview message={message} />
-          </TabsContent>
-        </Tabs>
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-2xl font-semibold">Templates de Mensagens</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Gerencie templates de WhatsApp para seus clientes
+            </p>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <PageHeader
-        title="Templates de Mensagens"
-        description="Crie e gerencie templates de mensagens WhatsApp para seus clientes"
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <h2 className="text-2xl font-semibold">Templates de Mensagens</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Gerencie templates de WhatsApp para seus clientes
+          </p>
+        </div>
+        <Button onClick={handleNew} className="gap-2 shrink-0">
+          <Plus className="h-4 w-4" />
+          Novo Template
+        </Button>
+      </div>
+
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar templates..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="active">Ativos</SelectItem>
+            <SelectItem value="inactive">Inativos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Templates Table */}
+      {filteredTemplates.length === 0 ? (
+        <Card className="p-12">
+          <div className="flex flex-col items-center text-center">
+            <MessageSquare className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {search || statusFilter !== 'all' 
+                ? 'Nenhum template encontrado' 
+                : 'Nenhum template criado'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {search || statusFilter !== 'all'
+                ? 'Tente ajustar os filtros de busca'
+                : 'Crie seu primeiro template de mensagem para começar'}
+            </p>
+            {!search && statusFilter === 'all' && (
+              <Button onClick={handleNew}>
+                <Plus className="mr-2 h-4 w-4" />
+                Criar Primeiro Template
+              </Button>
+            )}
+          </div>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Lista de Templates</CardTitle>
+            <CardDescription>
+              Total de {filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''} 
+              {statusFilter !== 'all' && ` (${statusFilter === 'active' ? 'ativos' : 'inativos'})`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Gatilhos</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTemplates.map((template) => (
+                    <TableRow key={template.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium cursor-pointer" onClick={() => handleView(template)}>
+                        {template.name}
+                      </TableCell>
+                      <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
+                        <div className="flex flex-wrap gap-1">
+                          {template.notification_type.slice(0, 2).map((trigger) => (
+                            <Badge key={trigger} variant="secondary" className="text-xs">
+                              {getTriggerLabel(trigger)}
+                            </Badge>
+                          ))}
+                          {template.notification_type.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{template.notification_type.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
+                        <Badge variant={template.is_active ? 'default' : 'secondary'}>
+                          {template.is_active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground cursor-pointer" onClick={() => handleView(template)}>
+                        {format(new Date(template.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleView(template)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(template)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicate(template)}>
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(template.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dialogs */}
+      <CreateEditTemplateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        template={selectedTemplate}
+        onSave={(data) => {
+          createTemplate(data);
+          setShowCreateDialog(false);
+        }}
+        onUpdate={(data) => {
+          updateTemplate(data);
+          setShowCreateDialog(false);
+        }}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[calc(100vh-12rem)]">
-        {/* Templates List - Left Sidebar */}
-        <div className="lg:col-span-3">
-          <TemplatesList
-            templates={templates}
-            selectedId={selectedTemplate?.id}
-            onSelect={handleSelect}
-            onNew={handleNew}
-          />
-        </div>
+      <ViewTemplateDialog
+        open={showViewDialog}
+        onOpenChange={setShowViewDialog}
+        template={selectedTemplate}
+        onEdit={handleEdit}
+      />
 
-        {/* Editor - Center */}
-        <div className="lg:col-span-5">
-          <TemplateEditor
-            template={isNew ? null : selectedTemplate}
-            onSave={handleSave}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-            onCancel={handleCancel}
-            onMessageChange={setMessage}
-          />
-        </div>
-
-        {/* Preview - Right Sidebar (Desktop only) */}
-        <div className="hidden xl:block lg:col-span-4">
-          <WhatsAppPreview message={message} />
-        </div>
-
-        {/* Preview Button for Tablet */}
-        <div className="xl:hidden lg:col-span-4 flex items-start">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="w-full">
-                <Eye className="mr-2 h-4 w-4" />
-                Ver Preview
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md">
-              <WhatsAppPreview message={message} />
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este template? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

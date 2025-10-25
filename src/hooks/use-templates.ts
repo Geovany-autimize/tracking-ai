@@ -23,10 +23,7 @@ export function useTemplates() {
     mutationFn: async (template: Omit<MessageTemplate, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => {
       const { data, error } = await supabase
         .from('message_templates')
-        .insert([{
-          ...template,
-          customer_id: '', // Will be set by RLS
-        }])
+        .insert([template as any])
         .select()
         .single();
 
@@ -84,11 +81,46 @@ export function useTemplates() {
     },
   });
 
+  const duplicateMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const { data: original, error: fetchError } = await supabase
+        .from('message_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const { data, error } = await supabase
+        .from('message_templates')
+        .insert([{
+          name: `${original.name} (cópia)`,
+          notification_type: original.notification_type,
+          is_active: false,
+          message_content: original.message_content,
+        } as any])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+      toast.success('Template duplicado com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Error duplicating template:', error);
+      toast.error('Erro ao duplicar template');
+    },
+  });
+
   return {
     templates: templates || [],
     isLoading,
     createTemplate: createMutation.mutate,
     updateTemplate: updateMutation.mutate,
     deleteTemplate: deleteMutation.mutate,
+    duplicateTemplate: duplicateMutation.mutate,
   };
 }
