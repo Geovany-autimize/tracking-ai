@@ -23,7 +23,7 @@ export function NotificationBell() {
                 size="lg"
                 className={cn(
                   "relative hover:bg-muted transition-all duration-200 h-12 w-full",
-                  collapsed && "mx-auto justify-center"
+                  collapsed ? "mx-auto justify-center" : "justify-start"
                 )}
               >
                 <Bell className="h-5 w-5 shrink-0" />
