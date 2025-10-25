@@ -222,12 +222,27 @@ export default function TemplatesPage() {
                         {template.name}
                       </TableCell>
                       <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
-                        <Badge 
-                          variant="secondary" 
-                          className={`text-xs ${getTriggerColorClass(template.notification_type as any)}`}
-                        >
-                          {getTriggerLabel(template.notification_type)}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(template.notification_type) 
+                            ? template.notification_type.map((trigger) => (
+                                <Badge 
+                                  key={trigger}
+                                  variant="secondary" 
+                                  className={`text-xs ${getTriggerColorClass(trigger as any)}`}
+                                >
+                                  {getTriggerLabel(trigger)}
+                                </Badge>
+                              ))
+                            : (
+                                <Badge 
+                                  variant="secondary" 
+                                  className={`text-xs ${getTriggerColorClass(template.notification_type as any)}`}
+                                >
+                                  {getTriggerLabel(template.notification_type)}
+                                </Badge>
+                              )
+                          }
+                        </div>
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Switch
