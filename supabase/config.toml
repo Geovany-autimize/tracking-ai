@@ -1,5 +1,8 @@
 project_id = "pvnwcxfnazwqpfasuztv"
 
+[functions.generate-template]
+verify_jwt = false
+
 [functions.auth-signup]
 verify_jwt = false
 

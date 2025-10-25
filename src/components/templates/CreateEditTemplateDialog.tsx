@@ -17,9 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Code2, Bold, Italic, Pencil } from 'lucide-react';
+import { Loader2, Code2, Bold, Italic, Pencil, Sparkles } from 'lucide-react';
 import { MessageTemplate, TEMPLATE_VARIABLES, TRIGGER_OPTIONS, NotificationTrigger } from '@/types/templates';
 import { WhatsAppPreview } from './WhatsAppPreview';
+import { AiGenerationDialog } from './AiGenerationDialog';
 
 interface CreateEditTemplateDialogProps {
   open: boolean;
@@ -46,6 +47,8 @@ export function CreateEditTemplateDialog({
   const [message, setMessage] = useState('');
   const [showVariables, setShowVariables] = useState(false);
   const [isEditing, setIsEditing] = useState(!viewOnly);
+  const [showAiDialog, setShowAiDialog] = useState(false);
+  const [wasAiGenerated, setWasAiGenerated] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Validação de formato slug
@@ -78,10 +81,12 @@ export function CreateEditTemplateDialog({
       setName(template.name);
       setMessage(template.message_content);
       setIsEditing(!viewOnly);
+      setWasAiGenerated(false);
     } else {
       setName('');
       setMessage('');
       setIsEditing(true);
+      setWasAiGenerated(false);
     }
   }, [template, open, viewOnly]);
 
@@ -104,6 +109,15 @@ export function CreateEditTemplateDialog({
       const newPosition = start + variable.length;
       textarea.setSelectionRange(newPosition, newPosition);
     }, 0);
+  };
+
+  const handleAiGenerated = (generatedMessage: string, suggestedName: string) => {
+    setMessage(generatedMessage);
+    if (!template && !name) {
+      setName(suggestedName);
+    }
+    setWasAiGenerated(true);
+    setShowAiDialog(false);
   };
 
   const insertFormatting = (format: 'bold' | 'italic') => {
@@ -214,7 +228,14 @@ export function CreateEditTemplateDialog({
 
             {/* Mensagem */}
             <div className="space-y-2">
-              <Label htmlFor="message">Mensagem</Label>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="message">Mensagem</Label>
+                {wasAiGenerated && (
+                  <Badge variant="secondary" className="text-xs">
+                    ✨ Gerado por IA
+                  </Badge>
+                )}
+              </div>
               <Textarea
                 ref={textareaRef}
                 id="message"
@@ -228,6 +249,16 @@ export function CreateEditTemplateDialog({
               <div className="flex items-center justify-between">
                 {(!viewOnly || isEditing) && (
                   <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-2"
+                      onClick={() => setShowAiDialog(true)}
+                    >
+                      <Code2 className="h-3.5 w-3.5" />
+                      Gerar com IA
+                    </Button>
                     <Popover open={showVariables} onOpenChange={setShowVariables}>
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-8">
@@ -432,6 +463,13 @@ export function CreateEditTemplateDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Dialog de Geração com IA */}
+      <AiGenerationDialog
+        open={showAiDialog}
+        onOpenChange={setShowAiDialog}
+        onGenerate={handleAiGenerated}
+      />
     </Dialog>
   );
 }
