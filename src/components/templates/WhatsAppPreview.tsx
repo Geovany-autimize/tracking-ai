@@ -15,6 +15,14 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
     return processTemplate(message, exampleVars);
   }, [message]);
 
+  const formatWhatsAppText = (text: string) => {
+    // Process bold (*text*)
+    let formatted = text.replace(/\*([^\*]+)\*/g, '<strong>$1</strong>');
+    // Process italic (_text_)
+    formatted = formatted.replace(/_([^_]+)_/g, '<em>$1</em>');
+    return formatted;
+  };
+
   return (
     <Card className="w-full max-w-md mx-auto overflow-hidden border-0 shadow-lg">
       {/* WhatsApp Header */}
@@ -35,9 +43,10 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
         {previewMessage ? (
           <div className="flex justify-end">
             <div className="relative bg-[#d9fdd3] rounded-lg px-3 py-2 max-w-[85%] shadow-sm">
-              <p className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[1.4]">
-                {previewMessage}
-              </p>
+              <div 
+                className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[1.4]"
+                dangerouslySetInnerHTML={{ __html: formatWhatsAppText(previewMessage) }}
+              />
               <div className="flex items-center justify-end gap-1 mt-1">
                 <span className="text-[11px] text-[#667781]">
                   {format(new Date(), 'HH:mm')}

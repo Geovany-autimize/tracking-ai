@@ -15,7 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Loader2, Code2 } from 'lucide-react';
+import { Loader2, Code2, Bold, Italic } from 'lucide-react';
 import { MessageTemplate, TEMPLATE_VARIABLES, TRIGGER_OPTIONS, NotificationTrigger } from '@/types/templates';
 import { WhatsAppPreview } from './WhatsAppPreview';
 
@@ -41,7 +41,6 @@ export function CreateEditTemplateDialog({
   const [trigger, setTrigger] = useState<NotificationTrigger | ''>('');
   const [message, setMessage] = useState('');
   const [showVariables, setShowVariables] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -79,20 +78,35 @@ export function CreateEditTemplateDialog({
     }, 0);
   };
 
-  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const cursorPos = e.target.selectionStart;
-    
-    setMessage(value);
-    setCursorPosition(cursorPos);
+  const insertFormatting = (format: 'bold' | 'italic') => {
+    if (!textareaRef.current) return;
 
-    // Check if user typed "{{" to show variable suggestions
-    const textBeforeCursor = value.substring(0, cursorPos);
-    if (textBeforeCursor.endsWith('{{')) {
-      setShowVariables(true);
-    } else if (!textBeforeCursor.includes('{{') || textBeforeCursor.endsWith('}}')) {
-      setShowVariables(false);
-    }
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = message;
+    const selectedText = text.substring(start, end);
+    
+    const formatChar = format === 'bold' ? '*' : '_';
+    const formattedText = selectedText 
+      ? `${formatChar}${selectedText}${formatChar}`
+      : `${formatChar}${formatChar}`;
+    
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+    const newText = before + formattedText + after;
+    
+    setMessage(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      if (selectedText) {
+        textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
+      } else {
+        const newPosition = start + 1;
+        textarea.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
   };
 
   const validateMessage = (msg: string): boolean => {
@@ -179,79 +193,74 @@ export function CreateEditTemplateDialog({
 
             {/* Mensagem */}
             <div className="space-y-2">
+              <Label htmlFor="message">Mensagem</Label>
+              <Textarea
+                ref={textareaRef}
+                id="message"
+                placeholder="Digite sua mensagem aqui..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={8}
+                className="resize-none"
+              />
               <div className="flex items-center justify-between">
-                <Label htmlFor="message">Mensagem</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Code2 className="h-4 w-4" />
-                      Variáveis
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80 p-0" align="end">
-                    <Command>
-                      <CommandInput placeholder="Buscar variável..." />
-                      <CommandList>
-                        <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
-                        <CommandGroup heading="Variáveis Disponíveis">
-                          {TEMPLATE_VARIABLES.map((variable) => (
-                            <CommandItem
-                              key={variable.variable}
-                              onSelect={() => insertVariable(variable.variable)}
-                              className="cursor-pointer"
-                            >
-                              <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                                {variable.variable}
-                              </code>
-                              <span className="ml-2 text-sm text-muted-foreground">
-                                {variable.description}
-                              </span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <div className="flex items-center gap-2">
+                  <Popover open={showVariables} onOpenChange={setShowVariables}>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8">
+                        <Code2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-96 p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar variável..." className="h-9" />
+                        <CommandList>
+                          <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
+                          <CommandGroup>
+                            {TEMPLATE_VARIABLES.map((variable) => (
+                              <CommandItem
+                                key={variable.variable}
+                                onSelect={() => insertVariable(variable.variable)}
+                                className="cursor-pointer py-2"
+                              >
+                                <div className="flex flex-col gap-0.5">
+                                  <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
+                                    {variable.variable}
+                                  </code>
+                                  <span className="text-xs text-muted-foreground">
+                                    {variable.description}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8"
+                    onClick={() => insertFormatting('bold')}
+                    type="button"
+                  >
+                    <Bold className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8"
+                    onClick={() => insertFormatting('italic')}
+                    type="button"
+                  >
+                    <Italic className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {message.length}/1024 caracteres
+                </p>
               </div>
-              <div className="relative">
-                <Textarea
-                  ref={textareaRef}
-                  id="message"
-                  placeholder="Digite sua mensagem aqui... (digite {{ para ver variáveis)"
-                  value={message}
-                  onChange={handleMessageChange}
-                  rows={8}
-                  className="text-sm resize-none"
-                />
-                {showVariables && (
-                  <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
-                    <Command>
-                      <CommandList>
-                        <CommandGroup>
-                          {TEMPLATE_VARIABLES.map((variable) => (
-                            <CommandItem
-                              key={variable.variable}
-                              onSelect={() => insertVariable(variable.variable)}
-                              className="cursor-pointer"
-                            >
-                              <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
-                                {variable.variable}
-                              </code>
-                              <span className="ml-2 text-xs text-muted-foreground">
-                                {variable.description}
-                              </span>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {message.length}/1024 caracteres
-              </p>
             </div>
           </div>
 

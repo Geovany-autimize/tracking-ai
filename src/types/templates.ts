@@ -71,26 +71,26 @@ export interface TriggerOption {
 export const TRIGGER_OPTIONS: TriggerOption[] = [
   {
     value: 'status_update',
-    label: 'Atualização de Status',
-    description: 'Qualquer mudança no status',
+    label: '📦 Objeto Postado',
+    description: 'Quando o objeto é postado',
     icon: 'Package'
   },
   {
     value: 'out_for_delivery',
-    label: 'Saiu para Entrega',
+    label: '📍 Atualização de Status',
+    description: 'Qualquer mudança no status',
+    icon: 'Package'
+  },
+  {
+    value: 'delivery',
+    label: '🚚 Saiu para Entrega',
     description: 'Quando pedido sai para entrega',
     icon: 'Truck'
   },
   {
-    value: 'delivery',
-    label: 'Pedido Entregue',
+    value: 'exception',
+    label: '✅ Pedido Entregue',
     description: 'Quando pedido é entregue',
     icon: 'CheckCircle2'
-  },
-  {
-    value: 'exception',
-    label: 'Exceção/Problema',
-    description: 'Quando há algum problema',
-    icon: 'AlertCircle'
   }
 ];
