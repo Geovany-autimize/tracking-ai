@@ -51,6 +51,13 @@ export function CreateEditTemplateDialog({
   const [wasAiGenerated, setWasAiGenerated] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Reset do dialog de IA quando fechar o dialog principal
+  useEffect(() => {
+    if (!open) {
+      setShowAiDialog(false);
+    }
+  }, [open]);
+
   // Validação de formato slug
   const isValidSlugFormat = (value: string): boolean => {
     const slugPattern = /^[a-z0-9_-]*$/;

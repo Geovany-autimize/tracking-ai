@@ -18,21 +18,31 @@ interface AiGenerationDialogProps {
 }
 
 const TRIGGER_OPTIONS = [
-  { value: 'info_received', label: '📦 Informação Recebida', description: 'Primeira notificação quando pedido é registrado' },
-  { value: 'in_transit', label: '🚚 Em Trânsito', description: 'Pedido está a caminho' },
-  { value: 'out_for_delivery', label: '📍 Saiu para Entrega', description: 'Pedido está com o entregador' },
-  { value: 'delivered', label: '✅ Entregue', description: 'Pedido foi entregue com sucesso' },
-  { value: 'failed_attempt', label: '⚠️ Tentativa Falhou', description: 'Entrega não foi realizada' },
-  { value: 'available_for_pickup', label: '📮 Disponível para Retirada', description: 'Pedido pode ser retirado' },
-  { value: 'exception', label: '❌ Exceção', description: 'Problema no envio' },
-  { value: 'expired', label: '⏰ Expirado', description: 'Prazo de retirada expirou' },
-  { value: 'pending', label: '⏳ Pendente', description: 'Aguardando mais informações' }
+  { value: 'info_received', label: '📦 Informação Recebida' },
+  { value: 'in_transit', label: '🚚 Em Trânsito' },
+  { value: 'out_for_delivery', label: '📍 Saiu para Entrega' },
+  { value: 'delivered', label: '✅ Entregue' },
+  { value: 'failed_attempt', label: '⚠️ Tentativa Falhou' },
+  { value: 'available_for_pickup', label: '📮 Disponível para Retirada' },
+  { value: 'exception', label: '❌ Exceção' },
+  { value: 'expired', label: '⏰ Expirado' },
+  { value: 'pending', label: '⏳ Pendente' }
 ];
 
 export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: AiGenerationDialogProps) {
   const [selectedTrigger, setSelectedTrigger] = useState(trigger || 'in_transit');
   const [tone, setTone] = useState<'formal' | 'casual' | 'friendly'>('friendly');
-  const { generate, isGenerating, generatedData } = useAiTemplateGeneration();
+  const { generate, isGenerating, generatedData, reset } = useAiTemplateGeneration();
+
+  // Reset quando o dialog fecha
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      reset();
+      setSelectedTrigger(trigger || 'in_transit');
+      setTone('friendly');
+    }
+    onOpenChange(newOpen);
+  };
 
   const handleGenerate = () => {
     if (!selectedTrigger) {
@@ -53,8 +63,10 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
   const handleUseMessage = () => {
     if (generatedData) {
       onGenerate(generatedData.message, generatedData.suggestedName);
-      // Reset state
+      reset();
       setSelectedTrigger(trigger || 'in_transit');
+      setTone('friendly');
+      onOpenChange(false);
       toast.success('Mensagem inserida com sucesso!', {
         description: 'Você pode editá-la antes de salvar'
       });
@@ -62,7 +74,9 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
   };
 
   const handleCancel = () => {
+    reset();
     setSelectedTrigger(trigger || 'in_transit');
+    setTone('friendly');
     onOpenChange(false);
   };
 
@@ -73,7 +87,7 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -98,17 +112,11 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
               <SelectContent>
                 {TRIGGER_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
-                    <div className="flex flex-col">
-                      <span>{option.label}</span>
-                      <span className="text-xs text-muted-foreground">{option.description}</span>
-                    </div>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              A IA criará uma mensagem otimizada para este tipo de notificação
-            </p>
           </div>
 
           {/* Select de Tom */}

@@ -51,6 +51,7 @@ export function useAiTemplateGeneration() {
     generate: generateTemplate.mutate,
     isGenerating: generateTemplate.isPending,
     generatedData: generateTemplate.data,
-    error: generateTemplate.error
+    error: generateTemplate.error,
+    reset: generateTemplate.reset
   };
 }
