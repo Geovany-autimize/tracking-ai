@@ -6,6 +6,19 @@ import { toast } from 'sonner';
 export function useTemplates() {
   const queryClient = useQueryClient();
 
+  // Helper para gerar slug único do nome
+  const generateSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
+      .replace(/\s+/g, '_') // Substitui espaços por underscore
+      .replace(/_+/g, '_') // Remove underscores duplicados
+      .replace(/^_|_$/g, ''); // Remove underscores do início e fim
+  };
+
   const { data: templates, isLoading } = useQuery({
     queryKey: ['message-templates'],
     queryFn: async () => {
@@ -28,8 +41,22 @@ export function useTemplates() {
 
   const createMutation = useMutation({
     mutationFn: async (template: Omit<MessageTemplate, 'id' | 'created_at' | 'updated_at'>) => {
+      const slug = generateSlug(template.name);
+
+      // Verifica se já existe um template com esse slug
+      const { data: existing } = await supabase
+        .from('message_templates')
+        .select('id')
+        .eq('name', slug)
+        .maybeSingle();
+
+      if (existing) {
+        throw new Error('Já existe um template com este nome. Escolha um nome diferente.');
+      }
+
       const payload: any = {
         ...template,
+        name: slug,
         // DB expects text[]; UI uses single value
         notification_type: Array.isArray((template as any).notification_type)
           ? (template as any).notification_type
@@ -51,13 +78,33 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error creating template:', error);
-      toast.error('Erro ao criar template');
+      const message = error instanceof Error ? error.message : 'Erro ao criar template';
+      toast.error(message);
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
       const payload: any = { ...template };
+      
+      // Se está mudando o nome, gera novo slug e valida unicidade
+      if (template.name) {
+        const slug = generateSlug(template.name);
+        
+        const { data: existing } = await supabase
+          .from('message_templates')
+          .select('id')
+          .eq('name', slug)
+          .neq('id', id)
+          .maybeSingle();
+
+        if (existing) {
+          throw new Error('Já existe um template com este nome. Escolha um nome diferente.');
+        }
+
+        payload.name = slug;
+      }
+
       if (template.notification_type) {
         payload.notification_type = Array.isArray((template as any).notification_type)
           ? (template as any).notification_type
@@ -80,7 +127,8 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error updating template:', error);
-      toast.error('Erro ao atualizar template');
+      const message = error instanceof Error ? error.message : 'Erro ao atualizar template';
+      toast.error(message);
     },
   });
 
@@ -146,11 +194,13 @@ export function useTemplates() {
     mutationFn: async ({ id, isActive, notificationType }: { id: string; isActive: boolean; notificationType: string }) => {
       // Se estiver ativando, desativa outros templates do mesmo tipo primeiro
       if (isActive) {
-        await supabase
+        const { error: deactivateError } = await supabase
           .from('message_templates')
           .update({ is_active: false })
-          .eq('notification_type', [notificationType])
+          .contains('notification_type', [notificationType])
           .neq('id', id);
+
+        if (deactivateError) throw deactivateError;
       }
 
       const { data, error } = await supabase

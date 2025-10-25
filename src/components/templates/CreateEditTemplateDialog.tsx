@@ -171,6 +171,9 @@ export function CreateEditTemplateDialog({
                 onChange={(e) => setName(e.target.value)}
                 disabled={viewOnly && !isEditing}
               />
+              <p className="text-xs text-muted-foreground">
+                O nome será convertido automaticamente para formato slug (ex: pedido_saiu_para_entrega)
+              </p>
             </div>
 
             {/* Template Ativo */}

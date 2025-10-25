@@ -38,6 +38,7 @@ import { CreateEditTemplateDialog } from '@/components/templates/CreateEditTempl
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Switch } from '@/components/ui/switch';
+import { getTriggerColorClass } from '@/lib/trigger-colors';
 
 export default function TemplatesPage() {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, toggleActive } = useTemplates();
@@ -221,7 +222,10 @@ export default function TemplatesPage() {
                         {template.name}
                       </TableCell>
                       <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs ${getTriggerColorClass(template.notification_type as any)}`}
+                        >
                           {getTriggerLabel(template.notification_type)}
                         </Badge>
                       </TableCell>
