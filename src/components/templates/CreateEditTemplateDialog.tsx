@@ -211,7 +211,7 @@ export function CreateEditTemplateDialog({
                         <Code2 className="h-3.5 w-3.5" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-96 p-0 z-50" align="start">
+                    <PopoverContent className="w-96 p-0 z-50 max-h-[60vh] overflow-auto bg-popover" align="start">
                       <Command>
                         <CommandInput placeholder="Buscar variável..." className="h-9" />
                         <CommandList className="max-h-[300px] overflow-y-auto">
