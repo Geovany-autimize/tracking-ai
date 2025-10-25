@@ -1,8 +1,13 @@
 export type NotificationTrigger = 
-  | 'status_update'
-  | 'delivery'
+  | 'info_received'
+  | 'in_transit'
   | 'out_for_delivery'
-  | 'exception';
+  | 'failed_attempt'
+  | 'delivered'
+  | 'available_for_pickup'
+  | 'exception'
+  | 'pending'
+  | 'expired';
 
 export interface MessageTemplate {
   id: string;
@@ -270,27 +275,57 @@ export interface TriggerOption {
 
 export const TRIGGER_OPTIONS: TriggerOption[] = [
   {
-    value: 'status_update',
-    label: '📦 Objeto Postado',
-    description: 'Quando o objeto é postado',
+    value: 'info_received',
+    label: '📋 Informação Recebida',
+    description: 'Dispara quando a transportadora recebe as informações do envio',
+    icon: 'FileText'
+  },
+  {
+    value: 'in_transit',
+    label: '📦 Em Trânsito',
+    description: 'Dispara quando o objeto está em trânsito',
     icon: 'Package'
   },
   {
     value: 'out_for_delivery',
-    label: '📍 Atualização de Status',
-    description: 'Qualquer mudança no status',
-    icon: 'Package'
-  },
-  {
-    value: 'delivery',
     label: '🚚 Saiu para Entrega',
-    description: 'Quando pedido sai para entrega',
+    description: 'Dispara quando o pedido sai para entrega',
     icon: 'Truck'
   },
   {
-    value: 'exception',
-    label: '✅ Pedido Entregue',
-    description: 'Quando pedido é entregue',
+    value: 'available_for_pickup',
+    label: '📍 Disponível para Retirada',
+    description: 'Dispara quando o pedido está disponível para retirada',
+    icon: 'MapPin'
+  },
+  {
+    value: 'delivered',
+    label: '✅ Entregue',
+    description: 'Dispara quando o pedido é entregue ao destinatário',
     icon: 'CheckCircle2'
+  },
+  {
+    value: 'failed_attempt',
+    label: '⚠️ Tentativa Falhou',
+    description: 'Dispara quando há uma tentativa de entrega sem sucesso',
+    icon: 'AlertTriangle'
+  },
+  {
+    value: 'exception',
+    label: '❌ Exceção',
+    description: 'Dispara quando há um problema ou exceção na entrega',
+    icon: 'AlertCircle'
+  },
+  {
+    value: 'pending',
+    label: '⏳ Pendente',
+    description: 'Dispara quando o pedido está aguardando processamento',
+    icon: 'Clock'
+  },
+  {
+    value: 'expired',
+    label: '⏰ Rastreamento Expirado',
+    description: 'Dispara quando o rastreamento expira sem conclusão',
+    icon: 'Clock'
   }
 ];

@@ -1,4 +1,13 @@
-export type NotificationType = 'status_update' | 'delivery' | 'exception' | 'out_for_delivery';
+export type NotificationType = 
+  | 'info_received'
+  | 'in_transit'
+  | 'out_for_delivery'
+  | 'failed_attempt'
+  | 'delivered'
+  | 'available_for_pickup'
+  | 'exception'
+  | 'pending'
+  | 'expired';
 
 export interface Notification {
   id: string;

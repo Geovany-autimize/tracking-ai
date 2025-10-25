@@ -27,12 +27,18 @@ export function NotificationItem({ notification }: NotificationItemProps) {
 
   const getIcon = () => {
     switch (notification.notification_type) {
-      case 'delivery':
+      case 'delivered':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'exception':
+      case 'failed_attempt':
         return <AlertCircle className="h-5 w-5 text-destructive" />;
       case 'out_for_delivery':
         return <Truck className="h-5 w-5 text-blue-500" />;
+      case 'in_transit':
+      case 'info_received':
+      case 'available_for_pickup':
+      case 'pending':
+      case 'expired':
       default:
         return <Package className="h-5 w-5 text-primary" />;
     }

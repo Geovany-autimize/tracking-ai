@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Package, Truck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Package, Truck, CheckCircle2, AlertCircle, FileText, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import { TriggerOption } from '@/types/templates';
 import { cn } from '@/lib/utils';
 
@@ -15,6 +15,10 @@ const iconMap = {
   Truck,
   CheckCircle2,
   AlertCircle,
+  FileText,
+  MapPin,
+  Clock,
+  AlertTriangle,
 };
 
 export function TriggerCard({ trigger, checked, onCheckedChange }: TriggerCardProps) {

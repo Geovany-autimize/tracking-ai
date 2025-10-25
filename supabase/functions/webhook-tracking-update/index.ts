@@ -1,4 +1,12 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
+import { 
+  getNotificationTypeFromStatus,
+  STATUS_TITLES,
+  STATUS_TRANSLATIONS,
+  isValidStatusMilestone,
+  type NotificationType,
+  type StatusMilestone
+} from '../_shared/status-mappings.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -91,27 +99,7 @@ function mapApiStatusToInternal(statusMilestone: string): string {
   return statusMap[statusMilestone] || 'pending';
 }
 
-// Determina o tipo de notificação baseado no status milestone
-function determineNotificationType(statusMilestone: string): string {
-  if (statusMilestone === 'delivered') return 'delivery';
-  if (statusMilestone === 'out_for_delivery') return 'out_for_delivery';
-  if (statusMilestone === 'failed_attempt' || statusMilestone === 'exception') return 'exception';
-  return 'status_update';
-}
-
-// Gera título de notificação
-function generateNotificationTitle(statusMilestone: string): string {
-  const titles: Record<string, string> = {
-    'delivered': '✅ Pedido entregue',
-    'out_for_delivery': '🚚 Pedido saiu para entrega',
-    'in_transit': '📦 Pedido em trânsito',
-    'failed_attempt': '⚠️ Tentativa de entrega falhou',
-    'exception': '❌ Problema na entrega',
-    'available_for_pickup': '📍 Pedido disponível para retirada',
-    'info_received': '📋 Informação recebida',
-  };
-  return titles[statusMilestone] || '📦 Atualização de rastreamento';
-}
+// Funções removidas - agora usamos o mapeamento centralizado de status-mappings.ts
 
 // Gera mensagem de notificação
 function generateNotificationMessage(
@@ -152,20 +140,7 @@ function processTemplate(content: string, variables: Record<string, string>): st
   return result;
 }
 
-// Traduz status milestone para português
-function translateStatus(statusMilestone: string): string {
-  const statusMap: Record<string, string> = {
-    'delivered': 'Entregue',
-    'out_for_delivery': 'Saiu para entrega',
-    'in_transit': 'Em trânsito',
-    'failed_attempt': 'Tentativa de entrega falhou',
-    'exception': 'Problema na entrega',
-    'available_for_pickup': 'Disponível para retirada',
-    'info_received': 'Informação recebida',
-    'pending': 'Pendente',
-  };
-  return statusMap[statusMilestone] || 'Em processamento';
-}
+// Função removida - agora usamos STATUS_TRANSLATIONS de status-mappings.ts
 
 // Busca dados da instância WhatsApp
 async function getWhatsAppInstanceData(customerId: string): Promise<any | null> {
@@ -383,8 +358,17 @@ Deno.serve(async (req) => {
 
         // Criar notificação para o cliente
         const latestEvent = combinedEvents[0]; // Evento mais recente
-        const notificationType = determineNotificationType(tracking.shipment.statusMilestone);
-        const notificationTitle = generateNotificationTitle(tracking.shipment.statusMilestone);
+        const statusMilestone = tracking.shipment.statusMilestone as StatusMilestone;
+        
+        // Validação e logging
+        if (!isValidStatusMilestone(statusMilestone)) {
+          console.warn(`⚠️ Status milestone desconhecido: ${statusMilestone}`);
+        }
+        
+        const notificationType = getNotificationTypeFromStatus(statusMilestone);
+        const notificationTitle = STATUS_TITLES[statusMilestone] || '📦 Atualização de rastreamento';
+        console.log(`📍 Milestone: ${statusMilestone} → Notification: ${notificationType}`);
+        
         const notificationMessage = generateNotificationMessage(
           tracking.tracker.trackingNumber,
           latestEvent?.courierName || null,
@@ -487,7 +471,7 @@ Deno.serve(async (req) => {
                   // Rastreamento
                   tracking_code: tracking.tracker.trackingNumber,
                   tracker_id: tracking.tracker.trackerId,
-                  status: translateStatus(tracking.shipment.statusMilestone),
+                  status: STATUS_TRANSLATIONS[statusMilestone] || 'Em processamento',
                   status_milestone: tracking.shipment.statusMilestone,
                   transportadora: latestEvent?.courierName || 'Transportadora',
                   localizacao: latestEvent?.location || 'Em trânsito',
