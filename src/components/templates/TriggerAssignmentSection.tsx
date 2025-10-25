@@ -38,10 +38,7 @@ export function TriggerAssignmentSection({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-primary" />
-          <CardTitle>Disparo de Mensagens</CardTitle>
-        </div>
+        <CardTitle>Disparo de Mensagens</CardTitle>
         <CardDescription>
           Configure qual template será enviado automaticamente para cada evento de rastreamento
         </CardDescription>
