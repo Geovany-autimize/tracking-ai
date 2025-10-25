@@ -78,7 +78,18 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error creating template:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao criar template';
+      let message = 'Erro ao criar template';
+      
+      // Handle unique constraint violation
+      if (error instanceof Error) {
+        if (error.message.includes('message_templates_name_unique') || 
+            error.message.includes('duplicate key value')) {
+          message = 'Já existe um template com este nome. Escolha um nome diferente.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       toast.error(message);
     },
   });
@@ -127,7 +138,18 @@ export function useTemplates() {
     },
     onError: (error) => {
       console.error('Error updating template:', error);
-      const message = error instanceof Error ? error.message : 'Erro ao atualizar template';
+      let message = 'Erro ao atualizar template';
+      
+      // Handle unique constraint violation
+      if (error instanceof Error) {
+        if (error.message.includes('message_templates_name_unique') || 
+            error.message.includes('duplicate key value')) {
+          message = 'Já existe um template com este nome. Escolha um nome diferente.';
+        } else {
+          message = error.message;
+        }
+      }
+      
       toast.error(message);
     },
   });
@@ -165,10 +187,28 @@ export function useTemplates() {
         ? original.notification_type
         : [original.notification_type];
 
+      // Generate unique name for duplicate
+      let copyName = `${original.name}_copia`;
+      let counter = 1;
+      
+      // Check if name exists, increment counter until we find unique name
+      while (true) {
+        const { data: existing } = await supabase
+          .from('message_templates')
+          .select('id')
+          .eq('name', copyName)
+          .maybeSingle();
+        
+        if (!existing) break;
+        
+        counter++;
+        copyName = `${original.name}_copia_${counter}`;
+      }
+
       const { data, error } = await supabase
         .from('message_templates')
         .insert([{
-          name: `${original.name} (cópia)`,
+          name: copyName,
           notification_type: notificationType,
           is_active: false,
           message_content: original.message_content,
