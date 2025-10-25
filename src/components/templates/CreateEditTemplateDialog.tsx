@@ -174,6 +174,7 @@ export function CreateEditTemplateDialog({
       message_content: message.trim(),
       notification_type: [] as any,
       is_active: false,
+      creation_method: (wasAiGenerated ? 'ai_generated' : 'manual') as 'manual' | 'ai_generated',
     };
 
     if (template) {

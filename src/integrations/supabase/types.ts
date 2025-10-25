@@ -83,6 +83,7 @@ export type Database = {
       message_templates: {
         Row: {
           created_at: string
+          creation_method: string | null
           customer_id: string
           id: string
           is_active: boolean
@@ -93,6 +94,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          creation_method?: string | null
           customer_id: string
           id?: string
           is_active?: boolean
@@ -103,6 +105,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          creation_method?: string | null
           customer_id?: string
           id?: string
           is_active?: boolean

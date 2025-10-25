@@ -90,6 +90,7 @@ export function useTemplates() {
         name: template.name.trim(),
         notification_type: [], // Templates criados sem gatilho inicialmente
         is_active: false,
+        creation_method: template.creation_method || 'manual',
       };
 
       const { data, error } = await supabase
@@ -229,6 +230,7 @@ export function useTemplates() {
           is_active: false,
           message_content: original.message_content,
           customer_id: original.customer_id,
+          creation_method: 'manual', // Duplicatas são consideradas manuais
         }])
         .select()
         .single();

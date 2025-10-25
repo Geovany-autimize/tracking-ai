@@ -16,6 +16,7 @@ export interface MessageTemplate {
   notification_type: string[];
   is_active: boolean;
   message_content: string;
+  creation_method: 'manual' | 'ai_generated';
   created_at: string;
   updated_at: string;
 }
