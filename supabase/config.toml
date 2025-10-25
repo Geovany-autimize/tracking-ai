@@ -29,3 +29,15 @@ verify_jwt = false
 
 [functions.webhook-tracking-update]
 verify_jwt = false
+
+[functions.billing-get-history]
+verify_jwt = false
+
+[functions.stripe-create-checkout]
+verify_jwt = false
+
+[functions.stripe-create-portal]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
