@@ -4,9 +4,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useNotifications } from '@/contexts/NotificationsContext';
 import { NotificationsPanel } from './NotificationsPanel';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 export function NotificationBell() {
   const { unreadCount } = useNotifications();
+  const { state } = useSidebar();
+  const collapsed = state === 'collapsed';
 
   return (
     <TooltipProvider>
@@ -17,7 +21,10 @@ export function NotificationBell() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative hover:bg-muted transition-colors"
+                className={cn(
+                  "relative hover:bg-muted transition-all duration-200",
+                  collapsed && "mx-auto"
+                )}
               >
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (

@@ -3,6 +3,7 @@ import * as Icons from 'lucide-react';
 import { LogOut } from 'lucide-react';
 import { APP_NAV } from '@/config/site.config';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import {
   Sidebar,
   SidebarContent,
@@ -45,13 +46,16 @@ export function AppSidebar() {
       <SidebarContent className="flex flex-col h-full">
         {/* Logo no topo */}
         <div className="border-b border-sidebar-border">
-          <div className="flex items-center justify-between p-4">
+          <div className={cn(
+            "flex items-center p-4 transition-all duration-200",
+            collapsed ? "justify-center" : "justify-between"
+          )}>
             {!collapsed ? (
               <div className="flex-1 min-w-0">
                 <Logo variant="app" />
               </div>
             ) : (
-              <Link to="/dashboard" className="flex items-center justify-center w-full">
+              <Link to="/dashboard" className="flex items-center justify-center">
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg cursor-pointer hover:scale-105 transition-transform" />
               </Link>
             )}
@@ -74,10 +78,18 @@ export function AppSidebar() {
 
                 return (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                      <Link to={item.href}>
-                        <Icon className="h-4 w-4" />
-                        <span>{item.label}</span>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={active} 
+                      tooltip={item.label}
+                      className={cn(
+                        "transition-all duration-200",
+                        collapsed && "justify-center"
+                      )}
+                    >
+                      <Link to={item.href} className={cn(collapsed && "flex items-center justify-center")}>
+                        <Icon className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />
+                        {!collapsed && <span>{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -94,7 +106,12 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <NotificationBell />
+                <div className={cn(
+                  "transition-all duration-200",
+                  collapsed && "flex justify-center"
+                )}>
+                  <NotificationBell />
+                </div>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -105,37 +122,52 @@ export function AppSidebar() {
           <SidebarGroup className="mt-0">
             <SidebarGroupContent>
               <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive(profileItem.href)} tooltip={profileItem.label}>
-                <Link to={profileItem.href}>
-                  {(() => {
-                    const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
-                    return <Icon className="h-4 w-4" />;
-                  })()}
-                  <span>{profileItem.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(profileItem.href)} 
+                    tooltip={profileItem.label}
+                    className={cn(
+                      "transition-all duration-200",
+                      collapsed && "justify-center"
+                    )}
+                  >
+                    <Link to={profileItem.href} className={cn(collapsed && "flex items-center justify-center")}>
+                      {(() => {
+                        const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
+                        return <Icon className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />;
+                      })()}
+                      {!collapsed && <span>{profileItem.label}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
 
-        <SidebarGroup className="mt-0">
+        <SidebarGroup className="mt-0 border-t border-sidebar-border pt-2">
           <SidebarGroupContent>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton onClick={handleLogout} tooltip="Sair">
-                <LogOut className="h-4 w-4" />
-                <span>Sair</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={handleLogout} 
+                  tooltip="Sair"
+                  className={cn(
+                    "transition-all duration-200",
+                    collapsed && "justify-center"
+                  )}
+                >
+                  <LogOut className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />
+                  {!collapsed && <span>Sair</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {!collapsed && (
-          <div className="px-4 pb-4 text-xs text-muted-foreground">
+          <div className="px-4 pb-4 pt-2 text-xs text-muted-foreground text-center border-t border-sidebar-border mt-2">
             © {new Date().getFullYear()} TrackingAI
           </div>
         )}
