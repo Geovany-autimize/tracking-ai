@@ -12,13 +12,11 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification }: NotificationItemProps) {
-  const { markAsRead, deleteNotification } = useNotifications();
+  const { deleteNotification } = useNotifications();
   const navigate = useNavigate();
 
   const handleClick = async () => {
-    if (!notification.is_read) {
-      await markAsRead(notification.id);
-    }
+    await deleteNotification(notification.id);
     navigate(`/dashboard/shipments/${notification.shipment_id}`);
   };
 

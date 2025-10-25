@@ -6,7 +6,7 @@ import { Bell, CheckCheck } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 export function NotificationsPanel() {
-  const { notifications, unreadCount, markAllAsRead, loading } = useNotifications();
+  const { notifications, clearAllNotifications, loading } = useNotifications();
 
   if (loading) {
     return (
@@ -21,15 +21,15 @@ export function NotificationsPanel() {
       {/* Header */}
       <div className="flex items-center justify-between p-4 pb-3">
         <h3 className="font-semibold text-lg">Notificações</h3>
-        {unreadCount > 0 && (
+        {notifications.length > 0 && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={markAllAsRead}
+            onClick={clearAllNotifications}
             className="text-xs h-8 gap-1"
           >
             <CheckCheck className="h-3 w-3" />
-            Marcar todas como lidas
+            Limpar notificações
           </Button>
         )}
       </div>

@@ -226,10 +226,10 @@ Deno.serve(async (req) => {
       try {
         console.log(`Processing trackerId: ${trackerId}`);
 
-        // Buscar shipment pelo tracker_id
+        // Buscar shipment pelo tracker_id (incluir tracking_events para merge)
         const { data: shipment, error: fetchError } = await supabase
           .from('shipments')
-          .select('id, customer_id, tracking_code')
+          .select('id, customer_id, tracking_code, tracking_events')
           .eq('tracker_id', trackerId)
           .maybeSingle();
 
@@ -250,11 +250,38 @@ Deno.serve(async (req) => {
         // Enriquecer eventos com nomes das transportadoras
         const enrichedEvents = await enrichEventsWithCourierNames(supabase, tracking.events);
 
+        // Buscar eventos existentes
+        const existingEvents = (shipment as any).tracking_events || [];
+        
+        // Combinar eventos existentes com novos (evitar duplicatas por eventId)
+        const eventMap = new Map();
+        
+        // Adicionar eventos existentes ao map
+        for (const event of existingEvents) {
+          if (event.eventId) {
+            eventMap.set(event.eventId, event);
+          }
+        }
+        
+        // Adicionar/atualizar com novos eventos
+        for (const event of enrichedEvents) {
+          if (event.eventId) {
+            eventMap.set(event.eventId, event);
+          }
+        }
+        
+        // Converter map para array e ordenar por datetime (mais recente primeiro)
+        const combinedEvents = Array.from(eventMap.values()).sort((a, b) => {
+          const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
+          const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
+          return dateB - dateA; // Ordem decrescente (mais recente primeiro)
+        });
+
         // Atualizar shipment
         const { error: updateError } = await supabase
           .from('shipments')
           .update({
-            tracking_events: enrichedEvents,
+            tracking_events: combinedEvents,
             shipment_data: tracking.shipment,
             status: mapApiStatusToInternal(tracking.shipment.statusMilestone),
             last_update: new Date().toISOString(),
@@ -270,7 +297,7 @@ Deno.serve(async (req) => {
         console.log(`Successfully updated shipment ${shipment.id}`);
 
         // Criar notificação para o cliente
-        const latestEvent = enrichedEvents[0]; // Evento mais recente
+        const latestEvent = combinedEvents[0]; // Evento mais recente
         const notificationType = determineNotificationType(tracking.shipment.statusMilestone);
         const notificationTitle = generateNotificationTitle(tracking.shipment.statusMilestone);
         const notificationMessage = generateNotificationMessage(
@@ -307,7 +334,7 @@ Deno.serve(async (req) => {
           shipmentId: shipment.id,
           trackingCode: shipment.tracking_code,
           status: mapApiStatusToInternal(tracking.shipment.statusMilestone),
-          eventsCount: enrichedEvents.length,
+          eventsCount: combinedEvents.length,
         });
 
       } catch (error) {

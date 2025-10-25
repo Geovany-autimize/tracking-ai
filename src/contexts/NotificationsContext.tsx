@@ -11,6 +11,7 @@ interface NotificationsContextType {
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (notificationId: string) => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -120,6 +121,36 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const clearAllNotifications = async () => {
+    try {
+      const notificationIds = notifications.map(n => n.id);
+      
+      if (notificationIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .in('id', notificationIds);
+
+      if (error) throw error;
+
+      setNotifications([]);
+      setUnreadCount(0);
+
+      toast({
+        title: 'Sucesso',
+        description: 'Todas as notificações foram removidas',
+      });
+    } catch (error) {
+      console.error('Error clearing all notifications:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível limpar as notificações',
+        variant: 'destructive',
+      });
+    }
+  };
+
   useEffect(() => {
     fetchNotifications();
 
@@ -197,6 +228,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         markAsRead,
         markAllAsRead,
         deleteNotification,
+        clearAllNotifications,
         refreshNotifications: fetchNotifications,
       }}
     >
