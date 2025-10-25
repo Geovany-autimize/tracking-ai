@@ -12,12 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, Code2 } from 'lucide-react';
 import { MessageTemplate, TEMPLATE_VARIABLES, TRIGGER_OPTIONS, NotificationTrigger } from '@/types/templates';
-import { TriggerCard } from './TriggerCard';
-import { VariableChip } from './VariableChip';
 import { WhatsAppPreview } from './WhatsAppPreview';
-import { processTemplate } from '@/lib/template-processor';
 
 interface CreateEditTemplateDialogProps {
   open: boolean;
@@ -38,29 +38,25 @@ export function CreateEditTemplateDialog({
 }: CreateEditTemplateDialogProps) {
   const [name, setName] = useState('');
   const [isActive, setIsActive] = useState(true);
-  const [triggers, setTriggers] = useState<NotificationTrigger[]>([]);
+  const [trigger, setTrigger] = useState<NotificationTrigger | ''>('');
   const [message, setMessage] = useState('');
+  const [showVariables, setShowVariables] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (template) {
       setName(template.name);
       setIsActive(template.is_active);
-      setTriggers(template.notification_type);
+      setTrigger(template.notification_type);
       setMessage(template.message_content);
     } else {
       setName('');
       setIsActive(true);
-      setTriggers([]);
+      setTrigger('');
       setMessage('');
     }
   }, [template, open]);
-
-  const handleTriggerChange = (trigger: NotificationTrigger, checked: boolean) => {
-    setTriggers((prev) =>
-      checked ? [...prev, trigger] : prev.filter((t) => t !== trigger)
-    );
-  };
 
   const insertVariable = (variable: string) => {
     if (!textareaRef.current) return;
@@ -74,12 +70,29 @@ export function CreateEditTemplateDialog({
 
     const newText = before + variable + after;
     setMessage(newText);
+    setShowVariables(false);
 
     setTimeout(() => {
       textarea.focus();
       const newPosition = start + variable.length;
       textarea.setSelectionRange(newPosition, newPosition);
     }, 0);
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    
+    setMessage(value);
+    setCursorPosition(cursorPos);
+
+    // Check if user typed "{{" to show variable suggestions
+    const textBeforeCursor = value.substring(0, cursorPos);
+    if (textBeforeCursor.endsWith('{{')) {
+      setShowVariables(true);
+    } else if (!textBeforeCursor.includes('{{') || textBeforeCursor.endsWith('}}')) {
+      setShowVariables(false);
+    }
   };
 
   const validateMessage = (msg: string): boolean => {
@@ -92,7 +105,7 @@ export function CreateEditTemplateDialog({
     return matches.every(match => validVariables.includes(match));
   };
 
-  const canSave = name.trim() !== '' && triggers.length > 0 && message.trim() !== '' && validateMessage(message);
+  const canSave = name.trim() !== '' && trigger !== '' && message.trim() !== '' && validateMessage(message);
 
   const handleSave = () => {
     if (!canSave) return;
@@ -100,7 +113,7 @@ export function CreateEditTemplateDialog({
     const data = {
       name: name.trim(),
       is_active: isActive,
-      notification_type: triggers,
+      notification_type: trigger as NotificationTrigger,
       message_content: message.trim(),
     };
 
@@ -147,49 +160,95 @@ export function CreateEditTemplateDialog({
               <Label htmlFor="active">Template Ativo</Label>
             </div>
 
-            {/* Gatilhos */}
+            {/* Gatilho */}
             <div className="space-y-2">
-              <Label>Gatilhos de Envio</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {TRIGGER_OPTIONS.map((trigger) => (
-                  <TriggerCard
-                    key={trigger.value}
-                    trigger={trigger}
-                    checked={triggers.includes(trigger.value)}
-                    onCheckedChange={(checked) =>
-                      handleTriggerChange(trigger.value, checked)
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Variáveis */}
-            <div className="space-y-2">
-              <Label>Variáveis Disponíveis</Label>
-              <div className="flex flex-wrap gap-2">
-                {TEMPLATE_VARIABLES.map((variable) => (
-                  <VariableChip
-                    key={variable.variable}
-                    variable={variable}
-                    onClick={insertVariable}
-                  />
-                ))}
-              </div>
+              <Label htmlFor="trigger">Gatilho de Envio</Label>
+              <Select value={trigger} onValueChange={(value) => setTrigger(value as NotificationTrigger)}>
+                <SelectTrigger id="trigger">
+                  <SelectValue placeholder="Selecione um gatilho" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TRIGGER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Mensagem */}
             <div className="space-y-2">
-              <Label htmlFor="message">Mensagem</Label>
-              <Textarea
-                ref={textareaRef}
-                id="message"
-                placeholder="Digite sua mensagem aqui..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={8}
-                className="font-mono text-sm"
-              />
+              <div className="flex items-center justify-between">
+                <Label htmlFor="message">Mensagem</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Code2 className="h-4 w-4" />
+                      Variáveis
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-0" align="end">
+                    <Command>
+                      <CommandInput placeholder="Buscar variável..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
+                        <CommandGroup heading="Variáveis Disponíveis">
+                          {TEMPLATE_VARIABLES.map((variable) => (
+                            <CommandItem
+                              key={variable.variable}
+                              onSelect={() => insertVariable(variable.variable)}
+                              className="cursor-pointer"
+                            >
+                              <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                                {variable.variable}
+                              </code>
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                {variable.description}
+                              </span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="relative">
+                <Textarea
+                  ref={textareaRef}
+                  id="message"
+                  placeholder="Digite sua mensagem aqui... (digite {{ para ver variáveis)"
+                  value={message}
+                  onChange={handleMessageChange}
+                  rows={8}
+                  className="text-sm resize-none"
+                />
+                {showVariables && (
+                  <div className="absolute z-50 mt-1 w-full bg-popover border rounded-md shadow-md">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {TEMPLATE_VARIABLES.map((variable) => (
+                            <CommandItem
+                              key={variable.variable}
+                              onSelect={() => insertVariable(variable.variable)}
+                              className="cursor-pointer"
+                            >
+                              <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
+                                {variable.variable}
+                              </code>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                {variable.description}
+                              </span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">
                 {message.length}/1024 caracteres
               </p>

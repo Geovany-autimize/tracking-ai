@@ -15,7 +15,14 @@ export function useTemplates() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as MessageTemplate[];
+      
+      // Convert notification_type from array to single value for compatibility
+      return data.map(template => ({
+        ...template,
+        notification_type: Array.isArray(template.notification_type) 
+          ? template.notification_type[0] 
+          : template.notification_type
+      })) as MessageTemplate[];
     },
   });
 
@@ -44,7 +51,7 @@ export function useTemplates() {
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
       const { data, error } = await supabase
         .from('message_templates')
-        .update(template)
+        .update(template as any)
         .eq('id', id)
         .select()
         .single();

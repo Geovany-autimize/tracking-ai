@@ -1,7 +1,9 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ChevronLeft, MoreVertical, Check } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Check } from 'lucide-react';
 import { processTemplate, getExampleVariables } from '@/lib/template-processor';
 import { useMemo } from 'react';
+import { format } from 'date-fns';
 
 interface WhatsAppPreviewProps {
   message: string;
@@ -13,56 +15,46 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
     return processTemplate(message, exampleVars);
   }, [message]);
 
-  const currentTime = new Date().toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
   return (
-    <Card className="h-full overflow-hidden">
-      <CardHeader className="p-0">
-        <div className="bg-[#075E54] text-white p-3 flex items-center gap-3">
-          <ChevronLeft className="h-5 w-5" />
-          <div className="flex-1">
-            <h3 className="font-medium">TrackingAI</h3>
-          </div>
-          <MoreVertical className="h-5 w-5" />
+    <Card className="w-full max-w-md mx-auto overflow-hidden border-0 shadow-lg">
+      {/* WhatsApp Header */}
+      <div className="bg-[#008069] p-3 flex items-center gap-3">
+        <Avatar className="h-10 w-10 border-2 border-white/20">
+          <AvatarFallback className="bg-white/10 text-white font-semibold">
+            CL
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h4 className="text-sm font-semibold text-white">João Silva</h4>
+          <p className="text-xs text-white/80">online</p>
         </div>
-      </CardHeader>
-      <CardContent className="p-4 bg-[#ECE5DD] dark:bg-[#0B141A] min-h-[500px] relative">
-        {/* Date Divider */}
-        <div className="flex justify-center mb-4">
-          <div className="bg-white/90 dark:bg-gray-800/90 px-3 py-1 rounded-lg text-xs">
-            Hoje
-          </div>
-        </div>
+      </div>
 
-        {/* Message Bubble */}
+      {/* Messages Area */}
+      <div className="p-4 min-h-[400px] bg-[#efeae2] bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iYSIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVHJhbnNmb3JtPSJyb3RhdGUoNDUpIj48cGF0aCBkPSJNLTEwIDMwaDYwTS0xMCAxMGg2MCIgc3Ryb2tlPSIjZDlkNGNlIiBzdHJva2Utd2lkdGg9IjAuNSIgZmlsbD0ibm9uZSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSI0MDAiIGZpbGw9InVybCgjYSkiLz48L3N2Zz4=')] bg-repeat">
         {previewMessage ? (
-          <div className="flex justify-start animate-in fade-in slide-in-from-left-2 duration-300">
-            <div className="max-w-[80%]">
-              <div className="bg-white dark:bg-[#1F2C34] rounded-lg p-3 shadow-md">
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {previewMessage}
-                </p>
-                <div className="flex items-center justify-end gap-1 mt-1">
-                  <span className="text-[10px] text-muted-foreground">
-                    {currentTime}
-                  </span>
-                  <Check className="h-3 w-3 text-blue-500" />
-                  <Check className="h-3 w-3 text-blue-500 -ml-2" />
-                </div>
+          <div className="flex justify-end">
+            <div className="relative bg-[#d9fdd3] rounded-lg px-3 py-2 max-w-[85%] shadow-sm">
+              <p className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[1.4]">
+                {previewMessage}
+              </p>
+              <div className="flex items-center justify-end gap-1 mt-1">
+                <span className="text-[11px] text-[#667781]">
+                  {format(new Date(), 'HH:mm')}
+                </span>
+                <Check className="h-[14px] w-[14px] text-[#53bdeb] -ml-0.5" />
+                <Check className="h-[14px] w-[14px] text-[#53bdeb] -ml-2.5" />
               </div>
+              {/* Message tail */}
+              <div className="absolute -right-2 bottom-0 w-0 h-0 border-l-[10px] border-l-[#d9fdd3] border-b-[10px] border-b-transparent"></div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-sm text-muted-foreground text-center">
-              Digite sua mensagem para<br />ver o preview em tempo real
-            </p>
+          <div className="flex items-center justify-center h-full text-[#667781] text-sm">
+            Digite uma mensagem para ver o preview
           </div>
         )}
-      </CardContent>
+      </div>
     </Card>
   );
 }

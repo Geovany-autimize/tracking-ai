@@ -74,26 +74,17 @@ export function ViewTemplateDialog({
             </CardContent>
           </Card>
 
-          {/* Gatilhos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Gatilhos de Envio</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {template.notification_type.map((trigger) => {
-                  const triggerOption = TRIGGER_OPTIONS.find(
-                    (t) => t.value === trigger
-                  );
-                  return (
-                    <Badge key={trigger} variant="secondary">
-                      {triggerOption?.label}
-                    </Badge>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+      {/* Gatilho */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Gatilho de Envio</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Badge variant="secondary">
+            {TRIGGER_OPTIONS.find((t) => t.value === template.notification_type)?.label}
+          </Badge>
+        </CardContent>
+      </Card>
 
           {/* Preview WhatsApp */}
           <Card>

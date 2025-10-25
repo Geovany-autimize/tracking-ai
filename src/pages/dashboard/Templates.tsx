@@ -208,18 +208,9 @@ export default function TemplatesPage() {
                         {template.name}
                       </TableCell>
                       <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
-                        <div className="flex flex-wrap gap-1">
-                          {template.notification_type.slice(0, 2).map((trigger) => (
-                            <Badge key={trigger} variant="secondary" className="text-xs">
-                              {getTriggerLabel(trigger)}
-                            </Badge>
-                          ))}
-                          {template.notification_type.length > 2 && (
-                            <Badge variant="secondary" className="text-xs">
-                              +{template.notification_type.length - 2}
-                            </Badge>
-                          )}
-                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {getTriggerLabel(template.notification_type)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
                         <Badge variant={template.is_active ? 'default' : 'secondary'}>
