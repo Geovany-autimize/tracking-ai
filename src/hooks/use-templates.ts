@@ -43,15 +43,8 @@ export function useTemplates() {
     mutationFn: async (template: Omit<MessageTemplate, 'id' | 'created_at' | 'updated_at'>) => {
       const slug = generateSlug(template.name);
 
-      // Verifica se já existe um template com esse slug
-      const { data: existing } = await supabase
-        .from('message_templates')
-        .select('id')
-        .eq('name', slug)
-        .maybeSingle();
-
-      if (existing) {
-        throw new Error('Já existe um template com este nome. Escolha um nome diferente.');
+      if (!slug || slug.length === 0) {
+        throw new Error('Nome do template inválido. Use apenas letras, números e espaços.');
       }
 
       const payload: any = {
@@ -98,19 +91,12 @@ export function useTemplates() {
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
       const payload: any = { ...template };
       
-      // Se está mudando o nome, gera novo slug e valida unicidade
+      // Se está mudando o nome, gera novo slug e valida
       if (template.name) {
         const slug = generateSlug(template.name);
         
-        const { data: existing } = await supabase
-          .from('message_templates')
-          .select('id')
-          .eq('name', slug)
-          .neq('id', id)
-          .maybeSingle();
-
-        if (existing) {
-          throw new Error('Já existe um template com este nome. Escolha um nome diferente.');
+        if (!slug || slug.length === 0) {
+          throw new Error('Nome do template inválido. Use apenas letras, números e espaços.');
         }
 
         payload.name = slug;
