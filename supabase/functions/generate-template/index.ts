@@ -7,31 +7,33 @@ const corsHeaders = {
 };
 
 const TEMPLATE_VARIABLES = [
-  { label: "Nome do Cliente", variable: "{{cliente_nome}}", example: "João Silva" },
-  { label: "Primeiro Nome", variable: "{{cliente_primeiro_nome}}", example: "João" },
-  { label: "Email do Cliente", variable: "{{cliente_email}}", example: "joao@email.com" },
-  { label: "Telefone do Cliente", variable: "{{cliente_telefone}}", example: "+55 11 99999-9999" },
-  { label: "Código de Rastreamento", variable: "{{tracking_code}}", example: "BR123456789" },
-  { label: "Status Atual", variable: "{{status_atual}}", example: "Em trânsito" },
-  { label: "Transportadora", variable: "{{transportadora}}", example: "Correios" },
-  { label: "Última Atualização", variable: "{{ultima_atualizacao}}", example: "15/01/2025 14:30" },
-  { label: "Origem", variable: "{{origem}}", example: "São Paulo - SP" },
-  { label: "Destino", variable: "{{destino}}", example: "Rio de Janeiro - RJ" },
-  { label: "Data de Postagem", variable: "{{data_postagem}}", example: "10/01/2025" },
-  { label: "Previsão de Entrega", variable: "{{previsao_entrega}}", example: "20/01/2025" },
-  { label: "Data de Entrega", variable: "{{data_entrega}}", example: "18/01/2025" },
-  { label: "Local Atual", variable: "{{local_atual}}", example: "Centro de Distribuição - SP" },
-  { label: "Cidade Atual", variable: "{{cidade_atual}}", example: "Campinas" },
-  { label: "Estado Atual", variable: "{{estado_atual}}", example: "SP" },
-  { label: "Número do Pedido", variable: "{{numero_pedido}}", example: "#12345" },
-  { label: "Recebedor", variable: "{{recebedor}}", example: "Maria Silva" },
-  { label: "Documento Recebedor", variable: "{{documento_recebedor}}", example: "123.456.789-00" },
-  { label: "Tentativas de Entrega", variable: "{{tentativas_entrega}}", example: "2" },
-  { label: "Peso", variable: "{{peso}}", example: "2.5 kg" },
-  { label: "Dimensões", variable: "{{dimensoes}}", example: "30x20x15 cm" },
-  { label: "Valor Declarado", variable: "{{valor_declarado}}", example: "R$ 150,00" },
-  { label: "Observações", variable: "{{observacoes}}", example: "Entrega com assinatura" },
-  { label: "Link de Rastreamento", variable: "{{link_rastreamento}}", example: "https://rastreio.com/BR123456789" },
+  // Informações do Cliente
+  { label: "Nome Completo", variable: "{{cliente_nome}}", example: "João Silva", category: "cliente" },
+  { label: "Primeiro Nome", variable: "{{cliente_primeiro_nome}}", example: "João", category: "cliente" },
+  { label: "Sobrenome", variable: "{{cliente_sobrenome}}", example: "Silva", category: "cliente" },
+  { label: "E-mail", variable: "{{cliente_email}}", example: "joao@email.com", category: "cliente" },
+  { label: "Telefone", variable: "{{cliente_telefone}}", example: "(11) 98765-4321", category: "cliente" },
+  
+  // Rastreamento
+  { label: "Código de Rastreio", variable: "{{tracking_code}}", example: "BR123456789", category: "rastreamento" },
+  { label: "Status", variable: "{{status}}", example: "Em trânsito", category: "rastreamento" },
+  { label: "Transportadora", variable: "{{transportadora}}", example: "Correios", category: "rastreamento" },
+  { label: "Localização Atual", variable: "{{localizacao}}", example: "São Paulo - SP", category: "rastreamento" },
+  { label: "Data Atualização", variable: "{{data_atualizacao}}", example: "25/10/2025 14:30", category: "rastreamento" },
+  
+  // Evento Atual
+  { label: "Descrição do Evento", variable: "{{evento_descricao}}", example: "Objeto em trânsito", category: "evento" },
+  { label: "Data do Evento", variable: "{{evento_data}}", example: "25/10/2025", category: "evento" },
+  { label: "Local do Evento", variable: "{{evento_localizacao}}", example: "Centro de Distribuição - São Paulo/SP", category: "evento" },
+  
+  // Entrega
+  { label: "Previsão de Entrega", variable: "{{previsao_entrega}}", example: "30/10/2025", category: "entrega" },
+  { label: "Endereço de Entrega", variable: "{{endereco_entrega}}", example: "Rua das Flores, 123", category: "entrega" },
+  { label: "Cidade de Entrega", variable: "{{cidade_entrega}}", example: "São Paulo", category: "entrega" },
+  
+  // Informações Adicionais
+  { label: "Dias em Trânsito", variable: "{{dias_em_transito}}", example: "3 dias", category: "adicional" },
+  { label: "Assinado Por", variable: "{{assinado_por}}", example: "João Silva", category: "adicional" }
 ];
 
 const TRIGGER_CONTEXT: Record<string, string> = {
@@ -109,31 +111,38 @@ serve(async (req) => {
 
 REGRAS OBRIGATÓRIAS:
 1. Mensagens devem ter no máximo 1024 caracteres
-2. Use formatação WhatsApp: *negrito* para destaques, _itálico_ para ênfases sutis
-3. Inclua 2-4 variáveis relevantes do sistema (sempre use o formato {{variavel}})
-4. Seja claro, direto e profissional
-5. Use emojis com moderação (máximo 2-3 por mensagem)
-6. SEMPRE personalize com o nome do cliente usando {{cliente_primeiro_nome}} ou {{cliente_nome}}
-7. Inclua informações relevantes como código de rastreamento quando apropriado
+2. Use formatação WhatsApp: *negrito* para destaques importantes
+3. Use quebras de linha (\n\n) para separar seções e melhorar legibilidade
+4. Inclua 2-4 variáveis relevantes do sistema (sempre use o formato {{variavel}})
+5. Seja claro, direto e profissional
+6. Use emojis com moderação (máximo 2 por mensagem, apenas no início de seções)
+7. SEMPRE personalize com o nome do cliente usando {{cliente_primeiro_nome}}
+8. Estruture a mensagem com parágrafos separados por linhas vazias (\n\n)
 
 VARIÁVEIS DISPONÍVEIS:
 ${variablesList}
 
-ESTRUTURA RECOMENDADA:
-- Saudação personalizada (use {{cliente_primeiro_nome}})
-- Informação principal clara e direta
-- Detalhes relevantes (código, localização, previsão)
-- Call-to-action ou próximo passo (quando aplicável)
+ESTRUTURA RECOMENDADA COM QUEBRAS DE LINHA:
+- Saudação personalizada: Olá, {{cliente_primeiro_nome}}!
+- LINHA VAZIA (\n\n)
+- Informação principal em negrito
+- LINHA VAZIA (\n\n)  
+- Detalhes relevantes (código, localização, previsão) cada um em uma linha
+- LINHA VAZIA (\n\n)
+- Mensagem de encerramento
+
+EXEMPLO DE FORMATAÇÃO:
+"Olá, {{cliente_primeiro_nome}}!\n\n*Seu pedido está em trânsito* 📦\n\nCódigo: {{tracking_code}}\nLocalização: {{localizacao}}\nPrevisão: {{previsao_entrega}}\n\nEm breve você receberá mais atualizações."
 
 TOM DA MENSAGEM: ${toneMapping[tone] || toneMapping.friendly}
 CONTEXTO DO GATILHO: ${triggerContext}
 
-Retorne APENAS um objeto JSON válido com esta estrutura exata:
+Retorne APENAS um objeto JSON válido:
 {
-  "message": "mensagem gerada com variáveis no formato {{variavel}}",
-  "suggestedName": "nome_slug_descritivo_sem_espacos_em_lowercase",
-  "usedVariables": ["{{variavel1}}", "{{variavel2}}"],
-  "reasoning": "breve explicação das escolhas (max 100 chars)"
+  "message": "mensagem com \\n\\n para quebras de linha e variáveis {{variavel}}",
+  "suggestedName": "nome_slug_sem_espacos_lowercase",
+  "usedVariables": ["{{var1}}", "{{var2}}"],
+  "reasoning": "explicação curta"
 }`;
 
     const userPrompt = `Crie uma mensagem profissional de notificação para o gatilho: ${triggerContext}

@@ -253,7 +253,7 @@ export function CreateEditTemplateDialog({
                       type="button"
                       variant="default"
                       size="sm"
-                      className="h-8 gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+                      className="h-8 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                       onClick={() => setShowAiDialog(true)}
                     >
                       <Sparkles className="h-3.5 w-3.5" />

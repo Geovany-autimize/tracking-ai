@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +8,6 @@ import { Sparkles, Loader2, RefreshCw } from "lucide-react";
 import { WhatsAppPreview } from "./WhatsAppPreview";
 import { useAiTemplateGeneration } from "@/hooks/use-ai-template-generation";
 import { processTemplate } from "@/lib/template-processor";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 
 interface AiGenerationDialogProps {
@@ -161,40 +159,6 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
                 </div>
                 
                 <WhatsAppPreview message={processTemplate(generatedData.message, {})} />
-
-                {/* Variáveis Usadas */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">Variáveis utilizadas:</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {generatedData.usedVariables?.map((variable) => (
-                      <Badge key={variable} variant="outline" className="text-xs">
-                        {variable}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Nome Sugerido */}
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Nome sugerido:</Label>
-                  <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
-                    {generatedData.suggestedName}
-                  </p>
-                </div>
-
-                {/* Reasoning (Collapsible) */}
-                {generatedData.reasoning && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                      Por que a IA escolheu isso? (clique para ver)
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-2">
-                      <p className="text-xs text-muted-foreground italic bg-muted/50 p-2 rounded">
-                        {generatedData.reasoning}
-                      </p>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
               </div>
 
               {/* Ações */}
