@@ -89,10 +89,7 @@ const TemplatesPage = () => {
       {/* Seção de Lista de Templates */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
-            <CardTitle>Lista de Templates</CardTitle>
-          </div>
+          <CardTitle>Lista de Templates</CardTitle>
           <CardDescription>
             Crie, edite e gerencie todos os seus templates de mensagens
           </CardDescription>
