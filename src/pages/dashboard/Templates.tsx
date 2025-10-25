@@ -36,9 +36,12 @@ import { useTemplates } from '@/hooks/use-templates';
 import { MessageTemplate, TRIGGER_OPTIONS } from '@/types/templates';
 import { CreateEditTemplateDialog } from '@/components/templates/CreateEditTemplateDialog';
 import { ViewTemplateDialog } from '@/components/templates/ViewTemplateDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export default function TemplatesPage() {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate } = useTemplates();
+  const { customer } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -266,7 +269,11 @@ export default function TemplatesPage() {
         onOpenChange={setShowCreateDialog}
         template={selectedTemplate}
         onSave={(data) => {
-          createTemplate(data);
+          if (!customer) {
+            toast.error('Sua sessão expirou. Faça login novamente.');
+            return;
+          }
+          createTemplate({ ...data, customer_id: customer.id });
           setShowCreateDialog(false);
         }}
         onUpdate={(data) => {

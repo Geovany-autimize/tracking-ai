@@ -27,10 +27,18 @@ export function useTemplates() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (template: Omit<MessageTemplate, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (template: Omit<MessageTemplate, 'id' | 'created_at' | 'updated_at'>) => {
+      const payload: any = {
+        ...template,
+        // DB expects text[]; UI uses single value
+        notification_type: Array.isArray((template as any).notification_type)
+          ? (template as any).notification_type
+          : [template.notification_type as any],
+      };
+
       const { data, error } = await supabase
         .from('message_templates')
-        .insert([template as any])
+        .insert([payload])
         .select()
         .single();
 
@@ -49,9 +57,16 @@ export function useTemplates() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
+      const payload: any = { ...template };
+      if (template.notification_type) {
+        payload.notification_type = Array.isArray((template as any).notification_type)
+          ? (template as any).notification_type
+          : [template.notification_type as any];
+      }
+
       const { data, error } = await supabase
         .from('message_templates')
-        .update(template as any)
+        .update(payload)
         .eq('id', id)
         .select()
         .single();
