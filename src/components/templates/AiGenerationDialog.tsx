@@ -26,7 +26,7 @@ const TRIGGER_OPTIONS = [
   { value: 'delivered', label: '✅ Entregue' },
   { value: 'failed_attempt', label: '⚠️ Tentativa Falhou' },
   { value: 'exception', label: '❌ Exceção' },
-  { value: 'expired', label: '🎂 Rastreamento Expirado' }
+  { value: 'expired', label: '⏰ Rastreamento Expirado' }
 ];
 
 export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: AiGenerationDialogProps) {
