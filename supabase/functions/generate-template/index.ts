@@ -1,7 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,7 +33,7 @@ const TEMPLATE_VARIABLES = [
   { label: "Link de Rastreamento", variable: "{{link_rastreamento}}", example: "https://rastreio.com/BR123456789" },
 ];
 
-const TRIGGER_CONTEXT = {
+const TRIGGER_CONTEXT: Record<string, string> = {
   'info_received': 'Informação recebida - primeira notificação quando o pedido é registrado',
   'in_transit': 'Em trânsito - pedido está a caminho',
   'out_for_delivery': 'Saiu para entrega - pedido está com o entregador',
@@ -49,36 +46,53 @@ const TRIGGER_CONTEXT = {
 };
 
 serve(async (req) => {
+  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  console.log('=== Requisição recebida ===');
+
   try {
-    const { trigger, tone = 'formal' }: { 
-      trigger: string; 
-      tone?: 'formal' | 'casual' | 'friendly' 
-    } = await req.json();
+    // Get API key
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    console.log('OPENAI_API_KEY exists:', !!openAIApiKey);
+    
+    if (!openAIApiKey) {
+      console.error('❌ OPENAI_API_KEY não configurada');
+      return new Response(
+        JSON.stringify({ error: 'API Key não configurada no servidor' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Parse request body
+    let body;
+    try {
+      body = await req.json();
+      console.log('Body recebido:', JSON.stringify(body));
+    } catch (e) {
+      console.error('Erro ao parsear body:', e);
+      return new Response(
+        JSON.stringify({ error: 'Body inválido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { trigger, tone = 'friendly' } = body;
 
     if (!trigger || trigger.trim().length === 0) {
+      console.error('❌ Trigger não fornecido');
       return new Response(
         JSON.stringify({ error: 'Tipo de template é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY não configurada');
-      return new Response(
-        JSON.stringify({ error: 'Configuração inválida do servidor' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('✅ Trigger:', trigger);
+    console.log('✅ Tom:', tone);
 
-    console.log('API Key disponível:', openAIApiKey ? 'Sim' : 'Não');
-    console.log('Trigger recebido:', trigger);
-    console.log('Tom selecionado:', tone);
-
-    const toneMapping = {
+    const toneMapping: Record<string, string> = {
       'formal': 'Profissional e formal, mantendo respeito e clareza',
       'casual': 'Casual e amigável, mas ainda profissional',
       'friendly': 'Muito amigável e próximo, como uma conversa pessoal'
@@ -88,7 +102,7 @@ serve(async (req) => {
       `${v.variable} - ${v.label} (ex: ${v.example})`
     ).join('\n');
 
-    const triggerContext = trigger ? (TRIGGER_CONTEXT as any)[trigger] || '' : '';
+    const triggerContext = TRIGGER_CONTEXT[trigger] || trigger;
 
     const systemPrompt = `Você é um especialista em criar mensagens de notificação para rastreamento de entregas via WhatsApp.
 
@@ -110,8 +124,8 @@ ESTRUTURA RECOMENDADA:
 - Detalhes relevantes (código, localização, previsão)
 - Call-to-action ou próximo passo (quando aplicável)
 
-TOM DA MENSAGEM: ${toneMapping[tone] || toneMapping.formal}
-${triggerContext ? `CONTEXTO DO GATILHO: ${triggerContext}` : ''}
+TOM DA MENSAGEM: ${toneMapping[tone] || toneMapping.friendly}
+CONTEXTO DO GATILHO: ${triggerContext}
 
 Retorne APENAS um objeto JSON válido com esta estrutura exata:
 {
@@ -125,7 +139,8 @@ Retorne APENAS um objeto JSON válido com esta estrutura exata:
 
 A mensagem deve seguir todas as regras especificadas e ser adequada para este contexto específico.`;
 
-    console.log('Chamando OpenAI API...');
+    console.log('🔄 Chamando OpenAI API...');
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -133,37 +148,40 @@ A mensagem deve seguir todas as regras especificadas e ser adequada para este co
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_completion_tokens: 1000,
+        max_tokens: 1000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });
 
+    console.log('OpenAI Status:', response.status);
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Erro na API OpenAI:', response.status, errorData);
+      const errorText = await response.text();
+      console.error('❌ Erro OpenAI:', response.status, errorText);
       return new Response(
         JSON.stringify({ 
           error: 'Erro ao gerar mensagem com IA',
-          details: `Status ${response.status}`
+          details: errorText
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
-    console.log('Resposta da OpenAI recebida');
+    console.log('✅ Resposta OpenAI recebida');
 
     const generatedContent = data.choices[0].message.content;
     const parsedContent = JSON.parse(generatedContent);
 
     // Validações
     if (!parsedContent.message || parsedContent.message.length > 1024) {
-      console.error('Mensagem inválida ou muito longa');
+      console.error('❌ Mensagem inválida ou muito longa');
       return new Response(
         JSON.stringify({ error: 'Mensagem gerada é inválida ou muito longa' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -176,10 +194,10 @@ A mensagem deve seguir todas as regras especificadas e ser adequada para este co
     const invalidVariables = usedVariables.filter((v: string) => !availableVariables.includes(v));
     
     if (invalidVariables.length > 0) {
-      console.warn('Variáveis inválidas detectadas:', invalidVariables);
+      console.warn('⚠️ Variáveis inválidas detectadas:', invalidVariables);
     }
 
-    console.log('Template gerado com sucesso:', parsedContent.suggestedName);
+    console.log('✅ Template gerado:', parsedContent.suggestedName);
 
     return new Response(
       JSON.stringify({
@@ -191,12 +209,12 @@ A mensagem deve seguir todas as regras especificadas e ser adequada para este co
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: any) {
-    console.error('Erro na função generate-template:', error);
+  } catch (error) {
+    console.error('❌ Erro fatal:', error);
     return new Response(
       JSON.stringify({ 
-        error: error?.message || 'Erro interno ao gerar template',
-        type: error?.name
+        error: 'Erro interno ao gerar template',
+        details: error instanceof Error ? error.message : String(error)
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
