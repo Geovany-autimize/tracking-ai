@@ -18,15 +18,15 @@ interface AiGenerationDialogProps {
 }
 
 const TRIGGER_OPTIONS = [
-  { value: 'info_received', label: '📦 Informação Recebida' },
-  { value: 'in_transit', label: '🚚 Em Trânsito' },
-  { value: 'out_for_delivery', label: '📍 Saiu para Entrega' },
+  { value: 'pending', label: '⏳ Pendente' },
+  { value: 'info_received', label: '📋 Informação Recebida' },
+  { value: 'in_transit', label: '📦 Em Trânsito' },
+  { value: 'out_for_delivery', label: '🚚 Saiu para Entrega' },
+  { value: 'available_for_pickup', label: '📍 Disponível para Retirada' },
   { value: 'delivered', label: '✅ Entregue' },
   { value: 'failed_attempt', label: '⚠️ Tentativa Falhou' },
-  { value: 'available_for_pickup', label: '📮 Disponível para Retirada' },
   { value: 'exception', label: '❌ Exceção' },
-  { value: 'expired', label: '⏰ Expirado' },
-  { value: 'pending', label: '⏳ Pendente' }
+  { value: 'expired', label: '🎂 Rastreamento Expirado' }
 ];
 
 export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: AiGenerationDialogProps) {
