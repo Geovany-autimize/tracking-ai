@@ -142,6 +142,52 @@ function generateNotificationMessage(
   return message;
 }
 
+// Processa template substituindo variáveis
+function processTemplate(content: string, variables: Record<string, string>): string {
+  let result = content;
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`{{${key}}}`, 'g');
+    result = result.replace(regex, value || '');
+  });
+  return result;
+}
+
+// Traduz status milestone para português
+function translateStatus(statusMilestone: string): string {
+  const statusMap: Record<string, string> = {
+    'delivered': 'Entregue',
+    'out_for_delivery': 'Saiu para entrega',
+    'in_transit': 'Em trânsito',
+    'failed_attempt': 'Tentativa de entrega falhou',
+    'exception': 'Problema na entrega',
+    'available_for_pickup': 'Disponível para retirada',
+    'info_received': 'Informação recebida',
+    'pending': 'Pendente',
+  };
+  return statusMap[statusMilestone] || 'Em processamento';
+}
+
+// Envia mensagem WhatsApp (via N8N/Evolution API)
+async function sendWhatsAppMessage(
+  phone: string,
+  message: string,
+  customerId: string
+): Promise<void> {
+  // TODO: Implementar integração real com N8N/Evolution API
+  // Por enquanto, apenas log
+  console.log(`[WhatsApp] Sending to ${phone} (customer: ${customerId}):`, message);
+  
+  // Exemplo de como seria a chamada real:
+  // const n8nWebhookUrl = Deno.env.get('N8N_WHATSAPP_WEBHOOK_URL');
+  // if (!n8nWebhookUrl) return;
+  // 
+  // await fetch(n8nWebhookUrl, {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ phone, message, customerId }),
+  // });
+}
+
 // Enriquece eventos com nomes das transportadoras
 async function enrichEventsWithCourierNames(
   supabase: any,
@@ -229,7 +275,7 @@ Deno.serve(async (req) => {
         // Buscar shipment pelo tracker_id (incluir tracking_events para merge)
         const { data: shipment, error: fetchError } = await supabase
           .from('shipments')
-          .select('id, customer_id, tracking_code, tracking_events')
+          .select('id, customer_id, tracking_code, tracking_events, shipment_customer_id')
           .eq('tracker_id', trackerId)
           .maybeSingle();
 
@@ -327,6 +373,68 @@ Deno.serve(async (req) => {
           // Não falha a atualização completa se a notificação falhar
         } else {
           console.log(`Created notification for shipment ${shipment.id}`);
+        }
+
+        // Processar e enviar templates de WhatsApp
+        try {
+          // Buscar templates ativos para este tipo de notificação
+          const { data: templates, error: templatesError } = await supabase
+            .from('message_templates')
+            .select('*')
+            .eq('customer_id', shipment.customer_id)
+            .eq('is_active', true)
+            .contains('notification_type', [notificationType]);
+
+          if (templatesError) {
+            console.error('Error fetching templates:', templatesError);
+          } else if (templates && templates.length > 0) {
+            console.log(`Found ${templates.length} active template(s) for notification type: ${notificationType}`);
+
+            // Buscar dados do cliente final
+            const { data: shipmentCustomer, error: customerError } = await supabase
+              .from('shipment_customers')
+              .select('*')
+              .eq('id', shipment.shipment_customer_id)
+              .maybeSingle();
+
+            if (customerError) {
+              console.error('Error fetching shipment customer:', customerError);
+            } else if (shipmentCustomer && shipmentCustomer.phone) {
+              // Processar cada template
+              for (const template of templates) {
+                const templateVars = {
+                  cliente_nome: `${shipmentCustomer.first_name} ${shipmentCustomer.last_name}`,
+                  tracking_code: tracking.tracker.trackingNumber,
+                  status: translateStatus(tracking.shipment.statusMilestone),
+                  transportadora: latestEvent?.courierName || 'Transportadora',
+                  localizacao: latestEvent?.location || 'Em trânsito',
+                  data_atualizacao: new Date().toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                };
+
+                const processedMessage = processTemplate(template.message_content, templateVars);
+                
+                // Enviar mensagem
+                await sendWhatsAppMessage(
+                  shipmentCustomer.phone,
+                  processedMessage,
+                  shipment.customer_id
+                );
+
+                console.log(`Sent WhatsApp message for template: ${template.name}`);
+              }
+            } else {
+              console.log('No phone number found for shipment customer');
+            }
+          }
+        } catch (templateError) {
+          console.error('Error processing templates:', templateError);
+          // Não falha o processo se templates falharem
         }
 
         results.push({

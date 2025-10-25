@@ -80,6 +80,39 @@ export type Database = {
         }
         Relationships: []
       }
+      message_templates: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          is_active: boolean
+          message_content: string
+          name: string
+          notification_type: string[]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_active?: boolean
+          message_content: string
+          name: string
+          notification_type?: string[]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_active?: boolean
+          message_content?: string
+          name?: string
+          notification_type?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monthly_usage: {
         Row: {
           customer_id: string

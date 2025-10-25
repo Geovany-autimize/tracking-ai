@@ -17,6 +17,7 @@ import ShipmentDetails from "./pages/dashboard/ShipmentDetails";
 import CustomersPage from "./pages/dashboard/Customers";
 import CustomerDetails from "./pages/dashboard/CustomerDetails";
 import InsightsPage from "./pages/dashboard/Insights";
+import TemplatesPage from "./pages/dashboard/Templates";
 import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="customers" element={<CustomersPage />} />
               <Route path="customers/:id" element={<CustomerDetails />} />
               <Route path="insights" element={<InsightsPage />} />
+              <Route path="templates" element={<TemplatesPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
               <Route path="profile" element={<ProfilePage />} />

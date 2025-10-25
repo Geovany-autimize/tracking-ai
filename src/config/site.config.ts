@@ -18,6 +18,7 @@ export const APP_NAV = [
   { label: 'Rastreios', href: '/dashboard/shipments', icon: 'PackageSearch' },
   { label: 'Clientes', href: '/dashboard/customers', icon: 'Users' },
   { label: 'Insights', href: '/dashboard/insights', icon: 'Sparkles' },
+  { label: 'Templates', href: '/dashboard/templates', icon: 'MessageSquare' },
   { label: 'Configurações', href: '/dashboard/settings', icon: 'Settings' },
   { label: 'Perfil', href: '/dashboard/profile', icon: 'User' },
 ] as const;
