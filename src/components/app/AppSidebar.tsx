@@ -68,10 +68,10 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup className="pt-4">
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+        <SidebarGroup className="pt-6">
+          {!collapsed && <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>}
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {mainMenuItems.map((item) => {
                 const Icon = (Icons[item.icon as keyof typeof Icons] || Icons.Circle) as any;
                 const active = isActive(item.href);
@@ -82,13 +82,14 @@ export function AppSidebar() {
                       asChild 
                       isActive={active} 
                       tooltip={item.label}
+                      size="lg"
                       className={cn(
-                        "transition-all duration-200",
-                        collapsed && "justify-center"
+                        "transition-all duration-200 h-12",
+                        collapsed && "mx-auto justify-center"
                       )}
                     >
-                      <Link to={item.href} className={cn(collapsed && "flex items-center justify-center")}>
-                        <Icon className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />
+                      <Link to={item.href}>
+                        <Icon className="h-5 w-5 shrink-0" />
                         {!collapsed && <span>{item.label}</span>}
                       </Link>
                     </SidebarMenuButton>
@@ -102,16 +103,11 @@ export function AppSidebar() {
         <div className="flex-1" />
 
         {/* Notificações */}
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup className="mt-auto py-2">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <div className={cn(
-                  "transition-all duration-200",
-                  collapsed && "flex justify-center"
-                )}>
-                  <NotificationBell />
-                </div>
+                <NotificationBell />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -119,7 +115,7 @@ export function AppSidebar() {
 
         {/* Perfil */}
         {profileItem && (
-          <SidebarGroup className="mt-0">
+          <SidebarGroup className="mt-0 py-2">
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
@@ -127,15 +123,16 @@ export function AppSidebar() {
                     asChild 
                     isActive={isActive(profileItem.href)} 
                     tooltip={profileItem.label}
+                    size="lg"
                     className={cn(
-                      "transition-all duration-200",
-                      collapsed && "justify-center"
+                      "transition-all duration-200 h-12",
+                      collapsed && "mx-auto justify-center"
                     )}
                   >
-                    <Link to={profileItem.href} className={cn(collapsed && "flex items-center justify-center")}>
+                    <Link to={profileItem.href}>
                       {(() => {
                         const Icon = (Icons[profileItem.icon as keyof typeof Icons] || Icons.Circle) as any;
-                        return <Icon className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />;
+                        return <Icon className="h-5 w-5 shrink-0" />;
                       })()}
                       {!collapsed && <span>{profileItem.label}</span>}
                     </Link>
@@ -146,19 +143,20 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
 
-        <SidebarGroup className="mt-0 border-t border-sidebar-border pt-2">
+        <SidebarGroup className="mt-0 border-t border-sidebar-border pt-2 pb-2">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={handleLogout} 
                   tooltip="Sair"
+                  size="lg"
                   className={cn(
-                    "transition-all duration-200",
-                    collapsed && "justify-center"
+                    "transition-all duration-200 h-12",
+                    collapsed && "mx-auto justify-center"
                   )}
                 >
-                  <LogOut className={cn("h-4 w-4 shrink-0", collapsed && "mx-auto")} />
+                  <LogOut className="h-5 w-5 shrink-0" />
                   {!collapsed && <span>Sair</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>

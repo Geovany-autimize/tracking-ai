@@ -20,13 +20,13 @@ export function NotificationBell() {
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
-                size="icon"
+                size="lg"
                 className={cn(
-                  "relative hover:bg-muted transition-all duration-200",
-                  collapsed && "mx-auto"
+                  "relative hover:bg-muted transition-all duration-200 h-12 w-full",
+                  collapsed && "mx-auto justify-center"
                 )}
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-5 w-5 shrink-0" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center animate-pulse">
                     {unreadCount > 9 ? '9+' : unreadCount}
