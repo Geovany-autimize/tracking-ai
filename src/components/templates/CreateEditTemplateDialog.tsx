@@ -269,10 +269,13 @@ export function CreateEditTemplateDialog({
                           <Code2 className="h-3.5 w-3.5" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent sideOffset={8} className="w-[520px] p-0 z-50 bg-popover border shadow-md" align="start">
+                      <PopoverContent sideOffset={8} className="w-[560px] p-0 z-50 bg-popover border shadow-md pointer-events-auto" align="start">
                         <Command>
                           <CommandInput placeholder="Buscar variável..." className="h-9" />
-                          <CommandList className="max-h-96 overflow-y-auto">
+            <CommandList 
+              className="max-h-[420px] overflow-y-auto overscroll-contain touch-pan-y pr-1"
+              onWheelCapture={(e) => e.stopPropagation()}
+            >
                             <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
                             
                             <CommandGroup heading="👤 Informações do Cliente">
