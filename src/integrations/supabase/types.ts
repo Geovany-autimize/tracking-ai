@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      couriers: {
+        Row: {
+          country_code: string | null
+          courier_code: string
+          courier_name: string
+          created_at: string
+          is_deprecated: boolean
+          is_post: boolean
+          required_fields: Json | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          country_code?: string | null
+          courier_code: string
+          courier_name: string
+          created_at?: string
+          is_deprecated?: boolean
+          is_post?: boolean
+          required_fields?: Json | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          country_code?: string | null
+          courier_code?: string
+          courier_name?: string
+          created_at?: string
+          is_deprecated?: boolean
+          is_post?: boolean
+          required_fields?: Json | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           avatar_url: string | null
