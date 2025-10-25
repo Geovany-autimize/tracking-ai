@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Code2, Bold, Italic } from 'lucide-react';
 import { MessageTemplate, TEMPLATE_VARIABLES, TRIGGER_OPTIONS, NotificationTrigger } from '@/types/templates';
 import { WhatsAppPreview } from './WhatsAppPreview';
@@ -86,24 +87,24 @@ export function CreateEditTemplateDialog({
     const end = textarea.selectionEnd;
     const text = message;
     const selectedText = text.substring(start, end);
-    
-    const formatChar = format === 'bold' ? '*' : '_';
-    const formattedText = selectedText 
-      ? `${formatChar}${selectedText}${formatChar}`
-      : `${formatChar}${formatChar}`;
-    
+
+    const wrapper = format === 'bold' ? '**' : '__';
     const before = text.substring(0, start);
     const after = text.substring(end);
-    const newText = before + formattedText + after;
-    
+
+    const newSegment = selectedText
+      ? `${wrapper}${selectedText}${wrapper}`
+      : `${wrapper}${wrapper}`;
+
+    const newText = before + newSegment + after;
     setMessage(newText);
 
     setTimeout(() => {
       textarea.focus();
       if (selectedText) {
-        textarea.setSelectionRange(start + 1, start + 1 + selectedText.length);
+        textarea.setSelectionRange(start + wrapper.length, start + wrapper.length + selectedText.length);
       } else {
-        const newPosition = start + 1;
+        const newPosition = start + wrapper.length;
         textarea.setSelectionRange(newPosition, newPosition);
       }
     }, 0);
@@ -211,30 +212,32 @@ export function CreateEditTemplateDialog({
                         <Code2 className="h-3.5 w-3.5" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-96 p-0 z-50 max-h-[60vh] overflow-auto bg-popover" align="start">
+                    <PopoverContent sideOffset={8} className="w-96 p-0 z-50 bg-popover border shadow-md" align="start">
                       <Command>
                         <CommandInput placeholder="Buscar variável..." className="h-9" />
-                        <CommandList className="max-h-[300px] overflow-y-auto">
-                          <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
-                          <CommandGroup>
-                            {TEMPLATE_VARIABLES.map((variable) => (
-                              <CommandItem
-                                key={variable.variable}
-                                onSelect={() => insertVariable(variable.variable)}
-                                className="cursor-pointer py-2"
-                              >
-                                <div className="flex flex-col gap-0.5">
-                                  <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
-                                    {variable.variable}
-                                  </code>
-                                  <span className="text-xs text-muted-foreground">
-                                    {variable.description}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
+                        <ScrollArea className="h-64">
+                          <CommandList>
+                            <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {TEMPLATE_VARIABLES.map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="cursor-pointer py-2"
+                                >
+                                  <div className="flex flex-col gap-0.5">
+                                    <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
+                                      {variable.variable}
+                                    </code>
+                                    <span className="text-xs text-muted-foreground">
+                                      {variable.description}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </ScrollArea>
                       </Command>
                     </PopoverContent>
                   </Popover>

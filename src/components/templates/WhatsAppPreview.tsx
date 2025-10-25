@@ -16,9 +16,12 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
   }, [message]);
 
   const formatWhatsAppText = (text: string) => {
-    // Process bold (*text*)
-    let formatted = text.replace(/\*([^\*]+)\*/g, '<strong>$1</strong>');
-    // Process italic (_text_)
+    let formatted = text;
+    // Bold: **text** or *text*
+    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+    // Italic: __text__ or _text_
+    formatted = formatted.replace(/__([^_]+)__/g, '<em>$1</em>');
     formatted = formatted.replace(/_([^_]+)_/g, '<em>$1</em>');
     return formatted;
   };
