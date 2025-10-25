@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.update-couriers]
 verify_jwt = false
+
+[functions.sync-couriers]
+verify_jwt = false
