@@ -35,18 +35,18 @@ import { ptBR } from 'date-fns/locale';
 import { useTemplates } from '@/hooks/use-templates';
 import { MessageTemplate, TRIGGER_OPTIONS } from '@/types/templates';
 import { CreateEditTemplateDialog } from '@/components/templates/CreateEditTemplateDialog';
-import { ViewTemplateDialog } from '@/components/templates/ViewTemplateDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 export default function TemplatesPage() {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate } = useTemplates();
+  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate, duplicateTemplate, toggleActive } = useTemplates();
   const { customer } = useAuth();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showViewDialog, setShowViewDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
 
@@ -61,22 +61,32 @@ export default function TemplatesPage() {
 
   const handleView = (template: MessageTemplate) => {
     setSelectedTemplate(template);
-    setShowViewDialog(true);
+    setViewOnly(true);
+    setShowCreateDialog(true);
   };
 
   const handleEdit = (template: MessageTemplate) => {
     setSelectedTemplate(template);
+    setViewOnly(false);
     setShowCreateDialog(true);
-    setShowViewDialog(false);
   };
 
   const handleNew = () => {
     setSelectedTemplate(null);
+    setViewOnly(false);
     setShowCreateDialog(true);
   };
 
   const handleDuplicate = (template: MessageTemplate) => {
     duplicateTemplate(template.id);
+  };
+
+  const handleToggleActive = (template: MessageTemplate, checked: boolean) => {
+    toggleActive({ 
+      id: template.id, 
+      isActive: checked,
+      notificationType: template.notification_type 
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -199,7 +209,7 @@ export default function TemplatesPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Gatilhos</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Ativo</TableHead>
                     <TableHead>Criado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -215,10 +225,11 @@ export default function TemplatesPage() {
                           {getTriggerLabel(template.notification_type)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="cursor-pointer" onClick={() => handleView(template)}>
-                        <Badge variant={template.is_active ? 'default' : 'secondary'}>
-                          {template.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Switch
+                          checked={template.is_active}
+                          onCheckedChange={(checked) => handleToggleActive(template, checked)}
+                        />
                       </TableCell>
                       <TableCell className="text-muted-foreground cursor-pointer" onClick={() => handleView(template)}>
                         {format(new Date(template.created_at), "dd/MM/yyyy", { locale: ptBR })}
@@ -268,6 +279,7 @@ export default function TemplatesPage() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         template={selectedTemplate}
+        viewOnly={viewOnly}
         onSave={(data) => {
           if (!customer) {
             toast.error('Sua sessão expirou. Faça login novamente.');
@@ -279,14 +291,8 @@ export default function TemplatesPage() {
         onUpdate={(data) => {
           updateTemplate(data);
           setShowCreateDialog(false);
+          setViewOnly(false);
         }}
-      />
-
-      <ViewTemplateDialog
-        open={showViewDialog}
-        onOpenChange={setShowViewDialog}
-        template={selectedTemplate}
-        onEdit={handleEdit}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

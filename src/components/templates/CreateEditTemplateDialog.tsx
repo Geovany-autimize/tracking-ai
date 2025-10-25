@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Code2, Bold, Italic } from 'lucide-react';
+import { Loader2, Code2, Bold, Italic, Pencil } from 'lucide-react';
 import { MessageTemplate, TEMPLATE_VARIABLES, TRIGGER_OPTIONS, NotificationTrigger } from '@/types/templates';
 import { WhatsAppPreview } from './WhatsAppPreview';
 
@@ -27,6 +27,7 @@ interface CreateEditTemplateDialogProps {
   onSave: (data: Omit<MessageTemplate, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => void;
   onUpdate: (data: Partial<MessageTemplate> & { id: string }) => void;
   isSaving?: boolean;
+  viewOnly?: boolean;
 }
 
 export function CreateEditTemplateDialog({
@@ -36,12 +37,14 @@ export function CreateEditTemplateDialog({
   onSave,
   onUpdate,
   isSaving = false,
+  viewOnly = false,
 }: CreateEditTemplateDialogProps) {
   const [name, setName] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [trigger, setTrigger] = useState<NotificationTrigger | ''>('');
   const [message, setMessage] = useState('');
   const [showVariables, setShowVariables] = useState(false);
+  const [isEditing, setIsEditing] = useState(!viewOnly);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -50,13 +53,15 @@ export function CreateEditTemplateDialog({
       setIsActive(template.is_active);
       setTrigger(template.notification_type);
       setMessage(template.message_content);
+      setIsEditing(!viewOnly);
     } else {
       setName('');
       setIsActive(true);
       setTrigger('');
       setMessage('');
+      setIsEditing(true);
     }
-  }, [template, open]);
+  }, [template, open, viewOnly]);
 
   const insertVariable = (variable: string) => {
     if (!textareaRef.current) return;
@@ -144,10 +149,12 @@ export function CreateEditTemplateDialog({
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {template ? 'Editar Template' : 'Novo Template'}
+            {viewOnly && !isEditing ? 'Visualizar Template' : template ? 'Editar Template' : 'Novo Template'}
           </DialogTitle>
           <DialogDescription>
-            Configure as informações e mensagem do template
+            {viewOnly && !isEditing 
+              ? 'Detalhes do template de mensagem'
+              : 'Configure as informações e mensagem do template'}
           </DialogDescription>
         </DialogHeader>
 
@@ -162,6 +169,7 @@ export function CreateEditTemplateDialog({
                 placeholder="Ex: Pedido Saiu para Entrega"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                disabled={viewOnly && !isEditing}
               />
             </div>
 
@@ -171,6 +179,7 @@ export function CreateEditTemplateDialog({
                 id="active"
                 checked={isActive}
                 onCheckedChange={setIsActive}
+                disabled={viewOnly && !isEditing}
               />
               <Label htmlFor="active">Template Ativo</Label>
             </div>
@@ -178,7 +187,11 @@ export function CreateEditTemplateDialog({
             {/* Gatilho */}
             <div className="space-y-2">
               <Label htmlFor="trigger">Gatilho de Envio</Label>
-              <Select value={trigger} onValueChange={(value) => setTrigger(value as NotificationTrigger)}>
+              <Select 
+                value={trigger} 
+                onValueChange={(value) => setTrigger(value as NotificationTrigger)}
+                disabled={viewOnly && !isEditing}
+              >
                 <SelectTrigger id="trigger">
                   <SelectValue placeholder="Selecione um gatilho" />
                 </SelectTrigger>
@@ -203,63 +216,66 @@ export function CreateEditTemplateDialog({
                 onChange={(e) => setMessage(e.target.value)}
                 rows={8}
                 className="resize-none"
+                disabled={viewOnly && !isEditing}
               />
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Popover open={showVariables} onOpenChange={setShowVariables}>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8">
-                        <Code2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent sideOffset={8} className="w-96 p-0 z-50 bg-popover border shadow-md" align="start">
-                      <Command>
-                        <CommandInput placeholder="Buscar variável..." className="h-9" />
-                        <ScrollArea className="h-64">
-                          <CommandList>
-                            <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
-                            <CommandGroup>
-                              {TEMPLATE_VARIABLES.map((variable) => (
-                                <CommandItem
-                                  key={variable.variable}
-                                  onSelect={() => insertVariable(variable.variable)}
-                                  className="cursor-pointer py-2"
-                                >
-                                  <div className="flex flex-col gap-0.5">
-                                    <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
-                                      {variable.variable}
-                                    </code>
-                                    <span className="text-xs text-muted-foreground">
-                                      {variable.description}
-                                    </span>
-                                  </div>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </ScrollArea>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8"
-                    onClick={() => insertFormatting('bold')}
-                    type="button"
-                  >
-                    <Bold className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8"
-                    onClick={() => insertFormatting('italic')}
-                    type="button"
-                  >
-                    <Italic className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                {(!viewOnly || isEditing) && (
+                  <div className="flex items-center gap-2">
+                    <Popover open={showVariables} onOpenChange={setShowVariables}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8">
+                          <Code2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent sideOffset={8} className="w-96 p-0 z-50 bg-popover border shadow-md" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar variável..." className="h-9" />
+                          <ScrollArea className="h-64">
+                            <CommandList>
+                              <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
+                              <CommandGroup>
+                                {TEMPLATE_VARIABLES.map((variable) => (
+                                  <CommandItem
+                                    key={variable.variable}
+                                    onSelect={() => insertVariable(variable.variable)}
+                                    className="cursor-pointer py-2"
+                                  >
+                                    <div className="flex flex-col gap-0.5">
+                                      <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
+                                        {variable.variable}
+                                      </code>
+                                      <span className="text-xs text-muted-foreground">
+                                        {variable.description}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </ScrollArea>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8"
+                      onClick={() => insertFormatting('bold')}
+                      type="button"
+                    >
+                      <Bold className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8"
+                      onClick={() => insertFormatting('italic')}
+                      type="button"
+                    >
+                      <Italic className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   {message.length}/1024 caracteres
                 </p>
@@ -277,13 +293,33 @@ export function CreateEditTemplateDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={!canSave || isSaving}>
-            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {template ? 'Salvar Alterações' : 'Criar Template'}
-          </Button>
+          {viewOnly && !isEditing ? (
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Fechar
+              </Button>
+              <Button onClick={() => setIsEditing(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Editar
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => {
+                if (viewOnly) {
+                  setIsEditing(false);
+                } else {
+                  onOpenChange(false);
+                }
+              }}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={!canSave || isSaving}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {template ? 'Salvar Alterações' : 'Criar Template'}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

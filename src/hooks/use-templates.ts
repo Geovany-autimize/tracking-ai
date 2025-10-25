@@ -113,14 +113,19 @@ export function useTemplates() {
 
       if (fetchError) throw fetchError;
 
+      const notificationType = Array.isArray(original.notification_type)
+        ? original.notification_type
+        : [original.notification_type];
+
       const { data, error } = await supabase
         .from('message_templates')
         .insert([{
           name: `${original.name} (cópia)`,
-          notification_type: original.notification_type,
+          notification_type: notificationType,
           is_active: false,
           message_content: original.message_content,
-        } as any])
+          customer_id: original.customer_id,
+        }])
         .select()
         .single();
 
@@ -137,6 +142,37 @@ export function useTemplates() {
     },
   });
 
+  const toggleActiveMutation = useMutation({
+    mutationFn: async ({ id, isActive, notificationType }: { id: string; isActive: boolean; notificationType: string }) => {
+      // Se estiver ativando, desativa outros templates do mesmo tipo primeiro
+      if (isActive) {
+        await supabase
+          .from('message_templates')
+          .update({ is_active: false })
+          .eq('notification_type', [notificationType])
+          .neq('id', id);
+      }
+
+      const { data, error } = await supabase
+        .from('message_templates')
+        .update({ is_active: isActive })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['message-templates'] });
+      toast.success('Status atualizado com sucesso!');
+    },
+    onError: (error) => {
+      console.error('Error toggling template:', error);
+      toast.error('Erro ao atualizar status');
+    },
+  });
+
   return {
     templates: templates || [],
     isLoading,
@@ -144,5 +180,6 @@ export function useTemplates() {
     updateTemplate: updateMutation.mutate,
     deleteTemplate: deleteMutation.mutate,
     duplicateTemplate: duplicateMutation.mutate,
+    toggleActive: toggleActiveMutation.mutate,
   };
 }
