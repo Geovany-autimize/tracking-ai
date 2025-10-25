@@ -20,44 +20,244 @@ export interface TemplateVariable {
   variable: string;
   description: string;
   example: string;
+  category: string;
 }
 
 export const TEMPLATE_VARIABLES: TemplateVariable[] = [
+  // Informações do Cliente
   {
-    label: 'Nome do Cliente',
+    label: 'Nome Completo',
     variable: '{{cliente_nome}}',
     description: 'Nome completo do cliente',
-    example: 'João Silva'
+    example: 'João Silva',
+    category: 'cliente'
   },
+  {
+    label: 'Primeiro Nome',
+    variable: '{{cliente_primeiro_nome}}',
+    description: 'Primeiro nome do cliente',
+    example: 'João',
+    category: 'cliente'
+  },
+  {
+    label: 'Sobrenome',
+    variable: '{{cliente_sobrenome}}',
+    description: 'Sobrenome do cliente',
+    example: 'Silva',
+    category: 'cliente'
+  },
+  {
+    label: 'E-mail',
+    variable: '{{cliente_email}}',
+    description: 'E-mail do cliente',
+    example: 'joao@email.com',
+    category: 'cliente'
+  },
+  {
+    label: 'Telefone',
+    variable: '{{cliente_telefone}}',
+    description: 'Telefone do cliente',
+    example: '(11) 98765-4321',
+    category: 'cliente'
+  },
+  
+  // Rastreamento
   {
     label: 'Código de Rastreio',
     variable: '{{tracking_code}}',
     description: 'Código de rastreamento do pedido',
-    example: 'BR123456789'
+    example: 'BR123456789',
+    category: 'rastreamento'
+  },
+  {
+    label: 'ID do Rastreador',
+    variable: '{{tracker_id}}',
+    description: 'ID único do rastreador',
+    example: 'tracker_abc123',
+    category: 'rastreamento'
   },
   {
     label: 'Status',
     variable: '{{status}}',
     description: 'Status atual do pedido',
-    example: 'Em trânsito'
+    example: 'Em trânsito',
+    category: 'rastreamento'
+  },
+  {
+    label: 'Status Detalhado',
+    variable: '{{status_milestone}}',
+    description: 'Status milestone detalhado',
+    example: 'out_for_delivery',
+    category: 'rastreamento'
   },
   {
     label: 'Transportadora',
     variable: '{{transportadora}}',
     description: 'Nome da transportadora',
-    example: 'Correios'
+    example: 'Correios',
+    category: 'rastreamento'
   },
   {
-    label: 'Localização',
+    label: 'Localização Atual',
     variable: '{{localizacao}}',
     description: 'Última localização conhecida',
-    example: 'São Paulo - SP'
+    example: 'São Paulo - SP',
+    category: 'rastreamento'
   },
   {
     label: 'Data Atualização',
     variable: '{{data_atualizacao}}',
     description: 'Data e hora da última atualização',
-    example: '25/10/2025 14:30'
+    example: '25/10/2025 14:30',
+    category: 'rastreamento'
+  },
+  
+  // Evento Atual
+  {
+    label: 'Descrição do Evento',
+    variable: '{{evento_descricao}}',
+    description: 'Descrição do último evento',
+    example: 'Objeto em trânsito - por favor aguarde',
+    category: 'evento'
+  },
+  {
+    label: 'Data do Evento',
+    variable: '{{evento_data}}',
+    description: 'Data do último evento',
+    example: '25/10/2025',
+    category: 'evento'
+  },
+  {
+    label: 'Hora do Evento',
+    variable: '{{evento_hora}}',
+    description: 'Hora do último evento',
+    example: '14:30',
+    category: 'evento'
+  },
+  {
+    label: 'Local do Evento',
+    variable: '{{evento_localizacao}}',
+    description: 'Localização do último evento',
+    example: 'Centro de Distribuição - São Paulo/SP',
+    category: 'evento'
+  },
+  
+  // Entrega
+  {
+    label: 'Previsão de Entrega',
+    variable: '{{previsao_entrega}}',
+    description: 'Data prevista de entrega',
+    example: '30/10/2025',
+    category: 'entrega'
+  },
+  {
+    label: 'Endereço de Entrega',
+    variable: '{{endereco_entrega}}',
+    description: 'Endereço completo de entrega',
+    example: 'Rua das Flores, 123',
+    category: 'entrega'
+  },
+  {
+    label: 'Cidade de Entrega',
+    variable: '{{cidade_entrega}}',
+    description: 'Cidade de entrega',
+    example: 'São Paulo',
+    category: 'entrega'
+  },
+  {
+    label: 'Estado de Entrega',
+    variable: '{{estado_entrega}}',
+    description: 'Estado de entrega',
+    example: 'SP',
+    category: 'entrega'
+  },
+  {
+    label: 'CEP de Entrega',
+    variable: '{{cep_entrega}}',
+    description: 'CEP de entrega',
+    example: '01234-567',
+    category: 'entrega'
+  },
+  {
+    label: 'País de Origem',
+    variable: '{{pais_origem}}',
+    description: 'País de origem do envio',
+    example: 'BR',
+    category: 'entrega'
+  },
+  {
+    label: 'País de Destino',
+    variable: '{{pais_destino}}',
+    description: 'País de destino do envio',
+    example: 'BR',
+    category: 'entrega'
+  },
+  
+  // Informações Adicionais
+  {
+    label: 'Dias em Trânsito',
+    variable: '{{dias_em_transito}}',
+    description: 'Dias desde a postagem',
+    example: '3 dias',
+    category: 'adicional'
+  },
+  {
+    label: 'Referência do Envio',
+    variable: '{{referencia_envio}}',
+    description: 'Referência interna do envio',
+    example: 'REF-2025-001',
+    category: 'adicional'
+  },
+  {
+    label: 'Assinado Por',
+    variable: '{{assinado_por}}',
+    description: 'Nome de quem assinou a entrega',
+    example: 'João Silva',
+    category: 'adicional'
+  },
+  
+  // Datas do Processo
+  {
+    label: 'Data Info Recebida',
+    variable: '{{data_info_recebida}}',
+    description: 'Data de recebimento da informação',
+    example: '20/10/2025 10:00',
+    category: 'datas'
+  },
+  {
+    label: 'Data Em Trânsito',
+    variable: '{{data_em_transito}}',
+    description: 'Data de início do trânsito',
+    example: '21/10/2025 08:30',
+    category: 'datas'
+  },
+  {
+    label: 'Data Saiu para Entrega',
+    variable: '{{data_saiu_entrega}}',
+    description: 'Data de saída para entrega',
+    example: '25/10/2025 06:00',
+    category: 'datas'
+  },
+  {
+    label: 'Data Entregue',
+    variable: '{{data_entregue}}',
+    description: 'Data de entrega efetiva',
+    example: '25/10/2025 14:30',
+    category: 'datas'
+  },
+  {
+    label: 'Data Tentativa Falha',
+    variable: '{{data_tentativa_falha}}',
+    description: 'Data da tentativa de entrega falha',
+    example: '24/10/2025 16:00',
+    category: 'datas'
+  },
+  {
+    label: 'Data Exceção',
+    variable: '{{data_excecao}}',
+    description: 'Data de registro de exceção',
+    example: '23/10/2025 11:00',
+    category: 'datas'
   }
 ];
 

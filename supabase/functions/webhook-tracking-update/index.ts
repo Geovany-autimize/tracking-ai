@@ -442,21 +442,84 @@ Deno.serve(async (req) => {
               // Buscar dados da instância WhatsApp
               const whatsappInstance = await getWhatsAppInstanceData(shipment.customer_id);
               
+              // Funções auxiliares para formatação
+              const formatDate = (dateStr: string | null) => {
+                if (!dateStr) return '';
+                return new Date(dateStr).toLocaleDateString('pt-BR');
+              };
+              
+              const formatDateTime = (dateStr: string | null) => {
+                if (!dateStr) return '';
+                return new Date(dateStr).toLocaleString('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              };
+              
+              const formatTime = (dateStr: string | null) => {
+                if (!dateStr) return '';
+                return new Date(dateStr).toLocaleTimeString('pt-BR', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              };
+              
+              const calculateDaysInTransit = () => {
+                const inTransitDate = tracking.statistics?.timestamps?.inTransitDatetime;
+                if (!inTransitDate) return '';
+                const days = Math.floor((Date.now() - new Date(inTransitDate).getTime()) / (1000 * 60 * 60 * 24));
+                return days === 1 ? '1 dia' : `${days} dias`;
+              };
+
               // Processar cada template
               for (const template of templates) {
                 const templateVars = {
+                  // Informações do Cliente
                   cliente_nome: `${shipmentCustomer.first_name} ${shipmentCustomer.last_name}`,
+                  cliente_primeiro_nome: shipmentCustomer.first_name || '',
+                  cliente_sobrenome: shipmentCustomer.last_name || '',
+                  cliente_email: shipmentCustomer.email || '',
+                  cliente_telefone: shipmentCustomer.phone || '',
+                  
+                  // Rastreamento
                   tracking_code: tracking.tracker.trackingNumber,
+                  tracker_id: tracking.tracker.trackerId,
                   status: translateStatus(tracking.shipment.statusMilestone),
+                  status_milestone: tracking.shipment.statusMilestone,
                   transportadora: latestEvent?.courierName || 'Transportadora',
                   localizacao: latestEvent?.location || 'Em trânsito',
-                  data_atualizacao: new Date().toLocaleString('pt-BR', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })
+                  data_atualizacao: formatDateTime(latestEvent?.datetime || new Date().toISOString()),
+                  
+                  // Evento Atual
+                  evento_descricao: latestEvent?.status || '',
+                  evento_data: formatDate(latestEvent?.datetime),
+                  evento_hora: formatTime(latestEvent?.datetime),
+                  evento_localizacao: latestEvent?.location || '',
+                  
+                  // Entrega
+                  previsao_entrega: formatDate(tracking.shipment.delivery?.estimatedDeliveryDate),
+                  endereco_entrega: tracking.shipment.recipient?.address || '',
+                  cidade_entrega: tracking.shipment.recipient?.city || '',
+                  estado_entrega: tracking.shipment.recipient?.subdivision || '',
+                  cep_entrega: tracking.shipment.recipient?.postCode || '',
+                  pais_origem: tracking.shipment.originCountryCode || '',
+                  pais_destino: tracking.shipment.destinationCountryCode || '',
+                  
+                  // Informações Adicionais
+                  dias_em_transito: calculateDaysInTransit(),
+                  referencia_envio: tracking.tracker.shipmentReference || '',
+                  assinado_por: tracking.shipment.delivery?.signedBy || '',
+                  
+                  // Datas do Processo
+                  data_info_recebida: formatDateTime(tracking.statistics?.timestamps?.infoReceivedDatetime),
+                  data_em_transito: formatDateTime(tracking.statistics?.timestamps?.inTransitDatetime),
+                  data_saiu_entrega: formatDateTime(tracking.statistics?.timestamps?.outForDeliveryDatetime),
+                  data_entregue: formatDateTime(tracking.statistics?.timestamps?.deliveredDatetime),
+                  data_tentativa_falha: formatDateTime(tracking.statistics?.timestamps?.failedAttemptDatetime),
+                  data_excecao: formatDateTime(tracking.statistics?.timestamps?.exceptionDatetime)
                 };
 
                 const processedMessage = processTemplate(template.message_content, templateVars);

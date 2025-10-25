@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -268,32 +269,132 @@ export function CreateEditTemplateDialog({
                           <Code2 className="h-3.5 w-3.5" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent sideOffset={8} className="w-96 p-0 z-50 bg-popover border shadow-md" align="start">
+                      <PopoverContent sideOffset={8} className="w-[520px] p-0 z-50 bg-popover border shadow-md" align="start">
                         <Command>
                           <CommandInput placeholder="Buscar variável..." className="h-9" />
-                          <ScrollArea className="h-64">
-                            <CommandList>
-                              <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
-                              <CommandGroup>
-                                {TEMPLATE_VARIABLES.map((variable) => (
-                                  <CommandItem
-                                    key={variable.variable}
-                                    onSelect={() => insertVariable(variable.variable)}
-                                    className="cursor-pointer py-2"
-                                  >
-                                    <div className="flex flex-col gap-0.5">
-                                      <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded w-fit">
-                                        {variable.variable}
-                                      </code>
-                                      <span className="text-xs text-muted-foreground">
-                                        {variable.description}
-                                      </span>
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </ScrollArea>
+                          <CommandList className="max-h-96 overflow-y-auto">
+                            <CommandEmpty>Nenhuma variável encontrada.</CommandEmpty>
+                            
+                            <CommandGroup heading="👤 Informações do Cliente">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'cliente').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+
+                            <CommandGroup heading="📦 Rastreamento">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'rastreamento').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+
+                            <CommandGroup heading="📍 Evento Atual">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'evento').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+
+                            <CommandGroup heading="🚚 Entrega">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'entrega').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+
+                            <CommandGroup heading="ℹ️ Informações Adicionais">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'adicional').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+
+                            <CommandGroup heading="📅 Datas do Processo">
+                              {TEMPLATE_VARIABLES.filter(v => v.category === 'datas').map((variable) => (
+                                <CommandItem
+                                  key={variable.variable}
+                                  onSelect={() => insertVariable(variable.variable)}
+                                  className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                      {variable.variable}
+                                    </Badge>
+                                    <span className="font-medium">{variable.label}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">
+                                    {variable.description} · Ex: {variable.example}
+                                  </p>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
                         </Command>
                       </PopoverContent>
                     </Popover>
