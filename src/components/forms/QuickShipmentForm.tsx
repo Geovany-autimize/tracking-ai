@@ -70,10 +70,16 @@ export default function QuickShipmentForm({
         const trackingData = parseTrackingResponse(apiResponse);
         
         if (trackingData && insertedData) {
+          // Importar função de enriquecimento
+          const { enrichEventsWithCourierNames } = await import('@/lib/tracking-api');
+          
+          // Enriquecer eventos com nomes das transportadoras
+          const enrichedEvents = await enrichEventsWithCourierNames(trackingData.events);
+          
           // Atualizar registro com dados da API
           await supabase.from('shipments').update({
             tracker_id: trackingData.tracker.trackerId,
-            tracking_events: trackingData.events as any,
+            tracking_events: enrichedEvents as any,
             shipment_data: trackingData.shipment as any,
             status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
             last_update: new Date().toISOString()

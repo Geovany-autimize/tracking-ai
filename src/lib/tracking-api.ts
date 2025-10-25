@@ -21,6 +21,7 @@ export interface TrackingEvent {
   location: string;
   sourceCode: string;
   courierCode: string;
+  courierName?: string; // Nome da transportadora obtido do banco
   statusCode: string | null;
   statusCategory: string | null;
   statusMilestone: string;
@@ -215,4 +216,41 @@ export function mapApiStatusToInternal(statusMilestone: string): string {
     'pending': 'pending',
   };
   return statusMap[statusMilestone] || 'pending';
+}
+
+/**
+ * Busca nomes das transportadoras no banco e enriquece os eventos
+ */
+export async function enrichEventsWithCourierNames(events: TrackingEvent[]): Promise<TrackingEvent[]> {
+  if (!events || events.length === 0) return events;
+
+  // Importar supabase dinamicamente para evitar problemas de importação circular
+  const { supabase } = await import('@/integrations/supabase/client');
+
+  // Obter todos os courierCodes únicos
+  const uniqueCourierCodes = [...new Set(events.map(e => e.courierCode).filter(Boolean))];
+  
+  if (uniqueCourierCodes.length === 0) return events;
+
+  // Buscar nomes das transportadoras no banco
+  const { data: couriers, error } = await supabase
+    .from('couriers')
+    .select('courier_code, courier_name')
+    .in('courier_code', uniqueCourierCodes);
+
+  if (error) {
+    console.error('Error fetching courier names:', error);
+    return events;
+  }
+
+  // Criar mapa de courierCode -> courierName
+  const courierNameMap = new Map(
+    (couriers || []).map(c => [c.courier_code, c.courier_name])
+  );
+
+  // Enriquecer eventos com os nomes
+  return events.map(event => ({
+    ...event,
+    courierName: courierNameMap.get(event.courierCode) || event.courierCode
+  }));
 }

@@ -133,9 +133,9 @@ export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimeline
                     {format(new Date(event.datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
 
-                  {event.courierCode && (
+                  {(event.courierName || event.courierCode) && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Transportadora: {event.courierCode}
+                      Transportadora: {event.courierName || event.courierCode}
                     </p>
                   )}
                 </div>
