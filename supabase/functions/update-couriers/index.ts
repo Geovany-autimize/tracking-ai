@@ -8,10 +8,10 @@ const corsHeaders = {
 interface CourierData {
   courierCode: string;
   courierName: string;
-  website: string | null;
+  website?: string | null;
   isPost: boolean;
-  countryCode: string | null;
-  requiredFields: any | null;
+  countryCode?: string | null;
+  requiredFields?: any;
   isDeprecated: boolean;
 }
 
@@ -28,38 +28,35 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          persistSession: false,
-        },
-      }
-    );
+    // Get session token from header
+    const token = req.headers.get('x-session-token') || 
+                  req.headers.get('authorization')?.replace('Bearer ', '');
 
-    // Get session token from headers
-    const sessionToken = req.headers.get('x-session-token');
-    if (!sessionToken) {
-      console.error('No session token provided');
+    if (!token) {
+      console.error('No authentication token provided');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Verify session
-    const { data: sessionData, error: sessionError } = await supabaseClient
+    const { data: sessionData, error: sessionError } = await supabase
       .from('sessions')
-      .select('customer_id, expires_at')
-      .eq('token_jti', sessionToken)
+      .select('customer_id')
+      .eq('token_jti', token)
       .gt('expires_at', new Date().toISOString())
       .single();
 
     if (sessionError || !sessionData) {
       console.error('Invalid or expired session:', sessionError);
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Invalid or expired session' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -67,87 +64,83 @@ Deno.serve(async (req) => {
     // Parse request body
     const body: UpdateCouriersRequest = await req.json();
     
-    if (!body.data || !Array.isArray(body.data.couriers)) {
+    if (!body.data?.couriers || !Array.isArray(body.data.couriers)) {
+      console.error('Invalid request format');
       return new Response(
-        JSON.stringify({ error: 'Invalid request format. Expected { data: { couriers: [...] } }' }),
+        JSON.stringify({ error: 'Invalid request format. Expected { data: { couriers: [] } }' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const couriers = body.data.couriers;
-    console.log(`Processing ${couriers.length} couriers`);
+    console.log(`Processing ${body.data.couriers.length} couriers...`);
 
-    let inserted = 0;
-    let updated = 0;
-    let errors = 0;
+    // Transform and upsert couriers
+    const couriersToUpsert = body.data.couriers.map(courier => ({
+      courier_code: courier.courierCode,
+      courier_name: courier.courierName,
+      website: courier.website || null,
+      is_post: courier.isPost,
+      country_code: courier.countryCode || null,
+      required_fields: courier.requiredFields || null,
+      is_deprecated: courier.isDeprecated,
+    }));
 
-    // Process each courier with upsert
-    for (const courier of couriers) {
-      const courierData = {
-        courier_code: courier.courierCode,
-        courier_name: courier.courierName,
-        website: courier.website,
-        is_post: courier.isPost,
-        country_code: courier.countryCode,
-        required_fields: courier.requiredFields,
-        is_deprecated: courier.isDeprecated,
-      };
+    // Batch upsert in chunks of 100 to avoid timeout
+    const chunkSize = 100;
+    const chunks = [];
+    for (let i = 0; i < couriersToUpsert.length; i += chunkSize) {
+      chunks.push(couriersToUpsert.slice(i, i + chunkSize));
+    }
 
-      // Check if courier exists
-      const { data: existing } = await supabaseClient
+    let totalUpserted = 0;
+    const errors = [];
+
+    for (const chunk of chunks) {
+      const { data, error } = await supabase
         .from('couriers')
-        .select('courier_code')
-        .eq('courier_code', courier.courierCode)
-        .single();
+        .upsert(chunk, {
+          onConflict: 'courier_code',
+          ignoreDuplicates: false,
+        });
 
-      if (existing) {
-        // Update existing courier
-        const { error: updateError } = await supabaseClient
-          .from('couriers')
-          .update(courierData)
-          .eq('courier_code', courier.courierCode);
-
-        if (updateError) {
-          console.error(`Error updating courier ${courier.courierCode}:`, updateError);
-          errors++;
-        } else {
-          updated++;
-        }
+      if (error) {
+        console.error('Error upserting chunk:', error);
+        errors.push(error);
       } else {
-        // Insert new courier
-        const { error: insertError } = await supabaseClient
-          .from('couriers')
-          .insert(courierData);
-
-        if (insertError) {
-          console.error(`Error inserting courier ${courier.courierCode}:`, insertError);
-          errors++;
-        } else {
-          inserted++;
-        }
+        totalUpserted += chunk.length;
+        console.log(`Upserted ${chunk.length} couriers successfully`);
       }
     }
 
-    console.log(`Completed: ${inserted} inserted, ${updated} updated, ${errors} errors`);
+    if (errors.length > 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Partially completed. Upserted ${totalUpserted} couriers with ${errors.length} errors`,
+          errors: errors,
+        }),
+        { status: 207, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Successfully upserted all ${totalUpserted} couriers`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        summary: {
-          total: couriers.length,
-          inserted,
-          updated,
-          errors,
-        },
+        message: `Successfully updated ${totalUpserted} couriers`,
+        count: totalUpserted,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in update-couriers function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.auth-logout]
 verify_jwt = false
+
+[functions.avatar-upload-start]
+verify_jwt = false
+
+[functions.avatar-commit]
+verify_jwt = false
+
+[functions.update-couriers]
+verify_jwt = false
