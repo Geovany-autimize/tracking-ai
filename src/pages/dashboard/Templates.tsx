@@ -283,6 +283,7 @@ export default function TemplatesPage() {
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
         template={selectedTemplate}
+        existingTemplates={templates}
         viewOnly={viewOnly}
         onSave={(data) => {
           if (!customer) {

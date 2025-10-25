@@ -24,6 +24,7 @@ interface CreateEditTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template?: MessageTemplate | null;
+  existingTemplates?: MessageTemplate[];
   onSave: (data: Omit<MessageTemplate, 'id' | 'customer_id' | 'created_at' | 'updated_at'>) => void;
   onUpdate: (data: Partial<MessageTemplate> & { id: string }) => void;
   isSaving?: boolean;
@@ -34,6 +35,7 @@ export function CreateEditTemplateDialog({
   open,
   onOpenChange,
   template,
+  existingTemplates = [],
   onSave,
   onUpdate,
   isSaving = false,
@@ -46,6 +48,31 @@ export function CreateEditTemplateDialog({
   const [showVariables, setShowVariables] = useState(false);
   const [isEditing, setIsEditing] = useState(!viewOnly);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Validação de formato slug
+  const isValidSlugFormat = (value: string): boolean => {
+    const slugPattern = /^[a-z0-9_-]*$/;
+    return slugPattern.test(value);
+  };
+
+  // Verificação de nome duplicado
+  const isDuplicateName = (value: string): boolean => {
+    if (!value.trim()) return false;
+    return existingTemplates.some(
+      t => t.name.toLowerCase() === value.toLowerCase() && t.id !== template?.id
+    );
+  };
+
+  const nameError = (() => {
+    if (!name.trim()) return '';
+    if (!isValidSlugFormat(name)) {
+      return 'Use apenas letras minúsculas, números, hífens e underscores';
+    }
+    if (isDuplicateName(name)) {
+      return 'Já existe um template com este nome';
+    }
+    return '';
+  })();
 
   useEffect(() => {
     if (template) {
@@ -125,7 +152,11 @@ export function CreateEditTemplateDialog({
     return matches.every(match => validVariables.includes(match));
   };
 
-  const canSave = name.trim() !== '' && trigger !== '' && message.trim() !== '' && validateMessage(message);
+  const canSave = name.trim() !== '' && 
+    trigger !== '' && 
+    message.trim() !== '' && 
+    validateMessage(message) &&
+    !nameError;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -166,14 +197,21 @@ export function CreateEditTemplateDialog({
               <Label htmlFor="name">Nome do Template</Label>
               <Input
                 id="name"
-                placeholder="Ex: Pedido Saiu para Entrega"
+                placeholder="ex: pedido_saiu_para_entrega"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={viewOnly && !isEditing}
+                className={nameError ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
-              <p className="text-xs text-muted-foreground">
-                O nome será convertido automaticamente para formato slug (ex: pedido_saiu_para_entrega)
-              </p>
+              {nameError ? (
+                <p className="text-xs text-destructive font-medium">
+                  {nameError}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Use apenas letras minúsculas, números, hífens (-) e underscores (_)
+                </p>
+              )}
             </div>
 
             {/* Template Ativo */}

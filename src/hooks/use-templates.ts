@@ -6,19 +6,6 @@ import { toast } from 'sonner';
 export function useTemplates() {
   const queryClient = useQueryClient();
 
-  // Helper para gerar slug único do nome
-  const generateSlug = (name: string): string => {
-    return name
-      .toLowerCase()
-      .trim()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^a-z0-9\s-]/g, '') // Remove caracteres especiais
-      .replace(/\s+/g, '_') // Substitui espaços por underscore
-      .replace(/_+/g, '_') // Remove underscores duplicados
-      .replace(/^_|_$/g, ''); // Remove underscores do início e fim
-  };
-
   const { data: templates, isLoading } = useQuery({
     queryKey: ['message-templates'],
     queryFn: async () => {
@@ -41,15 +28,9 @@ export function useTemplates() {
 
   const createMutation = useMutation({
     mutationFn: async (template: Omit<MessageTemplate, 'id' | 'created_at' | 'updated_at'>) => {
-      const slug = generateSlug(template.name);
-
-      if (!slug || slug.length === 0) {
-        throw new Error('Nome do template inválido. Use apenas letras, números e espaços.');
-      }
-
       const payload: any = {
         ...template,
-        name: slug,
+        name: template.name.trim(),
         // DB expects text[]; UI uses single value
         notification_type: Array.isArray((template as any).notification_type)
           ? (template as any).notification_type
@@ -77,10 +58,7 @@ export function useTemplates() {
       if (error instanceof Error) {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
-          const slug = generateSlug((error as any).template?.name || '');
-          message = `⚠️ Template não criado: Já existe um template com o nome "${slug}". Por favor, escolha um nome diferente.`;
-        } else if (error.message.includes('Nome do template inválido')) {
-          message = '⚠️ Template não criado: ' + error.message;
+          message = '⚠️ Template não criado: Já existe um template com este nome. Por favor, escolha um nome diferente.';
         } else {
           message = '⚠️ Erro ao criar template: ' + error.message;
         }
@@ -101,15 +79,9 @@ export function useTemplates() {
     mutationFn: async ({ id, ...template }: Partial<MessageTemplate> & { id: string }) => {
       const payload: any = { ...template };
       
-      // Se está mudando o nome, gera novo slug e valida
+      // Se está mudando o nome, trim e valida
       if (template.name) {
-        const slug = generateSlug(template.name);
-        
-        if (!slug || slug.length === 0) {
-          throw new Error('Nome do template inválido. Use apenas letras, números e espaços.');
-        }
-
-        payload.name = slug;
+        payload.name = template.name.trim();
       }
 
       if (template.notification_type) {
@@ -141,8 +113,6 @@ export function useTemplates() {
         if (error.message.includes('message_templates_name_unique') || 
             error.message.includes('duplicate key value')) {
           message = '⚠️ Template não atualizado: Já existe outro template com este nome. Por favor, escolha um nome diferente.';
-        } else if (error.message.includes('Nome do template inválido')) {
-          message = '⚠️ Template não atualizado: ' + error.message;
         } else {
           message = '⚠️ Erro ao atualizar template: ' + error.message;
         }
