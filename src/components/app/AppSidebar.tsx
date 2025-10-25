@@ -16,6 +16,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import Logo from './Logo';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -88,8 +89,20 @@ export function AppSidebar() {
 
         <div className="flex-1" />
 
+        {/* Notificações */}
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <NotificationBell />
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Perfil */}
         {profileItem && (
-          <SidebarGroup className="mt-auto">
+          <SidebarGroup className="mt-0">
             <SidebarGroupContent>
               <SidebarMenu>
             <SidebarMenuItem>

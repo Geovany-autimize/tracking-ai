@@ -91,6 +91,57 @@ function mapApiStatusToInternal(statusMilestone: string): string {
   return statusMap[statusMilestone] || 'pending';
 }
 
+// Determina o tipo de notificação baseado no status milestone
+function determineNotificationType(statusMilestone: string): string {
+  if (statusMilestone === 'delivered') return 'delivery';
+  if (statusMilestone === 'out_for_delivery') return 'out_for_delivery';
+  if (statusMilestone === 'failed_attempt' || statusMilestone === 'exception') return 'exception';
+  return 'status_update';
+}
+
+// Gera título de notificação
+function generateNotificationTitle(statusMilestone: string): string {
+  const titles: Record<string, string> = {
+    'delivered': '✅ Pedido entregue',
+    'out_for_delivery': '🚚 Pedido saiu para entrega',
+    'in_transit': '📦 Pedido em trânsito',
+    'failed_attempt': '⚠️ Tentativa de entrega falhou',
+    'exception': '❌ Problema na entrega',
+    'available_for_pickup': '📍 Pedido disponível para retirada',
+    'info_received': '📋 Informação recebida',
+  };
+  return titles[statusMilestone] || '📦 Atualização de rastreamento';
+}
+
+// Gera mensagem de notificação
+function generateNotificationMessage(
+  trackingCode: string,
+  courierName: string | null,
+  location: string | null,
+  statusMilestone: string
+): string {
+  let message = `Rastreio #${trackingCode}`;
+  
+  if (courierName) {
+    message += ` com ${courierName}`;
+  }
+  
+  if (location) {
+    message += ` - ${location}`;
+  }
+
+  // Adiciona contexto baseado no status
+  if (statusMilestone === 'delivered') {
+    message = `Seu pedido foi entregue com sucesso! ${message}`;
+  } else if (statusMilestone === 'out_for_delivery') {
+    message = `Seu pedido está a caminho! ${message}`;
+  } else if (statusMilestone === 'failed_attempt' || statusMilestone === 'exception') {
+    message = `Houve um problema com a entrega. ${message}`;
+  }
+  
+  return message;
+}
+
 // Enriquece eventos com nomes das transportadoras
 async function enrichEventsWithCourierNames(
   supabase: any,
@@ -217,6 +268,40 @@ Deno.serve(async (req) => {
         }
 
         console.log(`Successfully updated shipment ${shipment.id}`);
+
+        // Criar notificação para o cliente
+        const latestEvent = enrichedEvents[0]; // Evento mais recente
+        const notificationType = determineNotificationType(tracking.shipment.statusMilestone);
+        const notificationTitle = generateNotificationTitle(tracking.shipment.statusMilestone);
+        const notificationMessage = generateNotificationMessage(
+          tracking.tracker.trackingNumber,
+          latestEvent?.courierName || null,
+          latestEvent?.location || null,
+          tracking.shipment.statusMilestone
+        );
+
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            customer_id: shipment.customer_id,
+            shipment_id: shipment.id,
+            tracking_code: tracking.tracker.trackingNumber,
+            notification_type: notificationType,
+            title: notificationTitle,
+            message: notificationMessage,
+            status_milestone: tracking.shipment.statusMilestone,
+            courier_name: latestEvent?.courierName || null,
+            location: latestEvent?.location || null,
+            is_read: false,
+          });
+
+        if (notificationError) {
+          console.error(`Failed to create notification for shipment ${shipment.id}:`, notificationError);
+          // Não falha a atualização completa se a notificação falhar
+        } else {
+          console.log(`Created notification for shipment ${shipment.id}`);
+        }
+
         results.push({
           trackerId,
           shipmentId: shipment.id,

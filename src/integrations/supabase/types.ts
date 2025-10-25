@@ -112,6 +112,69 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          courier_name: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          is_read: boolean
+          location: string | null
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          shipment_id: string
+          status_milestone: string | null
+          title: string
+          tracking_code: string
+          updated_at: string
+        }
+        Insert: {
+          courier_name?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          is_read?: boolean
+          location?: string | null
+          message: string
+          notification_type: Database["public"]["Enums"]["notification_type"]
+          shipment_id: string
+          status_milestone?: string | null
+          title: string
+          tracking_code: string
+          updated_at?: string
+        }
+        Update: {
+          courier_name?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          is_read?: boolean
+          location?: string | null
+          message?: string
+          notification_type?: Database["public"]["Enums"]["notification_type"]
+          shipment_id?: string
+          status_milestone?: string | null
+          title?: string
+          tracking_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oauth_accounts: {
         Row: {
           created_at: string | null
@@ -389,7 +452,11 @@ export type Database = {
       get_customer_id_from_request: { Args: never; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      notification_type:
+        | "status_update"
+        | "delivery"
+        | "exception"
+        | "out_for_delivery"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -516,6 +583,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      notification_type: [
+        "status_update",
+        "delivery",
+        "exception",
+        "out_for_delivery",
+      ],
+    },
   },
 } as const
