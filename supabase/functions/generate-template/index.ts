@@ -54,15 +54,14 @@ serve(async (req) => {
   }
 
   try {
-    const { intention, trigger, tone = 'formal' }: { 
-      intention: string; 
-      trigger?: string; 
+    const { trigger, tone = 'formal' }: { 
+      trigger: string; 
       tone?: 'formal' | 'casual' | 'friendly' 
     } = await req.json();
 
-    if (!intention || intention.trim().length === 0) {
+    if (!trigger || trigger.trim().length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Intenção é obrigatória' }),
+        JSON.stringify({ error: 'Tipo de template é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -74,6 +73,10 @@ serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('API Key disponível:', openAIApiKey ? 'Sim' : 'Não');
+    console.log('Trigger recebido:', trigger);
+    console.log('Tom selecionado:', tone);
 
     const toneMapping = {
       'formal': 'Profissional e formal, mantendo respeito e clareza',
@@ -118,9 +121,9 @@ Retorne APENAS um objeto JSON válido com esta estrutura exata:
   "reasoning": "breve explicação das escolhas (max 100 chars)"
 }`;
 
-    const userPrompt = `INTENÇÃO DO USUÁRIO: ${intention}
+    const userPrompt = `Crie uma mensagem profissional de notificação para o gatilho: ${triggerContext}
 
-Crie uma mensagem profissional de notificação baseada nesta intenção.`;
+A mensagem deve seguir todas as regras especificadas e ser adequada para este contexto específico.`;
 
     console.log('Chamando OpenAI API...');
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

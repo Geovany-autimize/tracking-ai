@@ -251,12 +251,12 @@ export function CreateEditTemplateDialog({
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="default"
                       size="sm"
-                      className="h-8 gap-2"
+                      className="h-8 gap-2 bg-purple-600 hover:bg-purple-700 text-white"
                       onClick={() => setShowAiDialog(true)}
                     >
-                      <Code2 className="h-3.5 w-3.5" />
+                      <Sparkles className="h-3.5 w-3.5" />
                       Gerar com IA
                     </Button>
                     <Popover open={showVariables} onOpenChange={setShowVariables}>

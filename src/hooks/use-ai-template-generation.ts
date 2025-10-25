@@ -3,8 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 interface GenerateTemplateParams {
-  intention: string;
-  trigger?: string;
+  trigger: string;
   tone?: 'formal' | 'casual' | 'friendly';
 }
 

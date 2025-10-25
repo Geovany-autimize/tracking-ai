@@ -19,20 +19,31 @@ interface AiGenerationDialogProps {
   trigger?: string;
 }
 
+const TRIGGER_OPTIONS = [
+  { value: 'info_received', label: '📦 Informação Recebida', description: 'Primeira notificação quando pedido é registrado' },
+  { value: 'in_transit', label: '🚚 Em Trânsito', description: 'Pedido está a caminho' },
+  { value: 'out_for_delivery', label: '📍 Saiu para Entrega', description: 'Pedido está com o entregador' },
+  { value: 'delivered', label: '✅ Entregue', description: 'Pedido foi entregue com sucesso' },
+  { value: 'failed_attempt', label: '⚠️ Tentativa Falhou', description: 'Entrega não foi realizada' },
+  { value: 'available_for_pickup', label: '📮 Disponível para Retirada', description: 'Pedido pode ser retirado' },
+  { value: 'exception', label: '❌ Exceção', description: 'Problema no envio' },
+  { value: 'expired', label: '⏰ Expirado', description: 'Prazo de retirada expirou' },
+  { value: 'pending', label: '⏳ Pendente', description: 'Aguardando mais informações' }
+];
+
 export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: AiGenerationDialogProps) {
-  const [intention, setIntention] = useState("");
-  const [tone, setTone] = useState<'formal' | 'casual' | 'friendly'>('formal');
+  const [selectedTrigger, setSelectedTrigger] = useState(trigger || 'in_transit');
+  const [tone, setTone] = useState<'formal' | 'casual' | 'friendly'>('friendly');
   const { generate, isGenerating, generatedData } = useAiTemplateGeneration();
 
   const handleGenerate = () => {
-    if (!intention.trim()) {
-      toast.error('Digite sua intenção para gerar a mensagem');
+    if (!selectedTrigger) {
+      toast.error('Selecione o tipo de template');
       return;
     }
 
     generate({
-      intention: intention.trim(),
-      trigger,
+      trigger: selectedTrigger,
       tone
     });
   };
@@ -45,7 +56,7 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
     if (generatedData) {
       onGenerate(generatedData.message, generatedData.suggestedName);
       // Reset state
-      setIntention("");
+      setSelectedTrigger(trigger || 'in_transit');
       toast.success('Mensagem inserida com sucesso!', {
         description: 'Você pode editá-la antes de salvar'
       });
@@ -53,7 +64,7 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
   };
 
   const handleCancel = () => {
-    setIntention("");
+    setSelectedTrigger(trigger || 'in_transit');
     onOpenChange(false);
   };
 
@@ -77,22 +88,28 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Input de Intenção */}
+          {/* Select de Tipo de Template */}
           <div className="space-y-2">
-            <Label htmlFor="intention">
-              O que você quer comunicar? <span className="text-destructive">*</span>
+            <Label htmlFor="trigger">
+              Tipo de Template <span className="text-destructive">*</span>
             </Label>
-            <Textarea
-              id="intention"
-              placeholder="Ex: Avisar que o pedido chegou na cidade de destino e deve ser entregue em breve"
-              value={intention}
-              onChange={(e) => setIntention(e.target.value)}
-              className="min-h-[100px] resize-none"
-              maxLength={500}
-              disabled={isGenerating}
-            />
+            <Select value={selectedTrigger} onValueChange={setSelectedTrigger} disabled={isGenerating}>
+              <SelectTrigger id="trigger">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TRIGGER_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    <div className="flex flex-col">
+                      <span>{option.label}</span>
+                      <span className="text-xs text-muted-foreground">{option.description}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              {intention.length}/500 caracteres
+              A IA criará uma mensagem otimizada para este tipo de notificação
             </p>
           </div>
 
@@ -115,7 +132,7 @@ export function AiGenerationDialog({ open, onOpenChange, onGenerate, trigger }: 
           {!generatedData && (
             <Button 
               onClick={handleGenerate} 
-              disabled={isGenerating || !intention.trim()}
+              disabled={isGenerating || !selectedTrigger}
               className="w-full"
             >
               {isGenerating ? (
