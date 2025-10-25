@@ -275,6 +275,12 @@ export interface TriggerOption {
 
 export const TRIGGER_OPTIONS: TriggerOption[] = [
   {
+    value: 'pending',
+    label: '⏳ Pendente',
+    description: 'Dispara quando o pedido está aguardando processamento',
+    icon: 'Clock'
+  },
+  {
     value: 'info_received',
     label: '📋 Informação Recebida',
     description: 'Dispara quando a transportadora recebe as informações do envio',
@@ -315,12 +321,6 @@ export const TRIGGER_OPTIONS: TriggerOption[] = [
     label: '❌ Exceção',
     description: 'Dispara quando há um problema ou exceção na entrega',
     icon: 'AlertCircle'
-  },
-  {
-    value: 'pending',
-    label: '⏳ Pendente',
-    description: 'Dispara quando o pedido está aguardando processamento',
-    icon: 'Clock'
   },
   {
     value: 'expired',

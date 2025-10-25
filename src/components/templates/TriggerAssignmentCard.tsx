@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Package, Truck, CheckCircle2, AlertCircle, FileText, MapPin, Clock, AlertTriangle } from 'lucide-react';
 import { TriggerOption } from '@/types/templates';
 import { MessageTemplate } from '@/types/templates';
@@ -52,16 +53,22 @@ export function TriggerAssignmentCard({
           </div>
           <div className="flex-1 space-y-1">
             <div className="flex items-center gap-2">
-              <h4 className="font-medium text-sm">{trigger.label}</h4>
+              <TooltipProvider delayDuration={2000}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <h4 className="font-medium text-sm cursor-help">{trigger.label}</h4>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">{trigger.description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               {hasTemplate && (
                 <Badge variant="default" className="h-5 px-1.5 text-xs">
                   Ativo
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground line-clamp-2">
-              {trigger.description}
-            </p>
           </div>
         </div>
 
