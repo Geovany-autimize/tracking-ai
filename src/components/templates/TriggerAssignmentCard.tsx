@@ -44,7 +44,7 @@ export function TriggerAssignmentCard({
       )}
     >
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <div className={cn(
             'p-2 rounded-lg',
             hasTemplate ? 'bg-primary/10' : 'bg-muted'
