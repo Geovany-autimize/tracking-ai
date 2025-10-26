@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import Stripe from "https://esm.sh/stripe@14.0.0?target=deno";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +55,9 @@ serve(async (req) => {
     if (customerError || !customerData) throw new Error("Customer not found");
     logStep("Customer data retrieved", { email: customerData.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { 
+      apiVersion: "2024-11-20.acacia",
+    });
 
     // Check if Stripe customer exists or create one
     let stripeCustomerId = customerData.stripe_customer_id;

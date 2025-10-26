@@ -70,7 +70,7 @@ export function CurrentPlanCard({ onUpgradeClick }: CurrentPlanCardProps) {
             </Button>
           )}
           
-          {isPremium && subscription?.stripe_subscription_id && (
+          {isPremium && (
             <Button 
               variant="outline"
               className="w-full"
