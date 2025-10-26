@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -306,54 +307,107 @@ export default function BillingPage() {
             </div>
           </div>
 
-          {/* Credits Section */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h4 className="text-base font-semibold mb-1">Créditos</h4>
-              </div>
-            </div>
-            
-            <div className="space-y-3 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Créditos mensais:</span>
-                <span className="font-semibold">{totalCredits.toLocaleString('pt-BR')}</span>
-              </div>
-              
-              {extraCredits > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-green-600">Créditos extras:</span>
-                  <span className="font-semibold text-green-600">+{extraCredits.toLocaleString('pt-BR')}</span>
+          {/* Credits Section - Hero Style */}
+          <div className="space-y-6">
+            {/* Hero Credit Display */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-8">
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                    Créditos Disponíveis
+                  </h4>
                 </div>
-              )}
-              
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Usados:</span>
-                <span className="font-semibold">{usedCredits.toLocaleString('pt-BR')}</span>
+                <div className="flex items-baseline gap-3 mb-4">
+                  <span className="text-6xl font-bold bg-gradient-to-br from-primary to-primary/60 bg-clip-text text-transparent">
+                    {remainingCredits.toLocaleString('pt-BR')}
+                  </span>
+                  {extraCredits > 0 && (
+                    <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                      +{extraCredits} extras
+                    </Badge>
+                  )}
+                </div>
+                
+                <Progress value={usagePercentage} className="h-2 mb-3" />
+                
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {usedCredits.toLocaleString('pt-BR')} de {(totalCredits + extraCredits).toLocaleString('pt-BR')} usados
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {Math.round(usagePercentage)}%
+                  </p>
+                </div>
               </div>
               
-              <Separator />
-              
-              <div className="flex justify-between text-lg font-bold">
-                <span>Disponíveis:</span>
-                <span className="text-primary">{remainingCredits.toLocaleString('pt-BR')}</span>
-              </div>
-              
-              <Button 
-                variant="outline" 
-                onClick={() => setBuyCreditsOpen(true)}
-                className="w-full mt-4"
-                size="lg"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Comprar Créditos Extras
-              </Button>
+              {/* Background decoration */}
+              <div className="absolute -right-12 -top-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+              <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
             </div>
-            
-            <Progress value={usagePercentage} className="h-2 mb-2" />
-            <div className="flex items-center justify-between mt-3">
+
+            {/* Collapsible Details */}
+            <Collapsible className="space-y-2">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg hover:bg-muted/50 transition-colors group">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Ver detalhamento
+                </span>
+                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent className="space-y-3 px-3 pb-3">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Créditos mensais do plano:</span>
+                    <span className="font-semibold">{totalCredits.toLocaleString('pt-BR')}</span>
+                  </div>
+                  
+                  {extraCredits > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-green-600 dark:text-green-400">Créditos extras comprados:</span>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        +{extraCredits.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <Separator className="my-2" />
+                  
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total disponível:</span>
+                    <span className="font-semibold">{(totalCredits + extraCredits).toLocaleString('pt-BR')}</span>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Já utilizados:</span>
+                    <span className="font-semibold text-destructive">-{usedCredits.toLocaleString('pt-BR')}</span>
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  <div className="flex justify-between text-base">
+                    <span className="font-semibold">Restantes:</span>
+                    <span className="font-bold text-primary">{remainingCredits.toLocaleString('pt-BR')}</span>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Action Button */}
+            <Button 
+              variant="outline" 
+              onClick={() => setBuyCreditsOpen(true)}
+              className="w-full"
+              size="lg"
+            >
+              <Zap className="w-4 h-4 mr-2" />
+              Comprar Créditos Extras
+            </Button>
+
+            {/* Additional Info */}
+            <div className="flex items-center justify-between pt-2">
               <p className="text-xs text-muted-foreground">
-                Uso reinicia em {getNextRenewalDate()}
+                Renovação em {getNextRenewalDate()}
               </p>
               {plan?.id !== 'free' && (
                 <div className="flex items-center gap-2">
@@ -366,27 +420,32 @@ export default function BillingPage() {
                     htmlFor="auto-credits" 
                     className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
                   >
-                    Auto-purchase de créditos extras
+                    Auto-compra
                     <HelpCircle className="w-3 h-3" />
                   </label>
                 </div>
               )}
             </div>
 
+            {/* Usage Warning */}
             {usagePercentage > 80 && plan?.id !== 'enterprise' && (
-              <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                    Você está usando {Math.round(usagePercentage)}% dos seus créditos
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Considere fazer upgrade para não ficar sem créditos
-                  </p>
-                </div>
-                <Button variant="default" size="sm" onClick={() => handleUpgrade('premium')}>
-                  Ver Planos
-                </Button>
-              </div>
+              <Alert className="border-amber-500/20 bg-amber-500/10">
+                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <AlertTitle className="text-amber-700 dark:text-amber-400">
+                  Atenção: {Math.round(usagePercentage)}% dos créditos usados
+                </AlertTitle>
+                <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
+                  Considere fazer upgrade para não ficar sem créditos.
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 ml-1 text-amber-700 dark:text-amber-300"
+                    onClick={() => handleUpgrade('premium')}
+                  >
+                    Ver planos
+                  </Button>
+                </AlertDescription>
+              </Alert>
             )}
           </div>
         </CardContent>
