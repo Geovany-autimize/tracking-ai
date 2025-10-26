@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_recharge_settings: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          enabled: boolean
+          id: string
+          last_payment_method_details: Json | null
+          min_credits_threshold: number
+          recharge_amount: number
+          stripe_payment_method_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          enabled?: boolean
+          id?: string
+          last_payment_method_details?: Json | null
+          min_credits_threshold?: number
+          recharge_amount?: number
+          stripe_payment_method_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          enabled?: boolean
+          id?: string
+          last_payment_method_details?: Json | null
+          min_credits_threshold?: number
+          recharge_amount?: number
+          stripe_payment_method_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_recharge_settings_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       couriers: {
         Row: {
           country_code: string | null
@@ -58,6 +102,7 @@ export type Database = {
           customer_id: string
           expires_at: string
           id: string
+          is_auto_recharge: boolean | null
           price_cents: number
           price_per_credit_cents: number
           status: string
@@ -72,6 +117,7 @@ export type Database = {
           customer_id: string
           expires_at: string
           id?: string
+          is_auto_recharge?: boolean | null
           price_cents: number
           price_per_credit_cents: number
           status?: string
@@ -86,6 +132,7 @@ export type Database = {
           customer_id?: string
           expires_at?: string
           id?: string
+          is_auto_recharge?: boolean | null
           price_cents?: number
           price_per_credit_cents?: number
           status?: string

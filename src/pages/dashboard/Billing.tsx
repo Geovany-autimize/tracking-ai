@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BuyCreditsDialog } from '@/components/dialogs/BuyCreditsDialog';
+import { AutoRechargeCard } from '@/components/dialogs/AutoRechargeCard';
 import { Separator } from '@/components/ui/separator';
 
 export default function BillingPage() {
@@ -468,6 +469,9 @@ export default function BillingPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recarga Automática */}
+      <AutoRechargeCard />
 
       {/* Plans */}
       <section className="space-y-6">
