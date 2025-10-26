@@ -29,6 +29,7 @@ interface Plan {
 interface Usage {
   used_credits: number;
   period_ym: string;
+  extra_credits?: number;
 }
 
 interface AuthContextType {

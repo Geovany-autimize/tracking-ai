@@ -50,6 +50,59 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_purchases: {
+        Row: {
+          consumed_credits: number
+          created_at: string
+          credits_amount: number
+          customer_id: string
+          expires_at: string
+          id: string
+          price_cents: number
+          price_per_credit_cents: number
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          consumed_credits?: number
+          created_at?: string
+          credits_amount: number
+          customer_id: string
+          expires_at: string
+          id?: string
+          price_cents: number
+          price_per_credit_cents: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          consumed_credits?: number
+          created_at?: string
+          credits_amount?: number
+          customer_id?: string
+          expires_at?: string
+          id?: string
+          price_cents?: number
+          price_per_credit_cents?: number
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_purchases_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           avatar_url: string | null

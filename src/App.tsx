@@ -22,6 +22,7 @@ import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
 import BillingPage from "./pages/dashboard/Billing";
 import BillingSuccess from "./pages/dashboard/billing/Success";
+import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="billing" element={<BillingPage />} />
               <Route path="billing/success" element={<BillingSuccess />} />
+              <Route path="billing/credits-success" element={<CreditsSuccess />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
               <Route path="profile" element={<ProfilePage />} />

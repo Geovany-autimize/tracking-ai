@@ -38,3 +38,9 @@ verify_jwt = false
 
 [functions.customer-portal]
 verify_jwt = false
+
+[functions.create-credits-checkout]
+verify_jwt = false
+
+[functions.confirm-credits-purchase]
+verify_jwt = false

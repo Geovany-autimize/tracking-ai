@@ -11,12 +11,15 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { BuyCreditsDialog } from '@/components/dialogs/BuyCreditsDialog';
+import { Separator } from '@/components/ui/separator';
 
 export default function BillingPage() {
   const { customer, plan, usage, subscription, checkSubscription } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoCredits, setAutoCredits] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
 
   // Verifica status da assinatura ao carregar a página
   useEffect(() => {
@@ -27,9 +30,13 @@ export default function BillingPage() {
   }, []);
 
   const totalCredits = plan?.monthly_credits || 0;
+  const extraCredits = usage?.extra_credits || 0;
   const usedCredits = usage?.used_credits || 0;
-  const remainingCredits = Math.max(0, totalCredits - usedCredits);
-  const usagePercentage = totalCredits > 0 ? (usedCredits / totalCredits) * 100 : 0;
+  const availableCredits = totalCredits + extraCredits - usedCredits;
+  const remainingCredits = Math.max(0, availableCredits);
+  const usagePercentage = (totalCredits + extraCredits) > 0 
+    ? (usedCredits / (totalCredits + extraCredits)) * 100 
+    : 0;
 
   const getNextRenewalDate = () => {
     const now = new Date();
@@ -304,20 +311,42 @@ export default function BillingPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h4 className="text-base font-semibold mb-1">Créditos</h4>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-semibold">{usedCredits} / {totalCredits} créditos usados ({Math.round(usagePercentage)}%)</span>
-                </div>
               </div>
+            </div>
+            
+            <div className="space-y-3 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Créditos mensais:</span>
+                <span className="font-semibold">{totalCredits.toLocaleString('pt-BR')}</span>
+              </div>
+              
+              {extraCredits > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600">Créditos extras:</span>
+                  <span className="font-semibold text-green-600">+{extraCredits.toLocaleString('pt-BR')}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Usados:</span>
+                <span className="font-semibold">{usedCredits.toLocaleString('pt-BR')}</span>
+              </div>
+              
+              <Separator />
+              
+              <div className="flex justify-between text-lg font-bold">
+                <span>Disponíveis:</span>
+                <span className="text-primary">{remainingCredits.toLocaleString('pt-BR')}</span>
+              </div>
+              
               <Button 
                 variant="outline" 
-                size="sm"
-                onClick={() => {
-                  toast.info('Funcionalidade em desenvolvimento', {
-                    description: 'Em breve você poderá comprar créditos extras'
-                  });
-                }}
+                onClick={() => setBuyCreditsOpen(true)}
+                className="w-full mt-4"
+                size="lg"
               >
-                Comprar extras
+                <Zap className="w-4 h-4 mr-2" />
+                Comprar Créditos Extras
               </Button>
             </div>
             
@@ -455,6 +484,11 @@ export default function BillingPage() {
         </div>
 
       </section>
+
+      <BuyCreditsDialog 
+        open={buyCreditsOpen} 
+        onOpenChange={setBuyCreditsOpen} 
+      />
     </div>
   );
 }

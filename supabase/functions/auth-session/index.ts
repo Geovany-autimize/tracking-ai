@@ -136,6 +136,19 @@ serve(async (req) => {
       .eq('period_ym', periodYm)
       .single();
 
+    // Get available extra credits
+    const { data: extraCredits } = await supabase
+      .from("credit_purchases")
+      .select("credits_amount, consumed_credits")
+      .eq("customer_id", customer.id)
+      .eq("status", "completed")
+      .gt("expires_at", new Date().toISOString());
+
+    const totalExtraCredits = extraCredits?.reduce(
+      (sum, purchase) => sum + (purchase.credits_amount - purchase.consumed_credits), 
+      0
+    ) || 0;
+
     return new Response(
       JSON.stringify({
         customer: {
@@ -157,6 +170,7 @@ serve(async (req) => {
         usage: {
           used_credits: usage?.used_credits || 0,
           period_ym: periodYm,
+          extra_credits: totalExtraCredits,
         },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
