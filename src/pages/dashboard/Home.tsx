@@ -70,9 +70,9 @@ export default function DashboardHome() {
         <StatCard
           label="Plano Atual"
           value={
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-1">
               <span>{plan?.name || 'Free'}</span>
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs w-fit">
               {totalCredits} créditos/mês
             </Badge>
           </div>
