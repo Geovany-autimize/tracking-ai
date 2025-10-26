@@ -58,6 +58,8 @@ export type Database = {
           id: string
           name: string | null
           status: string | null
+          stripe_customer_id: string | null
+          stripe_payment_method_id: string | null
           whatsapp_e164: string | null
         }
         Insert: {
@@ -67,6 +69,8 @@ export type Database = {
           id?: string
           name?: string | null
           status?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           whatsapp_e164?: string | null
         }
         Update: {
@@ -76,6 +80,8 @@ export type Database = {
           id?: string
           name?: string | null
           status?: string | null
+          stripe_customer_id?: string | null
+          stripe_payment_method_id?: string | null
           whatsapp_e164?: string | null
         }
         Relationships: []
@@ -115,38 +121,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      monthly_usage: {
-        Row: {
-          customer_id: string
-          id: string
-          period_ym: string
-          updated_at: string | null
-          used_credits: number | null
-        }
-        Insert: {
-          customer_id: string
-          id?: string
-          period_ym: string
-          updated_at?: string | null
-          used_credits?: number | null
-        }
-        Update: {
-          customer_id?: string
-          id?: string
-          period_ym?: string
-          updated_at?: string | null
-          used_credits?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "monthly_usage_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       notifications: {
         Row: {
@@ -437,6 +411,8 @@ export type Database = {
       }
       subscriptions: {
         Row: {
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
@@ -446,6 +422,8 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -455,6 +433,8 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null

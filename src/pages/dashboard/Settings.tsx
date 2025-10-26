@@ -23,9 +23,8 @@ export default function SettingsPage() {
       </header>
 
       <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsList className="grid w-full max-w-md">
           <TabsTrigger value="integrations">Integrações</TabsTrigger>
-          <TabsTrigger value="billing">Faturamento</TabsTrigger>
         </TabsList>
 
         <TabsContent value="integrations" className="space-y-6">
@@ -104,28 +103,6 @@ export default function SettingsPage() {
                     href="/dashboard/settings/integrations/shein"
                     logoUrl="/logos/shein.png"
                   />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Faturamento</CardTitle>
-              <CardDescription>
-                Gerencie seu plano e forma de pagamento
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border bg-muted/50 p-6 text-center">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Gerencie seu plano e forma de pagamento (Em breve)
-                </p>
-                <div className="flex justify-center gap-3">
-                  <Button variant="outline" disabled>Ver planos</Button>
-                  <Button variant="outline" disabled>Histórico de cobranças</Button>
-                </div>
               </div>
             </CardContent>
           </Card>
