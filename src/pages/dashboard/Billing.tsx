@@ -112,65 +112,84 @@ export default function BillingPage() {
       </header>
 
       {/* Current Plan Summary */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <CardTitle className="text-2xl">Plano Atual: {plan?.name || 'Free'}</CardTitle>
-              <CardDescription>
-                Conta ativa desde {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-              </CardDescription>
+      <Card className="border-border/50">
+        <CardContent className="p-6 space-y-6">
+          {/* My Plan Section */}
+          <div className="flex items-center justify-between pb-6 border-b">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold">Meu Plano</h3>
+              <Badge variant="secondary" className="text-sm">
+                {plan?.name || 'Free'}
+              </Badge>
+              <span className="text-sm text-muted-foreground">
+                {totalCredits === 0 ? 'Créditos ilimitados' : `${totalCredits} créditos/mês`}
+              </span>
             </div>
-            <Badge variant="outline" className="text-lg px-4 py-2">
-              {totalCredits === 0 ? 'Ilimitado' : `${totalCredits} créditos/mês`}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {plan?.id !== 'free' && (
+                <Button variant="outline" size="sm" onClick={() => handleUpgrade('enterprise')}>
+                  Cancelar assinatura
+                </Button>
+              )}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Créditos Usados</span>
-                <span className="font-semibold">{usedCredits} de {totalCredits}</span>
-              </div>
-              <Progress value={usagePercentage} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                {remainingCredits} créditos restantes
+
+          {/* Billing Section */}
+          <div className="flex items-center justify-between pb-6 border-b">
+            <div>
+              <h4 className="text-base font-semibold mb-1">Faturamento</h4>
+              <p className="text-2xl font-bold">
+                {plan?.id === 'free' ? 'R$ 0,00' : plan?.id === 'premium' ? 'R$ 249,00' : 'Sob consulta'} 
+                <span className="text-sm font-normal text-muted-foreground ml-2">cobrado mensalmente</span>
               </p>
+              {plan?.id !== 'free' && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Próxima fatura em {getNextRenewalDate()}
+                </p>
+              )}
             </div>
-
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border">
-              <CalendarDays className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Próxima Renovação</p>
-                <p className="font-semibold">{getNextRenewalDate()}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-card/50 border">
-              <TrendingUp className="h-8 w-8 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Uso Mensal</p>
-                <p className="font-semibold">{Math.round(usagePercentage)}%</p>
-              </div>
-            </div>
+            {plan?.id !== 'free' && (
+              <Button variant="outline" size="sm">
+                Atualizar método de pagamento
+              </Button>
+            )}
           </div>
 
-          {usagePercentage > 80 && plan?.id !== 'enterprise' && (
-            <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+          {/* Credits Section */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="font-medium text-amber-700 dark:text-amber-400">
-                  Você está usando {Math.round(usagePercentage)}% dos seus créditos
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Considere fazer upgrade para não ficar sem créditos
-                </p>
+                <h4 className="text-base font-semibold mb-1">Créditos</h4>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="font-semibold">{usedCredits} / {totalCredits} créditos usados ({Math.round(usagePercentage)}%)</span>
+                </div>
               </div>
-              <Button variant="default" onClick={() => handleUpgrade('premium')}>
-                Ver Planos
+              <Button variant="outline" size="sm" disabled>
+                Comprar extras
               </Button>
             </div>
-          )}
+            
+            <Progress value={usagePercentage} className="h-2 mb-2" />
+            <p className="text-xs text-muted-foreground">
+              Uso reinicia em {getNextRenewalDate()}
+            </p>
+
+            {usagePercentage > 80 && plan?.id !== 'enterprise' && (
+              <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    Você está usando {Math.round(usagePercentage)}% dos seus créditos
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Considere fazer upgrade para não ficar sem créditos
+                  </p>
+                </div>
+                <Button variant="default" size="sm" onClick={() => handleUpgrade('premium')}>
+                  Ver Planos
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
