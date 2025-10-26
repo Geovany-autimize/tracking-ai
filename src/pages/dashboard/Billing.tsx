@@ -3,13 +3,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 export default function BillingPage() {
   const { customer, plan, usage } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [autoCredits, setAutoCredits] = useState(false);
 
   const totalCredits = plan?.monthly_credits || 0;
   const usedCredits = usage?.used_credits || 0;
@@ -44,6 +46,7 @@ export default function BillingPage() {
       badge: null,
       cta: 'Plano Atual',
       highlight: false,
+      tier: 1,
     },
     {
       id: 'premium',
@@ -63,6 +66,7 @@ export default function BillingPage() {
       badge: 'Mais popular',
       cta: 'Assinar Premium',
       highlight: true,
+      tier: 2,
     },
     {
       id: 'enterprise',
@@ -83,6 +87,7 @@ export default function BillingPage() {
       badge: null,
       cta: 'Falar com vendas',
       highlight: false,
+      tier: 3,
     },
   ];
 
@@ -118,7 +123,10 @@ export default function BillingPage() {
           <div className="flex items-center justify-between pb-6 border-b">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Meu Plano</h3>
-              <Badge variant="secondary" className="text-sm">
+              <Badge 
+                variant="secondary" 
+                className={`text-sm ${plan?.id !== 'free' ? 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' : ''}`}
+              >
                 {plan?.name || 'Free'}
               </Badge>
               <span className="text-sm text-muted-foreground">
@@ -148,11 +156,6 @@ export default function BillingPage() {
                 </p>
               )}
             </div>
-            {plan?.id !== 'free' && (
-              <Button variant="outline" size="sm">
-                Atualizar método de pagamento
-              </Button>
-            )}
           </div>
 
           {/* Credits Section */}
@@ -164,15 +167,39 @@ export default function BillingPage() {
                   <span className="font-semibold">{usedCredits} / {totalCredits} créditos usados ({Math.round(usagePercentage)}%)</span>
                 </div>
               </div>
-              <Button variant="outline" size="sm" disabled>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  toast.info('Funcionalidade em desenvolvimento', {
+                    description: 'Em breve você poderá comprar créditos extras'
+                  });
+                }}
+              >
                 Comprar extras
               </Button>
             </div>
             
             <Progress value={usagePercentage} className="h-2 mb-2" />
-            <p className="text-xs text-muted-foreground">
-              Uso reinicia em {getNextRenewalDate()}
-            </p>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-muted-foreground">
+                Uso reinicia em {getNextRenewalDate()}
+              </p>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  checked={autoCredits}
+                  onCheckedChange={setAutoCredits}
+                  id="auto-credits"
+                />
+                <label 
+                  htmlFor="auto-credits" 
+                  className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
+                >
+                  Auto-purchase de créditos extras
+                  <HelpCircle className="w-3 h-3" />
+                </label>
+              </div>
+            </div>
 
             {usagePercentage > 80 && plan?.id !== 'enterprise' && (
               <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
@@ -210,6 +237,18 @@ export default function BillingPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans.map((planItem, idx) => {
             const isCurrentPlan = plan?.id === planItem.id;
+            const currentPlanTier = plans.find(p => p.id === plan?.id)?.tier || 1;
+            const isDowngrade = planItem.tier < currentPlanTier;
+            const isUpgrade = planItem.tier > currentPlanTier;
+            
+            let buttonText = planItem.cta;
+            if (isCurrentPlan) {
+              buttonText = 'Plano Atual';
+            } else if (isDowngrade) {
+              buttonText = `Fazer downgrade para ${planItem.name}`;
+            } else if (isUpgrade) {
+              buttonText = `Fazer upgrade para ${planItem.name}`;
+            }
             
             return (
               <div
@@ -254,7 +293,7 @@ export default function BillingPage() {
                     disabled={isCurrentPlan || isProcessing}
                     onClick={() => handleUpgrade(planItem.id)}
                   >
-                    {isCurrentPlan ? 'Plano Atual' : planItem.cta}
+                    {buttonText}
                   </Button>
 
                   <div className="space-y-3 pt-4 border-t border-border/50">
