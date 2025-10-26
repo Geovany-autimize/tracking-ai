@@ -223,34 +223,30 @@ export default function BillingPage() {
 
       {/* Cancelamento pendente */}
       {subscription?.cancel_at_period_end && plan?.id !== 'free' && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Assinatura cancelada</AlertTitle>
-          <AlertDescription>
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-sm">
-                Seu plano Premium será cancelado em{' '}
-                <span className="font-semibold">
-                  {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </span>
-                . Após essa data, você será movido para o plano Free.
-              </p>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleManageSubscription}
-                disabled={isProcessing}
-                className="shrink-0 bg-background hover:bg-background/80"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reativar
-              </Button>
-            </div>
-          </AlertDescription>
+        <Alert variant="destructive" className="flex items-center gap-4">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <AlertTitle className="mb-1">Assinatura cancelada</AlertTitle>
+            <AlertDescription>
+              Seu plano Premium será cancelado em{' '}
+              {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+              })}
+              . Após essa data, você será movido para o plano Free.
+            </AlertDescription>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleManageSubscription}
+            disabled={isProcessing}
+            className="shrink-0 bg-background hover:bg-background/80"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Reativar
+          </Button>
         </Alert>
       )}
 
