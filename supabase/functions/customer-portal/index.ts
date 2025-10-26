@@ -31,18 +31,44 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
-    logStep("Authorization header found");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    const sessionToken = req.headers.get("x-session-token");
+    const token = sessionToken || (authHeader ? authHeader.replace("Bearer ", "") : null);
+    
+    if (!token) throw new Error("No session token provided");
+    logStep("Token received", { tokenLength: token.length });
+    
+    // Get customer from session
+    const { data: sessionData, error: sessionError } = await supabaseClient
+      .from("sessions")
+      .select("customer_id")
+      .eq("token_jti", token)
+      .gt("expires_at", new Date().toISOString())
+      .single();
+    
+    if (sessionError || !sessionData) {
+      logStep("Session not found or expired", { error: sessionError?.message });
+      throw new Error("Session not found or expired");
+    }
+    
+    logStep("Session found", { customerId: sessionData.customer_id });
+    
+    // Get customer email
+    const { data: customerData, error: customerError } = await supabaseClient
+      .from("customers")
+      .select("email")
+      .eq("id", sessionData.customer_id)
+      .single();
+    
+    if (customerError || !customerData?.email) {
+      logStep("Customer not found", { error: customerError?.message });
+      throw new Error("Customer not found");
+    }
+    
+    const userEmail = customerData.email;
+    logStep("Customer authenticated", { customerId: sessionData.customer_id, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     if (customers.data.length === 0) {
       throw new Error("No Stripe customer found for this user");
     }

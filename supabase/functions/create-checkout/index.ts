@@ -19,20 +19,49 @@ serve(async (req) => {
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
   );
 
   try {
     logStep("Function started");
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    const sessionToken = req.headers.get("x-session-token");
+    const token = sessionToken || (authHeader ? authHeader.replace("Bearer ", "") : null);
     
-    const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    if (!token) throw new Error("No session token provided");
+    logStep("Token received", { tokenLength: token.length });
+    
+    // Get customer from session
+    const { data: sessionData, error: sessionError } = await supabaseClient
+      .from("sessions")
+      .select("customer_id")
+      .eq("token_jti", token)
+      .gt("expires_at", new Date().toISOString())
+      .single();
+    
+    if (sessionError || !sessionData) {
+      logStep("Session not found or expired", { error: sessionError?.message });
+      throw new Error("Session not found or expired");
+    }
+    
+    logStep("Session found", { customerId: sessionData.customer_id });
+    
+    // Get customer email
+    const { data: customerData, error: customerError } = await supabaseClient
+      .from("customers")
+      .select("email")
+      .eq("id", sessionData.customer_id)
+      .single();
+    
+    if (customerError || !customerData?.email) {
+      logStep("Customer not found", { error: customerError?.message });
+      throw new Error("Customer not found");
+    }
+    
+    const userEmail = customerData.email;
+    logStep("Customer authenticated", { customerId: sessionData.customer_id, email: userEmail });
 
     const { priceId } = await req.json();
     if (!priceId) throw new Error("Price ID is required");
@@ -40,7 +69,7 @@ serve(async (req) => {
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
     
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
@@ -53,7 +82,7 @@ serve(async (req) => {
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      customer_email: customerId ? undefined : userEmail,
       line_items: [
         {
           price: priceId,
