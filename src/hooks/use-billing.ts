@@ -89,55 +89,24 @@ export function useBilling() {
     },
   });
 
-  // Criar checkout session
+  // Funcionalidades de pagamento desabilitadas
   const purchaseCredits = useMutation({
     mutationFn: async (packageId: string) => {
-      const token = localStorage.getItem('session_token');
-      const { data, error } = await supabase.functions.invoke('stripe-create-checkout', {
-        body: { packageId },
-        headers: { 'x-session-token': token || '' },
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error: Error) => {
       toast({
-        title: 'Erro ao processar pagamento',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Funcionalidade indisponível',
+        description: 'A integração com pagamentos será configurada em breve.',
       });
+      throw new Error('Payment integration not configured');
     },
   });
 
-  // Criar portal session
   const openBillingPortal = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('session_token');
-      const { data, error } = await supabase.functions.invoke('stripe-create-portal', {
-        body: {},
-        headers: { 'x-session-token': token || '' },
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error: Error) => {
       toast({
-        title: 'Erro ao abrir portal',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Funcionalidade indisponível',
+        description: 'A integração com pagamentos será configurada em breve.',
       });
+      throw new Error('Payment integration not configured');
     },
   });
 
@@ -175,33 +144,13 @@ export function useBilling() {
     },
   });
 
-  // Criar checkout session para upgrade de plano
   const upgradeToPremium = useMutation({
     mutationFn: async () => {
-      const token = localStorage.getItem('session_token');
-      const { data, error } = await supabase.functions.invoke('stripe-create-subscription', {
-        body: { 
-          planId: 'premium',
-          successUrl: `${window.location.origin}/dashboard/settings?tab=billing&upgrade=success`,
-          cancelUrl: `${window.location.origin}/dashboard/settings?tab=billing`
-        },
-        headers: { 'x-session-token': token || '' },
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    },
-    onError: (error: Error) => {
       toast({
-        title: 'Erro ao processar upgrade',
-        description: error.message,
-        variant: 'destructive',
+        title: 'Funcionalidade indisponível',
+        description: 'A integração com pagamentos será configurada em breve.',
       });
+      throw new Error('Payment integration not configured');
     },
   });
 

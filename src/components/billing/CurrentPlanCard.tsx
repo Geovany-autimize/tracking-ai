@@ -1,15 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, ExternalLink } from 'lucide-react';
+import { CreditCard } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useBilling } from '@/hooks/use-billing';
 
 export function CurrentPlanCard() {
   const { plan, subscription } = useAuth();
-  const { openBillingPortal, isOpeningPortal, upgradeToPremium, isUpgrading } = useBilling();
 
   if (!plan || !subscription) return null;
 
@@ -28,7 +25,7 @@ export function CurrentPlanCard() {
               <CreditCard className="h-5 w-5" />
               Plano Atual
             </CardTitle>
-            <CardDescription>Gerencie sua assinatura</CardDescription>
+            <CardDescription>Informações sobre sua assinatura</CardDescription>
           </div>
           <Badge variant={isPremium ? 'default' : 'secondary'}>
             {plan.name}
@@ -53,27 +50,6 @@ export function CurrentPlanCard() {
               {subscription.status === 'active' ? 'Ativo' : subscription.status}
             </Badge>
           </div>
-        </div>
-
-        <div className="flex gap-2 mt-6">
-          {!isPremium && (
-            <Button
-              className="flex-1 bg-primary hover:bg-primary/90"
-              onClick={() => upgradeToPremium()}
-              disabled={isUpgrading}
-            >
-              {isUpgrading ? 'Carregando...' : 'Fazer Upgrade'}
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            className={!isPremium ? 'flex-1' : 'w-full'}
-            onClick={() => openBillingPortal()}
-            disabled={isOpeningPortal}
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
-          </Button>
         </div>
       </CardContent>
     </Card>
