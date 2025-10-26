@@ -102,7 +102,7 @@ export default function BillingPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-12 max-w-7xl mx-auto">
       {/* Header */}
       <header>
         <h2 className="text-3xl font-bold">Planos e Faturamento</h2>
@@ -252,35 +252,6 @@ export default function BillingPage() {
           })}
         </div>
 
-        {/* Trust badges and credit info */}
-        <div className="space-y-6">
-          <div className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-primary" />
-              <span>Comece grátis (5 créditos/mês)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-primary" />
-              <span>Sem fidelidade</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-primary" />
-              <span>Upgrade/downgrade a qualquer momento</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-primary" />
-              <span>Cancele em 1 clique</span>
-            </div>
-          </div>
-          
-          <div className="max-w-2xl mx-auto p-4 rounded-xl bg-card/30 border border-border/50">
-            <p className="text-sm text-muted-foreground text-center">
-              <strong className="text-foreground">Como funcionam os créditos:</strong> Cada rastreio criado consome 1 crédito. 
-              No plano Free você tem 5 créditos/mês que resetam no primeiro dia de cada mês. 
-              No Premium, 1.500 créditos/mês. Se exceder, será necessário fazer upgrade para continuar rastreando.
-            </p>
-          </div>
-        </div>
       </section>
     </div>
   );
