@@ -55,18 +55,6 @@ export function CurrentPlanCard() {
           </div>
         </div>
 
-        {plan.monthly_credits && (
-          <div className="pt-4 border-t space-y-2">
-            <h4 className="text-sm font-medium">Recursos inclusos</h4>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>✓ {plan.monthly_credits.toLocaleString('pt-BR')} créditos/mês</li>
-              <li>✓ Rastreamento em tempo real</li>
-              <li>✓ Notificações automáticas</li>
-              <li>✓ Integrações com WhatsApp</li>
-            </ul>
-          </div>
-        )}
-
         <Button
           variant="outline"
           className="w-full"
