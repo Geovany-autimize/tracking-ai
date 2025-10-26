@@ -79,18 +79,6 @@ export default function DashboardHome() {
             </div>
           }
           />
-          {isFreeplan && (
-            <Link to="/dashboard/settings?tab=billing" className="block">
-              <Button 
-                variant="hero"
-                size="sm" 
-                className="w-full text-xs h-9"
-              >
-                <ArrowUpCircle className="h-4 w-4" />
-                <span className="font-semibold">Fazer Upgrade</span>
-              </Button>
-            </Link>
-          )}
         </div>
         <StatCard
           label="Créditos Usados"
