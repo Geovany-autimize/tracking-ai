@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useStripeCheckout } from "@/hooks/use-stripe-checkout";
 
 const plans = [
   {
@@ -60,14 +61,20 @@ const plans = [
 export default function PlansPage() {
   const { plan } = useAuth();
   const { toast } = useToast();
+  const { createCheckoutSession, isLoading } = useStripeCheckout();
 
-  const handlePlanAction = (planId: string) => {
+  const handlePlanAction = async (planId: string) => {
     if (planId === plan?.id) return;
     
-    toast({
-      title: "Em breve",
-      description: "A alteração de plano estará disponível em breve.",
-    });
+    if (planId === "premium") {
+      // Premium plan - open Stripe checkout
+      await createCheckoutSession("price_1SMEgFFsSB8n8Az0aSBb70E7");
+    } else {
+      toast({
+        title: "Em breve",
+        description: "A alteração de plano estará disponível em breve.",
+      });
+    }
   };
 
   const getCurrentPlanId = () => {
@@ -158,8 +165,9 @@ export default function PlansPage() {
                       size="lg"
                       className="w-full"
                       onClick={() => handlePlanAction(planItem.id)}
+                      disabled={isLoading}
                     >
-                      {planItem.id === "premium" ? "Fazer Upgrade" : "Selecionar Plano"}
+                      {isLoading ? "Carregando..." : planItem.id === "premium" ? "Fazer Upgrade" : "Selecionar Plano"}
                     </Button>
                   )}
 

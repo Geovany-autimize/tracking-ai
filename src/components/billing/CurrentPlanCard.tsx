@@ -1,10 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Zap } from 'lucide-react';
+import { CreditCard, Zap, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useStripeCheckout } from '@/hooks/use-stripe-checkout';
 
 interface CurrentPlanCardProps {
   onUpgradeClick?: () => void;
@@ -12,6 +13,7 @@ interface CurrentPlanCardProps {
 
 export function CurrentPlanCard({ onUpgradeClick }: CurrentPlanCardProps) {
   const { plan, subscription } = useAuth();
+  const { openCustomerPortal, isLoading } = useStripeCheckout();
 
   if (!plan || !subscription) return null;
 
@@ -57,8 +59,8 @@ export function CurrentPlanCard({ onUpgradeClick }: CurrentPlanCardProps) {
           </div>
         </div>
 
-        {!isPremium && onUpgradeClick && (
-          <div className="mt-6">
+        <div className="mt-6 space-y-2">
+          {!isPremium && onUpgradeClick && (
             <Button 
               className="w-full bg-primary hover:bg-primary/90"
               onClick={onUpgradeClick}
@@ -66,8 +68,20 @@ export function CurrentPlanCard({ onUpgradeClick }: CurrentPlanCardProps) {
               <Zap className="mr-2 h-4 w-4" />
               Fazer Upgrade
             </Button>
-          </div>
-        )}
+          )}
+          
+          {isPremium && subscription?.stripe_subscription_id && (
+            <Button 
+              variant="outline"
+              className="w-full"
+              onClick={openCustomerPortal}
+              disabled={isLoading}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              {isLoading ? "Carregando..." : "Gerenciar Assinatura"}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
