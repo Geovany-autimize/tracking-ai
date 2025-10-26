@@ -89,16 +89,36 @@ serve(async (req) => {
       status: "active",
       limit: 1,
     });
+    
+    logStep("Subscriptions query result", { count: subscriptions.data.length });
+    
     const hasActiveSub = subscriptions.data.length > 0;
     let planId = 'free';
     let subscriptionEnd = null;
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      logStep("Active subscription found", { subscriptionId: subscription.id, endDate: subscriptionEnd });
+      logStep("Subscription details", { 
+        subscriptionId: subscription.id, 
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        priceId: subscription.items.data[0]?.price?.id 
+      });
       
-      const priceId = subscription.items.data[0].price.id;
+      // Validate and convert subscription end date
+      if (subscription.current_period_end) {
+        try {
+          subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+          logStep("Subscription end date converted", { endDate: subscriptionEnd });
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          logStep("Error converting date", { error: errorMsg, value: subscription.current_period_end });
+          // Use a default end date if conversion fails
+          subscriptionEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+      }
+      
+      const priceId = subscription.items.data[0]?.price?.id;
       // Mapeia price_id para plan_id
       if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') {
         planId = 'premium';
