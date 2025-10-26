@@ -195,31 +195,29 @@ export default function BillingPage() {
             return (
               <div
                 key={planItem.id}
-                className={`relative bg-card/50 backdrop-blur-sm rounded-3xl p-8 border transition-all duration-500 hover:shadow-[0_20px_60px_hsl(var(--primary)/0.15)] hover:-translate-y-1 ${
+                className={`relative bg-card/50 backdrop-blur-sm rounded-3xl overflow-hidden border transition-all duration-500 hover:shadow-[0_20px_60px_hsl(var(--primary)/0.15)] hover:-translate-y-1 ${
                   planItem.highlight
                     ? "border-primary/50 shadow-[0_20px_60px_hsl(var(--primary)/0.2)]"
                     : "border-border/50 hover:border-primary/30"
                 } ${isCurrentPlan ? 'ring-2 ring-primary' : ''}`}
               >
-                {planItem.badge && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                {isCurrentPlan && (
+                  <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-primary to-secondary py-2 px-4 text-center z-10">
+                    <span className="text-sm font-semibold text-white">Seu Plano Atual</span>
+                  </div>
+                )}
+
+                {planItem.badge && !isCurrentPlan && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
                     <Badge className="bg-gradient-to-r from-primary to-secondary border-0 px-4 py-1.5 shadow-lg">
                       <Sparkles className="w-3 h-3 mr-1" />
                       {planItem.badge}
                     </Badge>
                   </div>
                 )}
-                
-                {isCurrentPlan && (
-                  <div className="absolute -top-4 left-4">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-                      Seu Plano Atual
-                    </Badge>
-                  </div>
-                )}
 
-                <div className="space-y-6">
-                  <div>
+                <div className={`space-y-6 p-8 ${isCurrentPlan ? 'pt-14' : ''}`}>
+                  <div className={isCurrentPlan ? 'pt-2' : ''}>
                     <h3 className="text-2xl font-bold mb-2">{planItem.name}</h3>
                     <p className="text-sm text-muted-foreground">{planItem.description}</p>
                   </div>
