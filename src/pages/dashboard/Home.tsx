@@ -13,7 +13,7 @@ function StatCard({ label, value, subtitle }: { label: string; value: string | R
       <CardHeader className="pb-2">
         <CardDescription>{label}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="min-h-[80px] flex flex-col justify-between">
         <div className="text-2xl font-semibold">{value}</div>
         {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
       </CardContent>
@@ -67,19 +67,17 @@ export default function DashboardHome() {
       )}
 
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <div className="space-y-2">
-          <StatCard
-            label="Plano Atual"
-            value={
-              <div className="flex items-center gap-2">
-                <span>{plan?.name || 'Free'}</span>
-                <Badge variant="outline" className="text-xs">
-                {totalCredits} créditos/mês
-              </Badge>
-            </div>
-          }
-          />
-        </div>
+        <StatCard
+          label="Plano Atual"
+          value={
+            <div className="flex items-center gap-2">
+              <span>{plan?.name || 'Free'}</span>
+              <Badge variant="outline" className="text-xs">
+              {totalCredits} créditos/mês
+            </Badge>
+          </div>
+        }
+        />
         <StatCard
           label="Créditos Usados"
           value={`${usedCredits} / ${totalCredits}`}
