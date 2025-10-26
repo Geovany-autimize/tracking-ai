@@ -124,11 +124,10 @@ export default function BillingPage() {
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Meu Plano</h3>
               <Badge 
-                variant="secondary" 
-                className={`text-sm transition-colors ${
+                className={`text-sm transition-all duration-200 ${
                   plan?.id === 'free' 
-                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
-                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'
+                    ? 'bg-muted text-muted-foreground hover:bg-muted/80' 
+                    : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:scale-105'
                 }`}
               >
                 {plan?.name || 'Free'}
