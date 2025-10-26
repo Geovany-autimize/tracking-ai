@@ -19,7 +19,6 @@ import { Separator } from '@/components/ui/separator';
 export default function BillingPage() {
   const { customer, plan, usage, subscription, checkSubscription } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [autoCredits, setAutoCredits] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
 
@@ -418,33 +417,15 @@ export default function BillingPage() {
             </Button>
 
             {/* Additional Info */}
-            <div className="flex items-center justify-between pt-2">
-              {!subscription?.cancel_at_period_end && subscription?.current_period_end && (
-                <p className="text-xs text-muted-foreground">
-                  Renovação em {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric'
-                  })}
-                </p>
-              )}
-              {plan?.id !== 'free' && (
-                <div className="flex items-center gap-2">
-                  <Switch 
-                    checked={autoCredits}
-                    onCheckedChange={setAutoCredits}
-                    id="auto-credits"
-                  />
-                  <label 
-                    htmlFor="auto-credits" 
-                    className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                  >
-                    Auto-compra
-                    <HelpCircle className="w-3 h-3" />
-                  </label>
-                </div>
-              )}
-            </div>
+            {!subscription?.cancel_at_period_end && subscription?.current_period_end && (
+              <p className="text-xs text-muted-foreground pt-2">
+                Renovação em {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </p>
+            )}
 
             {/* Usage Warning */}
             {usagePercentage > 80 && plan?.id !== 'enterprise' && (
