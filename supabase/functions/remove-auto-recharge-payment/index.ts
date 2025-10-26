@@ -23,32 +23,41 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const supabaseClient = createClient(
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const authHeader = req.headers.get("Authorization");
+    // Extract session token
     const sessionToken = req.headers.get("x-session-token");
+    const authHeader = req.headers.get("Authorization");
     const token = sessionToken || (authHeader ? authHeader.replace("Bearer ", "") : null);
     if (!token) throw new Error("No session token provided");
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
+    // Validate session via sessions table
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .select("customer_id")
+      .eq("token_jti", token)
+      .gt("expires_at", new Date().toISOString())
+      .single();
 
-    // Buscar configurações
-    const { data: settings } = await supabaseClient
+    if (sessionError || !sessionData) {
+      logStep("Session validation failed", { error: sessionError?.message });
+      throw new Error("Invalid or expired session");
+    }
+    logStep("Session validated", { customerId: sessionData.customer_id });
+
+    // Get settings
+    const { data: settings } = await supabaseAdmin
       .from("auto_recharge_settings")
       .select("stripe_payment_method_id")
-      .eq("customer_id", user.id)
+      .eq("customer_id", sessionData.customer_id)
       .single();
 
     if (settings?.stripe_payment_method_id) {
-      // Desvincular método de pagamento no Stripe
+      // Detach payment method from Stripe
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
       
       try {
@@ -59,8 +68,8 @@ serve(async (req) => {
       }
     }
 
-    // Atualizar configurações (desativar e limpar método de pagamento)
-    const { error: updateError } = await supabaseClient
+    // Update settings (disable and clear payment method)
+    const { error: updateError } = await supabaseAdmin
       .from("auto_recharge_settings")
       .update({
         enabled: false,
@@ -68,7 +77,7 @@ serve(async (req) => {
         last_payment_method_details: null,
         updated_at: new Date().toISOString(),
       })
-      .eq("customer_id", user.id);
+      .eq("customer_id", sessionData.customer_id);
 
     if (updateError) throw updateError;
 

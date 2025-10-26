@@ -23,41 +23,78 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const supabaseClient = createClient(
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const authHeader = req.headers.get("Authorization");
+    // Extract session token
     const sessionToken = req.headers.get("x-session-token");
+    const authHeader = req.headers.get("Authorization");
     const token = sessionToken || (authHeader ? authHeader.replace("Bearer ", "") : null);
     if (!token) throw new Error("No session token provided");
+    logStep("Token extracted", { tokenLength: token.length });
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user?.email) throw new Error("User not authenticated or email not available");
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    // Validate session via sessions table
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .select("customer_id")
+      .eq("token_jti", token)
+      .gt("expires_at", new Date().toISOString())
+      .single();
 
-    // Buscar ou criar cliente Stripe
+    if (sessionError || !sessionData) {
+      logStep("Session validation failed", { error: sessionError?.message });
+      throw new Error("Invalid or expired session");
+    }
+    logStep("Session validated", { customerId: sessionData.customer_id });
+
+    // Get customer details
+    const { data: customer, error: customerError } = await supabaseAdmin
+      .from("customers")
+      .select("id, email, stripe_customer_id")
+      .eq("id", sessionData.customer_id)
+      .single();
+
+    if (customerError || !customer) {
+      logStep("Customer not found", { error: customerError?.message });
+      throw new Error("Customer not found");
+    }
+    logStep("Customer fetched", { customerId: customer.id, email: customer.email });
+
+    // Get or create Stripe customer
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    let stripeCustomerId = customer.stripe_customer_id;
     
-    let customerId;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing Stripe customer found", { customerId });
+    if (!stripeCustomerId) {
+      // Try to find existing customer by email
+      const customers = await stripe.customers.list({ email: customer.email, limit: 1 });
+      
+      if (customers.data.length > 0) {
+        stripeCustomerId = customers.data[0].id;
+        logStep("Existing Stripe customer found", { stripeCustomerId });
+      } else {
+        // Create new Stripe customer
+        const newCustomer = await stripe.customers.create({ email: customer.email });
+        stripeCustomerId = newCustomer.id;
+        logStep("New Stripe customer created", { stripeCustomerId });
+      }
+
+      // Save stripe_customer_id to database
+      await supabaseAdmin
+        .from("customers")
+        .update({ stripe_customer_id: stripeCustomerId })
+        .eq("id", customer.id);
+      logStep("Stripe customer ID saved to database");
     } else {
-      const newCustomer = await stripe.customers.create({ email: user.email });
-      customerId = newCustomer.id;
-      logStep("New Stripe customer created", { customerId });
+      logStep("Using existing Stripe customer from database", { stripeCustomerId });
     }
 
-    // Criar Checkout Session em modo setup
+    // Create Checkout Session in setup mode
     const origin = req.headers.get("origin") || "http://localhost:3000";
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+      customer: stripeCustomerId,
       mode: "setup",
       payment_method_types: ["card"],
       success_url: `${origin}/dashboard/billing?setup=success&session_id={CHECKOUT_SESSION_ID}`,

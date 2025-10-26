@@ -30,23 +30,31 @@ serve(async (req) => {
       throw new Error("Valor de recarga deve estar entre 100 e 5000 créditos");
     }
 
-    const supabaseClient = createClient(
+    // Create admin client for database operations
+    const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const authHeader = req.headers.get("Authorization");
+    // Extract session token
     const sessionToken = req.headers.get("x-session-token");
+    const authHeader = req.headers.get("Authorization");
     const token = sessionToken || (authHeader ? authHeader.replace("Bearer ", "") : null);
-    
     if (!token) throw new Error("No session token provided");
 
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
+    // Validate session via sessions table
+    const { data: sessionData, error: sessionError } = await supabaseAdmin
+      .from("sessions")
+      .select("customer_id")
+      .eq("token_jti", token)
+      .gt("expires_at", new Date().toISOString())
+      .single();
+
+    if (sessionError || !sessionData) {
+      logStep("Session validation failed", { error: sessionError?.message });
+      throw new Error("Invalid or expired session");
+    }
+    logStep("Session validated", { customerId: sessionData.customer_id });
 
     // Construir objeto de atualização
     const updates: any = { updated_at: new Date().toISOString() };
@@ -56,15 +64,33 @@ serve(async (req) => {
 
     logStep("Updating settings", updates);
 
-    // Atualizar configurações
-    const { data, error } = await supabaseClient
+    // Try to update existing settings
+    let { data, error: updateError } = await supabaseAdmin
       .from("auto_recharge_settings")
       .update(updates)
-      .eq("customer_id", user.id)
+      .eq("customer_id", sessionData.customer_id)
       .select()
       .single();
 
-    if (error) throw error;
+    // If no existing settings, create with defaults
+    if (updateError && updateError.code === 'PGRST116') {
+      logStep("No existing settings, creating new one");
+      const { data: newData, error: insertError } = await supabaseAdmin
+        .from("auto_recharge_settings")
+        .insert({
+          customer_id: sessionData.customer_id,
+          enabled: updates.enabled ?? false,
+          min_credits_threshold: updates.min_credits_threshold ?? 100,
+          recharge_amount: updates.recharge_amount ?? 500,
+        })
+        .select()
+        .single();
+      
+      if (insertError) throw insertError;
+      data = newData;
+    } else if (updateError) {
+      throw updateError;
+    }
 
     logStep("Settings updated successfully");
 
