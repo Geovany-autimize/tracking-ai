@@ -1,7 +1,7 @@
 {
   "imports": {
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
-    "@supabase/realtime-js": "npm:@supabase/realtime-js@2"
+    "@supabase/realtime-js": "npm:@supabase/realtime-js@2.15.5"
   },
   "compilerOptions": {
     "lib": ["deno.window"]
