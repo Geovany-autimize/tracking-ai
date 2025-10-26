@@ -209,14 +209,6 @@ export default function BillingPage() {
                     </Badge>
                   </div>
                 )}
-                
-                {isCurrentPlan && (
-                  <div className="absolute -top-4 left-4">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
-                      Seu Plano Atual
-                    </Badge>
-                  </div>
-                )}
 
                 <div className="space-y-6">
                   <div>
