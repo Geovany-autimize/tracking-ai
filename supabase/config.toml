@@ -44,3 +44,18 @@ verify_jwt = false
 
 [functions.confirm-credits-purchase]
 verify_jwt = false
+
+[functions.setup-auto-recharge]
+verify_jwt = false
+
+[functions.confirm-auto-recharge-setup]
+verify_jwt = false
+
+[functions.update-auto-recharge-settings]
+verify_jwt = false
+
+[functions.check-and-trigger-auto-recharge]
+verify_jwt = false
+
+[functions.remove-auto-recharge-payment]
+verify_jwt = false
