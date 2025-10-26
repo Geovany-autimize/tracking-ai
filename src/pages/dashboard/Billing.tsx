@@ -125,7 +125,11 @@ export default function BillingPage() {
               <h3 className="text-lg font-semibold">Meu Plano</h3>
               <Badge 
                 variant="secondary" 
-                className={`text-sm ${plan?.id !== 'free' ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/10' : ''}`}
+                className={`text-sm transition-colors ${
+                  plan?.id === 'free' 
+                    ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80' 
+                    : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/15'
+                }`}
               >
                 {plan?.name || 'Free'}
               </Badge>
@@ -185,20 +189,22 @@ export default function BillingPage() {
               <p className="text-xs text-muted-foreground">
                 Uso reinicia em {getNextRenewalDate()}
               </p>
-              <div className="flex items-center gap-2">
-                <Switch 
-                  checked={autoCredits}
-                  onCheckedChange={setAutoCredits}
-                  id="auto-credits"
-                />
-                <label 
-                  htmlFor="auto-credits" 
-                  className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                >
-                  Auto-purchase de créditos extras
-                  <HelpCircle className="w-3 h-3" />
-                </label>
-              </div>
+              {plan?.id !== 'free' && (
+                <div className="flex items-center gap-2">
+                  <Switch 
+                    checked={autoCredits}
+                    onCheckedChange={setAutoCredits}
+                    id="auto-credits"
+                  />
+                  <label 
+                    htmlFor="auto-credits" 
+                    className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
+                  >
+                    Auto-purchase de créditos extras
+                    <HelpCircle className="w-3 h-3" />
+                  </label>
+                </div>
+              )}
             </div>
 
             {usagePercentage > 80 && plan?.id !== 'enterprise' && (
