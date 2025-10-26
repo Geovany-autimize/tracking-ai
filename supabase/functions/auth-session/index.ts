@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import Stripe from "https://esm.sh/stripe@18.5.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-session-token, x-client-info, apikey, content-type',
@@ -64,8 +64,8 @@ serve(async (req) => {
       );
     }
 
-    // Get active subscription
-    const { data: subscription } = await supabase
+    // Get active subscription from DB (fallback)
+    const { data: dbSubscription } = await supabase
       .from('subscriptions')
       .select('plan_id, status, current_period_start, current_period_end')
       .eq('customer_id', customer.id)
@@ -74,16 +74,56 @@ serve(async (req) => {
       .limit(1)
       .single();
 
-    // Get plan details
-    let plan = null;
-    if (subscription) {
+    // Try to resolve subscription status directly from Stripe
+    let finalSubscription = dbSubscription as
+      | { plan_id: string; status: string; current_period_start: string; current_period_end: string }
+      | null;
+
+    try {
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+      if (stripeKey && customer.email) {
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
+        const stripeCustomers = await stripe.customers.list({ email: customer.email, limit: 1 });
+        if (stripeCustomers.data.length > 0) {
+          const stripeCustomerId = stripeCustomers.data[0].id;
+          const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active', limit: 1 });
+          if (subs.data.length > 0) {
+            const sub = subs.data[0];
+            const priceId = sub.items.data[0]?.price?.id;
+            let planId = 'free';
+            if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') {
+              planId = 'premium';
+            } else if (priceId) {
+              planId = 'enterprise';
+            }
+
+            const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : new Date().toISOString();
+            const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString();
+
+            finalSubscription = {
+              plan_id: planId,
+              status: sub.status || 'active',
+              current_period_start: startIso,
+              current_period_end: endIso,
+            };
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[AUTH-SESSION] Stripe check failed', e);
+    }
+
+    // Get plan details based on the final subscription (Stripe preferred)
+    let plan = null as any;
+    if (finalSubscription) {
       const { data: planData } = await supabase
         .from('plans')
         .select('*')
-        .eq('id', subscription.plan_id)
+        .eq('id', finalSubscription.plan_id)
         .single();
       plan = planData;
     }
+
 
     // Get current month usage
     const now = new Date();
@@ -105,11 +145,11 @@ serve(async (req) => {
           avatar_url: customer.avatar_url,
           status: customer.status,
         },
-        subscription: subscription ? {
-          plan_id: subscription.plan_id,
-          status: subscription.status,
-          current_period_start: subscription.current_period_start,
-          current_period_end: subscription.current_period_end,
+        subscription: finalSubscription ? {
+          plan_id: finalSubscription.plan_id,
+          status: finalSubscription.status,
+          current_period_start: finalSubscription.current_period_start,
+          current_period_end: finalSubscription.current_period_end,
         } : null,
         plan: plan,
         usage: {
