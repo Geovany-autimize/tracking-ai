@@ -125,7 +125,7 @@ export default function BillingPage() {
               <h3 className="text-lg font-semibold">Meu Plano</h3>
               <Badge 
                 variant="secondary" 
-                className={`text-sm ${plan?.id !== 'free' ? 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20' : ''}`}
+                className={`text-sm ${plan?.id !== 'free' ? 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/10' : ''}`}
               >
                 {plan?.name || 'Free'}
               </Badge>
