@@ -20,14 +20,21 @@ Deno.serve(async (req) => {
       throw new Error('No authorization header');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { 'x-session-token': authHeader } },
-    });
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-    const { data: { customer_id } } = await supabase.rpc('get_customer_id_from_request') as any;
-    if (!customer_id) {
+    // Buscar customer_id diretamente da tabela sessions
+    const { data: session, error: sessionError } = await supabase
+      .from('sessions')
+      .select('customer_id')
+      .eq('token_jti', authHeader)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+
+    if (sessionError || !session?.customer_id) {
       throw new Error('Not authenticated');
     }
+
+    const customer_id = session.customer_id;
 
     const { planId, successUrl, cancelUrl } = await req.json();
 
