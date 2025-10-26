@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,24 +45,44 @@ serve(async (req) => {
     }
     logStep("Session validated", { customerId: sessionData.customer_id });
 
-    // Check monthly subscription credits first
+    // Check monthly subscription credits first (Stripe preferred, DB fallback)
     let monthlyCredits = 0;
     let monthlyRemaining = 0;
     try {
-      const { data: subscription } = await supabaseAdmin
-        .from('subscriptions')
-        .select('current_period_start, current_period_end, plan_id, status')
-        .eq('customer_id', sessionData.customer_id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
+      // Resolve customer email
+      const { data: customerRow } = await supabaseAdmin
+        .from('customers')
+        .select('email')
+        .eq('id', sessionData.customer_id)
         .single();
 
-      if (subscription) {
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+      let periodStartIso: string | null = null;
+      let periodEndIso: string | null = null;
+      let planIdFromStripe: string | null = null;
+
+      if (stripeKey && customerRow?.email) {
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
+        const stripeCustomers = await stripe.customers.list({ email: customerRow.email, limit: 1 });
+        if (stripeCustomers.data.length > 0) {
+          const stripeCustomerId = stripeCustomers.data[0].id;
+          const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, limit: 10 });
+          const activeStatuses = new Set(['active','trialing','past_due']);
+          const sub = subs.data.find((s: any) => activeStatuses.has((s.status || '') as string));
+          if (sub) {
+            const priceId = sub.items.data[0]?.price?.id;
+            planIdFromStripe = (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') ? 'premium' : (priceId ? 'enterprise' : null);
+            periodStartIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null;
+            periodEndIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          }
+        }
+      }
+
+      if (planIdFromStripe && periodStartIso && periodEndIso) {
         const { data: plan } = await supabaseAdmin
           .from('plans')
           .select('monthly_credits')
-          .eq('id', subscription.plan_id)
+          .eq('id', planIdFromStripe)
           .single();
         monthlyCredits = plan?.monthly_credits || 0;
 
@@ -70,12 +91,11 @@ serve(async (req) => {
             .from('shipments')
             .select('id', { count: 'exact', head: true })
             .eq('customer_id', sessionData.customer_id)
-            .gte('created_at', subscription.current_period_start)
-            .lt('created_at', subscription.current_period_end);
-
+            .gte('created_at', periodStartIso)
+            .lt('created_at', periodEndIso);
           const usedThisPeriod = count || 0;
           monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
-          logStep('Monthly credits check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
+          logStep('Monthly credits (Stripe) check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
 
           if (monthlyRemaining > 0) {
             // Also compute extra credits remaining for info
@@ -99,6 +119,62 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 200,
             });
+          }
+        }
+      } else {
+        // DB fallback
+        const { data: subscription } = await supabaseAdmin
+          .from('subscriptions')
+          .select('current_period_start, current_period_end, plan_id, status')
+          .eq('customer_id', sessionData.customer_id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (subscription) {
+          const { data: plan } = await supabaseAdmin
+            .from('plans')
+            .select('monthly_credits')
+            .eq('id', subscription.plan_id)
+            .single();
+          monthlyCredits = plan?.monthly_credits || 0;
+
+          if (monthlyCredits > 0) {
+            const { count } = await supabaseAdmin
+              .from('shipments')
+              .select('id', { count: 'exact', head: true })
+              .eq('customer_id', sessionData.customer_id)
+              .gte('created_at', subscription.current_period_start)
+              .lt('created_at', subscription.current_period_end);
+
+            const usedThisPeriod = count || 0;
+            monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
+            logStep('Monthly credits (DB) check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
+
+            if (monthlyRemaining > 0) {
+              // Also compute extra credits remaining for info
+              const { data: purchasesForInfo } = await supabaseAdmin
+                .from('credit_purchases')
+                .select('credits_amount, consumed_credits')
+                .eq('customer_id', sessionData.customer_id)
+                .eq('status', 'completed')
+                .gt('expires_at', new Date().toISOString());
+
+              const extraRemaining = (purchasesForInfo || []).reduce(
+                (sum, p) => sum + (p.credits_amount - p.consumed_credits),
+                0
+              );
+
+              return new Response(JSON.stringify({
+                success: true,
+                message: 'Crédito mensal consumido com sucesso',
+                remaining_credits: (monthlyRemaining - 1) + extraRemaining
+              }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+              });
+            }
           }
         }
       }

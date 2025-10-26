@@ -114,9 +114,37 @@ serve(async (req) => {
       console.log('[AUTH-SESSION] Stripe check failed', e);
     }
 
-    // Get plan details based on the final subscription (Stripe preferred)
+    // Sync subscriptions table with Stripe result, then fetch plan details
     let plan = null as any;
     if (finalSubscription) {
+      // Ensure DB reflects Stripe subscription
+      const { data: existingSub } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('customer_id', customer.id)
+        .eq('status', 'active')
+        .limit(1);
+
+      const payload = {
+        customer_id: customer.id,
+        plan_id: finalSubscription.plan_id,
+        status: finalSubscription.status,
+        current_period_start: finalSubscription.current_period_start,
+        current_period_end: finalSubscription.current_period_end,
+        cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
+      } as any;
+
+      if (existingSub && existingSub.length > 0) {
+        await supabase
+          .from('subscriptions')
+          .update(payload)
+          .eq('id', existingSub[0].id);
+      } else {
+        await supabase
+          .from('subscriptions')
+          .insert(payload);
+      }
+
       const { data: planData } = await supabase
         .from('plans')
         .select('*')
