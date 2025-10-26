@@ -58,7 +58,7 @@ export default function BillingPage() {
 
         <TabsContent value="billing" className="space-y-6">
           {/* Cards principais */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
             <CurrentPlanCard />
             <CreditBalanceCard 
               onPurchaseClick={() => toast({
