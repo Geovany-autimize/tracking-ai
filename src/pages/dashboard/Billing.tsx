@@ -226,14 +226,29 @@ export default function BillingPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Assinatura cancelada</AlertTitle>
-          <AlertDescription>
-            Seu plano Premium será cancelado em{' '}
-            {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric'
-            })}
-            . Após essa data, você será movido para o plano Free.
+          <AlertDescription className="space-y-3">
+            <p>
+              Seu plano Premium será cancelado em{' '}
+              {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric'
+              })}
+              . Após essa data, você será movido para o plano Free.
+            </p>
+            <p className="text-sm">
+              Mudou de ideia? Você pode reativar sua assinatura a qualquer momento.
+            </p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleManageSubscription}
+              disabled={isProcessing}
+              className="mt-2 bg-background hover:bg-background/80"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Reativar Assinatura
+            </Button>
           </AlertDescription>
         </Alert>
       )}
