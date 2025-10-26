@@ -9,6 +9,8 @@ import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpC
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 export default function BillingPage() {
   const { customer, plan, usage, subscription, checkSubscription } = useAuth();
@@ -378,11 +380,18 @@ export default function BillingPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {plans.map((planItem) => {
             const isCurrentPlan = plan?.id === planItem.id;
-            const buttonDisabled = isCurrentPlan || isProcessing;
+            const isFreeWithPendingCancellation = planItem.id === 'free' && subscription?.cancel_at_period_end;
             
             let buttonText = planItem.cta;
+            let buttonDisabled = isProcessing;
+            
             if (isCurrentPlan) {
               buttonText = 'Plano Atual';
+              buttonDisabled = true;
+            } else if (isFreeWithPendingCancellation && subscription?.current_period_end) {
+              const cancelDate = format(new Date(subscription.current_period_end), "dd/MM/yyyy", { locale: ptBR });
+              buttonText = `Ativo em ${cancelDate}`;
+              buttonDisabled = true;
             }
             
             return (
