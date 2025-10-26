@@ -5,12 +5,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import PlansPage from './Plans';
 
 export default function BillingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showAutoRecharge, setShowAutoRecharge] = useState(false);
+  const [activeTab, setActiveTab] = useState("billing");
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -43,8 +45,8 @@ export default function BillingPage() {
         </p>
       </header>
 
-      <Tabs defaultValue="billing" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
           <TabsTrigger 
             value="integrations" 
             onClick={() => navigate('/dashboard/settings')}
@@ -54,13 +56,16 @@ export default function BillingPage() {
           <TabsTrigger value="billing">
             Faturamento
           </TabsTrigger>
+          <TabsTrigger value="plans">
+            Planos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="billing" className="space-y-6">
           {/* Cards principais */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <CurrentPlanCard />
-            <CreditBalanceCard 
+            <CurrentPlanCard onUpgradeClick={() => setActiveTab("plans")} />
+            <CreditBalanceCard
               onPurchaseClick={() => toast({
                 title: "Em breve",
                 description: "A compra de créditos estará disponível em breve.",
@@ -71,6 +76,10 @@ export default function BillingPage() {
 
           {/* Histórico */}
           <BillingHistoryTable />
+        </TabsContent>
+
+        <TabsContent value="plans">
+          <PlansPage />
         </TabsContent>
       </Tabs>
     </div>
