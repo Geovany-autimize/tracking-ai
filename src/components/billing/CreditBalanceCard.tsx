@@ -56,8 +56,8 @@ export function CreditBalanceCard({ onPurchaseClick, onAutoRechargeClick }: Cred
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
+      <CardContent className="flex flex-col h-full">
+        <div className="space-y-2 flex-1">
           <div className="flex justify-between items-end">
             <div className="text-3xl font-bold">
               {remainingCredits.toLocaleString('pt-BR')}
@@ -80,7 +80,7 @@ export function CreditBalanceCard({ onPurchaseClick, onAutoRechargeClick }: Cred
           </div>
         </div>
 
-        <div className="pt-2 border-t">
+        <div className="pt-2 border-t mt-4">
           <div className="flex justify-between text-sm mb-4">
             <span className="text-muted-foreground">Renova em</span>
             <span className="font-medium">

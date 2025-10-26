@@ -35,8 +35,8 @@ export function CurrentPlanCard() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-3">
+      <CardContent className="flex flex-col h-full">
+        <div className="space-y-3 flex-1">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Valor mensal</span>
             <span className="font-semibold">
@@ -57,7 +57,7 @@ export function CurrentPlanCard() {
 
         <Button
           variant="outline"
-          className="w-full"
+          className="w-full mt-6"
           onClick={() => openBillingPortal()}
           disabled={isOpeningPortal}
         >
