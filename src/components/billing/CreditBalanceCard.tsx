@@ -36,7 +36,7 @@ export function CreditBalanceCard({ onPurchaseClick, onAutoRechargeClick }: Cred
 
   return (
     <Card className={cn(
-      'transition-all duration-300',
+      'h-full transition-all duration-300',
       isCritical && 'border-destructive animate-pulse'
     )}>
       <CardHeader>

@@ -20,7 +20,7 @@ export function CurrentPlanCard() {
   const isPremium = plan.id !== 'free';
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
