@@ -175,6 +175,36 @@ export function useBilling() {
     },
   });
 
+  // Criar checkout session para upgrade de plano
+  const upgradeToPremium = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('session_token');
+      const { data, error } = await supabase.functions.invoke('stripe-create-subscription', {
+        body: { 
+          planId: 'premium',
+          successUrl: `${window.location.origin}/dashboard/settings?tab=billing&upgrade=success`,
+          cancelUrl: `${window.location.origin}/dashboard/settings?tab=billing`
+        },
+        headers: { 'x-session-token': token || '' },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Erro ao processar upgrade',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   return {
     creditPackages,
     isLoadingPackages,
@@ -189,5 +219,7 @@ export function useBilling() {
     isOpeningPortal: openBillingPortal.isPending,
     saveAutoTopupSettings: saveAutoTopupSettings.mutate,
     isSavingAutoTopup: saveAutoTopupSettings.isPending,
+    upgradeToPremium: upgradeToPremium.mutate,
+    isUpgrading: upgradeToPremium.isPending,
   };
 }

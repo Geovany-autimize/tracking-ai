@@ -9,7 +9,7 @@ import { useBilling } from '@/hooks/use-billing';
 
 export function CurrentPlanCard() {
   const { plan, subscription } = useAuth();
-  const { openBillingPortal, isOpeningPortal } = useBilling();
+  const { openBillingPortal, isOpeningPortal, upgradeToPremium, isUpgrading } = useBilling();
 
   if (!plan || !subscription) return null;
 
@@ -55,15 +55,26 @@ export function CurrentPlanCard() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          className="w-full mt-6"
-          onClick={() => openBillingPortal()}
-          disabled={isOpeningPortal}
-        >
-          <ExternalLink className="mr-2 h-4 w-4" />
-          {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
-        </Button>
+        <div className="flex gap-2 mt-6">
+          {!isPremium && (
+            <Button
+              className="flex-1 bg-primary hover:bg-primary/90"
+              onClick={() => upgradeToPremium()}
+              disabled={isUpgrading}
+            >
+              {isUpgrading ? 'Carregando...' : 'Fazer Upgrade'}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            className={!isPremium ? 'flex-1' : 'w-full'}
+            onClick={() => openBillingPortal()}
+            disabled={isOpeningPortal}
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
