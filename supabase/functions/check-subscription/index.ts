@@ -96,13 +96,17 @@ serve(async (req) => {
     let planId = 'free';
     let subscriptionEnd = null;
 
+    let cancelAtPeriodEnd = false;
+    
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
+      cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
       logStep("Subscription details", { 
         subscriptionId: subscription.id, 
         status: subscription.status,
         currentPeriodEnd: subscription.current_period_end,
-        priceId: subscription.items.data[0]?.price?.id 
+        priceId: subscription.items.data[0]?.price?.id,
+        cancelAtPeriodEnd 
       });
       
       // Validate and convert subscription end date
@@ -133,7 +137,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_id: planId,
-      subscription_end: subscriptionEnd
+      subscription_end: subscriptionEnd,
+      cancel_at_period_end: cancelAtPeriodEnd
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

@@ -76,7 +76,7 @@ serve(async (req) => {
 
     // Try to resolve subscription status directly from Stripe
     let finalSubscription = dbSubscription as
-      | { plan_id: string; status: string; current_period_start: string; current_period_end: string }
+      | { plan_id: string; status: string; current_period_start: string; current_period_end: string; cancel_at_period_end?: boolean }
       | null;
 
     try {
@@ -105,6 +105,7 @@ serve(async (req) => {
               status: sub.status || 'active',
               current_period_start: startIso,
               current_period_end: endIso,
+              cancel_at_period_end: sub.cancel_at_period_end || false,
             };
           }
         }
@@ -150,6 +151,7 @@ serve(async (req) => {
           status: finalSubscription.status,
           current_period_start: finalSubscription.current_period_start,
           current_period_end: finalSubscription.current_period_end,
+          cancel_at_period_end: finalSubscription.cancel_at_period_end,
         } : null,
         plan: plan,
         usage: {

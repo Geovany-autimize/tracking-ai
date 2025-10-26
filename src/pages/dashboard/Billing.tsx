@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function BillingPage() {
-  const { customer, plan, usage, checkSubscription } = useAuth();
+  const { customer, plan, usage, subscription, checkSubscription } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoCredits, setAutoCredits] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
@@ -168,8 +169,8 @@ export default function BillingPage() {
 
       if (data?.url) {
         window.open(data.url, '_blank');
-        toast.success('Redirecionando para portal...', {
-          description: 'Gerencie sua assinatura no Stripe'
+        toast.info('Portal do Stripe', {
+          description: 'Gerencie ou cancele sua assinatura no portal'
         });
       }
     } catch (error) {
@@ -178,6 +179,14 @@ export default function BillingPage() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleCancelPlan = async () => {
+    toast.info('Cancelamento de assinatura', {
+      description: 'Você será redirecionado para o portal do Stripe onde poderá cancelar. Seu acesso continuará até o fim do período pago.',
+      duration: 5000,
+    });
+    await handleManageSubscription();
   };
 
   const handleRefreshSubscription = async () => {
@@ -202,6 +211,23 @@ export default function BillingPage() {
         </p>
       </header>
 
+      {/* Cancelamento pendente */}
+      {subscription?.cancel_at_period_end && plan?.id !== 'free' && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Assinatura cancelada</AlertTitle>
+          <AlertDescription>
+            Seu plano Premium será cancelado em{' '}
+            {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric'
+            })}
+            . Após essa data, você será movido para o plano Free.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Current Plan Summary */}
       <Card className="border-border/50">
         <CardContent className="p-6 space-y-6">
@@ -225,6 +251,15 @@ export default function BillingPage() {
             <div className="flex items-center gap-2">
               {plan?.id !== 'free' && (
                 <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleCancelPlan}
+                    disabled={isProcessing || subscription?.cancel_at_period_end}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Cancelar Plano
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm" 
@@ -341,19 +376,13 @@ export default function BillingPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((planItem, idx) => {
+          {plans.map((planItem) => {
             const isCurrentPlan = plan?.id === planItem.id;
-            const currentPlanTier = plans.find(p => p.id === plan?.id)?.tier || 1;
-            const isDowngrade = planItem.tier < currentPlanTier;
-            const isUpgrade = planItem.tier > currentPlanTier;
+            const buttonDisabled = isCurrentPlan || isProcessing;
             
             let buttonText = planItem.cta;
             if (isCurrentPlan) {
               buttonText = 'Plano Atual';
-            } else if (isDowngrade) {
-              buttonText = `Fazer downgrade para ${planItem.name}`;
-            } else if (isUpgrade) {
-              buttonText = `Fazer upgrade para ${planItem.name}`;
             }
             
             return (
@@ -396,7 +425,7 @@ export default function BillingPage() {
                     variant={planItem.highlight ? "hero" : "outline"}
                     size="lg"
                     className="w-full"
-                    disabled={isCurrentPlan || isProcessing}
+                    disabled={buttonDisabled}
                     onClick={() => handleUpgrade(planItem.id)}
                   >
                     {buttonText}
