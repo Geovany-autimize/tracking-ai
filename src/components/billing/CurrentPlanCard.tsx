@@ -35,7 +35,7 @@ export function CurrentPlanCard() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full">
+      <CardContent className="flex flex-col">
         <div className="space-y-3 flex-1">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Valor mensal</span>

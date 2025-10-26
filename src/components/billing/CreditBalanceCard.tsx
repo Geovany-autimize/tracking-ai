@@ -56,7 +56,7 @@ export function CreditBalanceCard({ onPurchaseClick, onAutoRechargeClick }: Cred
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col h-full">
+      <CardContent className="flex flex-col">
         <div className="space-y-2 flex-1">
           <div className="flex justify-between items-end">
             <div className="text-3xl font-bold">
