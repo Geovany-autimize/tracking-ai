@@ -1,4 +1,3 @@
-import React, { useMemo } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,11 +24,10 @@ import BillingSuccess from "./pages/dashboard/billing/Success";
 import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 
-const App = () => {
-  const queryClient = useMemo(() => new QueryClient(), []);
-  
-  return (
-    <QueryClientProvider client={queryClient}>
+const queryClient = new QueryClient();
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -63,7 +61,6 @@ const App = () => {
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-  );
-};
+);
 
 export default App;
