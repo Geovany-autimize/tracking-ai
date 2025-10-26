@@ -40,6 +40,7 @@ interface AuthContextType {
   signup: (name: string, email: string, password: string, whatsapp?: string, plan?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  checkSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -168,6 +169,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshSession();
   };
 
+  const checkSubscription = async () => {
+    const token = getSessionToken();
+    if (!token) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (error || !data) {
+        console.error('Error checking subscription:', error);
+        return;
+      }
+
+      // Atualiza apenas o plan_id na subscription
+      if (subscription && data.plan_id) {
+        setSubscription({
+          ...subscription,
+          plan_id: data.plan_id,
+        });
+      }
+
+      // Busca os dados do plano atualizado
+      await refreshSession();
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    }
+  };
+
   const logout = async () => {
     const token = getSessionToken();
     if (token) {
@@ -196,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signup,
         logout,
         refreshSession,
+        checkSubscription,
       }}
     >
       {children}

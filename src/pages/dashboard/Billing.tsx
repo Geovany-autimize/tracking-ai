@@ -4,14 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function BillingPage() {
-  const { customer, plan, usage } = useAuth();
+  const { customer, plan, usage, checkSubscription } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [autoCredits, setAutoCredits] = useState(false);
+  const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+
+  // Verifica status da assinatura ao carregar a página
+  useEffect(() => {
+    const checkStatus = async () => {
+      await checkSubscription();
+    };
+    checkStatus();
+  }, []);
 
   const totalCredits = plan?.monthly_credits || 0;
   const usedCredits = usage?.used_credits || 0;
@@ -96,13 +106,89 @@ export default function BillingPage() {
     try {
       if (planId === 'enterprise') {
         window.open('https://wa.me/5511999999999?text=Olá! Gostaria de conhecer o plano Enterprise', '_blank');
-      } else {
-        toast.info('Funcionalidade de upgrade em desenvolvimento', {
-          description: 'Em breve você poderá fazer upgrade diretamente pelo app'
+      } else if (planId === 'premium') {
+        const token = localStorage.getItem('session_token');
+        if (!token) {
+          toast.error('Você precisa estar logado para fazer upgrade');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: { priceId: 'price_1SMEgFFsSB8n8Az0aSBb70E7' },
         });
+
+        if (error) {
+          console.error('Error creating checkout:', error);
+          toast.error('Erro ao criar sessão de pagamento', {
+            description: error.message
+          });
+          return;
+        }
+
+        if (data?.url) {
+          window.open(data.url, '_blank');
+          toast.success('Redirecionando para pagamento...', {
+            description: 'Você será redirecionado para completar o pagamento'
+          });
+        }
       }
+    } catch (error) {
+      console.error('Error in handleUpgrade:', error);
+      toast.error('Erro ao processar upgrade');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setIsProcessing(true);
+    try {
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        toast.error('Você precisa estar logado');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Error creating portal session:', error);
+        toast.error('Erro ao abrir portal de gerenciamento', {
+          description: error.message
+        });
+        return;
+      }
+
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast.success('Redirecionando para portal...', {
+          description: 'Gerencie sua assinatura no Stripe'
+        });
+      }
+    } catch (error) {
+      console.error('Error in handleManageSubscription:', error);
+      toast.error('Erro ao processar solicitação');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRefreshSubscription = async () => {
+    setIsCheckingSubscription(true);
+    try {
+      await checkSubscription();
+      toast.success('Status da assinatura atualizado');
+    } catch (error) {
+      toast.error('Erro ao atualizar status da assinatura');
+    } finally {
+      setIsCheckingSubscription(false);
     }
   };
 
@@ -138,9 +224,24 @@ export default function BillingPage() {
             </div>
             <div className="flex items-center gap-2">
               {plan?.id !== 'free' && (
-                <Button variant="outline" size="sm" onClick={() => handleUpgrade('enterprise')}>
-                  Cancelar assinatura
-                </Button>
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleManageSubscription}
+                    disabled={isProcessing}
+                  >
+                    Gerenciar assinatura
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRefreshSubscription}
+                    disabled={isCheckingSubscription}
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isCheckingSubscription ? 'animate-spin' : ''}`} />
+                  </Button>
+                </>
               )}
             </div>
           </div>
