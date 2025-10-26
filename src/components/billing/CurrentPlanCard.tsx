@@ -6,21 +6,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useBilling } from '@/hooks/use-billing';
-
 export function CurrentPlanCard() {
-  const { plan, subscription } = useAuth();
-  const { openBillingPortal, isOpeningPortal } = useBilling();
-
+  const {
+    plan,
+    subscription
+  } = useAuth();
+  const {
+    openBillingPortal,
+    isOpeningPortal
+  } = useBilling();
   if (!plan || !subscription) return null;
-
-  const nextBilling = subscription.current_period_end
-    ? format(new Date(subscription.current_period_end), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
-    : 'N/A';
-
+  const nextBilling = subscription.current_period_end ? format(new Date(subscription.current_period_end), "dd 'de' MMMM 'de' yyyy", {
+    locale: ptBR
+  }) : 'N/A';
   const isPremium = plan.id !== 'free';
-
-  return (
-    <Card className="h-full">
+  return <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -35,8 +35,8 @@ export function CurrentPlanCard() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col">
-        <div className="space-y-3 flex-1">
+      <CardContent className="space-y-4 py-[13px]">
+        <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Valor mensal</span>
             <span className="font-semibold">
@@ -47,24 +47,14 @@ export function CurrentPlanCard() {
             <span className="text-muted-foreground">Próxima cobrança</span>
             <span className="font-medium">{nextBilling}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Status</span>
-            <Badge variant={isPremium ? 'default' : 'secondary'}>
-              {subscription.status === 'active' ? 'Ativo' : subscription.status}
-            </Badge>
-          </div>
         </div>
 
-        <Button
-          variant="outline"
-          className="w-full mt-6"
-          onClick={() => openBillingPortal()}
-          disabled={isOpeningPortal}
-        >
-          <ExternalLink className="mr-2 h-4 w-4" />
-          {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
-        </Button>
+        <div className="flex flex-col gap-2 pt-2">
+          <Button variant="outline" className="w-full" onClick={() => openBillingPortal()} disabled={isOpeningPortal}>
+            <ExternalLink className="mr-2 h-4 w-4" />
+            {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
+          </Button>
+        </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 }
