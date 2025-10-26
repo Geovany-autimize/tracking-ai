@@ -20,6 +20,7 @@ import InsightsPage from "./pages/dashboard/Insights";
 import TemplatesPage from "./pages/dashboard/Templates";
 import SettingsPage from "./pages/dashboard/Settings";
 import ProfilePage from "./pages/dashboard/Profile";
+import BillingPage from "./pages/dashboard/Billing";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
               <Route path="customers/:id" element={<CustomerDetails />} />
               <Route path="insights" element={<InsightsPage />} />
               <Route path="templates" element={<TemplatesPage />} />
+              <Route path="billing" element={<BillingPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
               <Route path="profile" element={<ProfilePage />} />

@@ -59,7 +59,7 @@ export default function DashboardHome() {
                 Faça upgrade do seu plano para continuar rastreando
               </p>
             </div>
-            <Link to="/dashboard/settings">
+            <Link to="/dashboard/billing">
               <Button variant="default">Ver Planos</Button>
             </Link>
           </CardContent>
