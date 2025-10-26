@@ -44,7 +44,69 @@ serve(async (req) => {
     }
     logStep("Session validated", { customerId: sessionData.customer_id });
 
-    // Find the oldest purchase with available credits (FIFO logic)
+    // Check monthly subscription credits first
+    let monthlyCredits = 0;
+    let monthlyRemaining = 0;
+    try {
+      const { data: subscription } = await supabaseAdmin
+        .from('subscriptions')
+        .select('current_period_start, current_period_end, plan_id, status')
+        .eq('customer_id', sessionData.customer_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (subscription) {
+        const { data: plan } = await supabaseAdmin
+          .from('plans')
+          .select('monthly_credits')
+          .eq('id', subscription.plan_id)
+          .single();
+        monthlyCredits = plan?.monthly_credits || 0;
+
+        if (monthlyCredits > 0) {
+          const { count } = await supabaseAdmin
+            .from('shipments')
+            .select('id', { count: 'exact', head: true })
+            .eq('customer_id', sessionData.customer_id)
+            .gte('created_at', subscription.current_period_start)
+            .lt('created_at', subscription.current_period_end);
+
+          const usedThisPeriod = count || 0;
+          monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
+          logStep('Monthly credits check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
+
+          if (monthlyRemaining > 0) {
+            // Also compute extra credits remaining for info
+            const { data: purchasesForInfo } = await supabaseAdmin
+              .from('credit_purchases')
+              .select('credits_amount, consumed_credits')
+              .eq('customer_id', sessionData.customer_id)
+              .eq('status', 'completed')
+              .gt('expires_at', new Date().toISOString());
+
+            const extraRemaining = (purchasesForInfo || []).reduce(
+              (sum, p) => sum + (p.credits_amount - p.consumed_credits),
+              0
+            );
+
+            return new Response(JSON.stringify({
+              success: true,
+              message: 'Crédito mensal consumido com sucesso',
+              remaining_credits: (monthlyRemaining - 1) + extraRemaining
+            }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      logStep('Monthly credits check error (non-blocking)', { error: String(e) });
+    }
+
+    // Fallback: consume from extra purchased credits (FIFO)
     const { data: purchases, error: purchasesError } = await supabaseAdmin
       .from("credit_purchases")
       .select("id, credits_amount, consumed_credits, expires_at")
@@ -56,7 +118,6 @@ serve(async (req) => {
     if (purchasesError) throw purchasesError;
     logStep("Fetched credit purchases", { count: purchases?.length });
 
-    // Find first purchase with available credits
     const availablePurchase = purchases?.find(
       (p) => p.consumed_credits < p.credits_amount
     );
@@ -122,10 +183,17 @@ serve(async (req) => {
       }
     }
 
+    // Compute remaining credits after consumption (extra + monthly not consumed)
+    const extraRemainingAfter = purchases.reduce(
+      (sum, p) => sum + (p.credits_amount - p.consumed_credits),
+      0
+    ) - 1;
+    const totalRemaining = extraRemainingAfter + monthlyRemaining;
+
     return new Response(JSON.stringify({ 
       success: true,
       message: "Crédito consumido com sucesso",
-      remaining_credits: availablePurchase.credits_amount - availablePurchase.consumed_credits - 1
+      remaining_credits: totalRemaining
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

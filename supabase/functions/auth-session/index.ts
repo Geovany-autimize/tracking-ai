@@ -126,16 +126,29 @@ serve(async (req) => {
     }
 
 
-    // Calculate used credits from credit_purchases (consumed_credits sum)
-    const { data: creditPurchases } = await supabase
-      .from("credit_purchases")
-      .select("consumed_credits")
-      .eq("customer_id", customer.id);
-
-    const usedCredits = creditPurchases?.reduce(
-      (sum, purchase) => sum + purchase.consumed_credits, 
-      0
-    ) || 0;
+    // Calculate used credits
+    // Prefer monthly usage (shipments in current period) when subscription exists
+    let usedCredits = 0;
+    if (finalSubscription) {
+      const { count } = await supabase
+        .from('shipments')
+        .select('id', { count: 'exact', head: true })
+        .eq('customer_id', customer.id)
+        .gte('created_at', finalSubscription.current_period_start)
+        .lt('created_at', finalSubscription.current_period_end);
+      usedCredits = count || 0;
+    } else {
+      // Fallback to sum of consumed extra credits
+      const { data: creditPurchases } = await supabase
+        .from('credit_purchases')
+        .select('consumed_credits')
+        .eq('customer_id', customer.id);
+      usedCredits =
+        creditPurchases?.reduce(
+          (sum, purchase) => sum + purchase.consumed_credits,
+          0
+        ) || 0;
+    }
 
     // Get available extra credits
     const { data: extraCredits } = await supabase
