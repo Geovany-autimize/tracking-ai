@@ -406,9 +406,15 @@ export default function BillingPage() {
 
             {/* Additional Info */}
             <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-muted-foreground">
-                Renovação em {getNextRenewalDate()}
-              </p>
+              {!subscription?.cancel_at_period_end && subscription?.current_period_end && (
+                <p className="text-xs text-muted-foreground">
+                  Renovação em {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: 'long',
+                    year: 'numeric'
+                  })}
+                </p>
+              )}
               {plan?.id !== 'free' && (
                 <div className="flex items-center gap-2">
                   <Switch 
