@@ -29,6 +29,3 @@ verify_jwt = false
 
 [functions.webhook-tracking-update]
 verify_jwt = false
-
-[functions.billing-get-history]
-verify_jwt = false

@@ -4,12 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MessageSquare } from 'lucide-react';
 import IntegrationCard from '@/components/settings/IntegrationCard';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 
 export default function SettingsPage() {
   const { status, instanceData } = useWhatsApp();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const defaultTab = searchParams.get('tab') || 'integrations';
 
   const whatsappStatus = status === 'connected' ? 'ativo' : 'nao-configurado';
@@ -23,11 +22,7 @@ export default function SettingsPage() {
         </p>
       </header>
 
-      <Tabs defaultValue={defaultTab} onValueChange={(value) => {
-        if (value === 'billing') {
-          navigate('/dashboard/settings/billing');
-        }
-      }} className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="integrations">Integrações</TabsTrigger>
           <TabsTrigger value="billing">Faturamento</TabsTrigger>

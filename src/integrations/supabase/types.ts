@@ -14,113 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      auto_topup_settings: {
-        Row: {
-          created_at: string
-          customer_id: string
-          enabled: boolean | null
-          last_purchase_at: string | null
-          max_purchases_per_month: number | null
-          package_id: string | null
-          purchases_this_month: number | null
-          trigger_threshold: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          customer_id: string
-          enabled?: boolean | null
-          last_purchase_at?: string | null
-          max_purchases_per_month?: number | null
-          package_id?: string | null
-          purchases_this_month?: number | null
-          trigger_threshold: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          customer_id?: string
-          enabled?: boolean | null
-          last_purchase_at?: string | null
-          max_purchases_per_month?: number | null
-          package_id?: string | null
-          purchases_this_month?: number | null
-          trigger_threshold?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "auto_topup_settings_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: true
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "auto_topup_settings_package_id_fkey"
-            columns: ["package_id"]
-            isOneToOne: false
-            referencedRelation: "credit_packages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      billing_transactions: {
-        Row: {
-          amount_cents: number
-          created_at: string
-          credits_added: number | null
-          currency: string | null
-          customer_id: string
-          description: string | null
-          id: string
-          metadata: Json | null
-          status: string
-          stripe_invoice_id: string | null
-          stripe_payment_intent_id: string | null
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          amount_cents: number
-          created_at?: string
-          credits_added?: number | null
-          currency?: string | null
-          customer_id: string
-          description?: string | null
-          id?: string
-          metadata?: Json | null
-          status: string
-          stripe_invoice_id?: string | null
-          stripe_payment_intent_id?: string | null
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          amount_cents?: number
-          created_at?: string
-          credits_added?: number | null
-          currency?: string | null
-          customer_id?: string
-          description?: string | null
-          id?: string
-          metadata?: Json | null
-          status?: string
-          stripe_invoice_id?: string | null
-          stripe_payment_intent_id?: string | null
-          type?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "billing_transactions_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       couriers: {
         Row: {
           country_code: string | null
@@ -157,42 +50,6 @@ export type Database = {
         }
         Relationships: []
       }
-      credit_packages: {
-        Row: {
-          created_at: string
-          credits: number
-          discount_percentage: number | null
-          display_order: number | null
-          id: string
-          is_active: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          credits: number
-          discount_percentage?: number | null
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          price_cents: number
-          stripe_price_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          credits?: number
-          discount_percentage?: number | null
-          display_order?: number | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          price_cents?: number
-          stripe_price_id?: string | null
-        }
-        Relationships: []
-      }
       customers: {
         Row: {
           avatar_url: string | null
@@ -201,8 +58,6 @@ export type Database = {
           id: string
           name: string | null
           status: string | null
-          stripe_customer_id: string | null
-          stripe_payment_method_id: string | null
           whatsapp_e164: string | null
         }
         Insert: {
@@ -212,8 +67,6 @@ export type Database = {
           id?: string
           name?: string | null
           status?: string | null
-          stripe_customer_id?: string | null
-          stripe_payment_method_id?: string | null
           whatsapp_e164?: string | null
         }
         Update: {
@@ -223,8 +76,6 @@ export type Database = {
           id?: string
           name?: string | null
           status?: string | null
-          stripe_customer_id?: string | null
-          stripe_payment_method_id?: string | null
           whatsapp_e164?: string | null
         }
         Relationships: []
@@ -426,7 +277,6 @@ export type Database = {
           monthly_credits: number | null
           name: string
           price_cents: number | null
-          stripe_price_id: string | null
         }
         Insert: {
           features?: Json | null
@@ -435,7 +285,6 @@ export type Database = {
           monthly_credits?: number | null
           name: string
           price_cents?: number | null
-          stripe_price_id?: string | null
         }
         Update: {
           features?: Json | null
@@ -444,7 +293,6 @@ export type Database = {
           monthly_credits?: number | null
           name?: string
           price_cents?: number | null
-          stripe_price_id?: string | null
         }
         Relationships: []
       }
@@ -587,78 +435,8 @@ export type Database = {
           },
         ]
       }
-      stripe_prices: {
-        Row: {
-          active: boolean | null
-          created_at: string
-          currency: string | null
-          id: string
-          metadata: Json | null
-          product_id: string | null
-          recurring_interval: string | null
-          type: string
-          unit_amount: number | null
-        }
-        Insert: {
-          active?: boolean | null
-          created_at?: string
-          currency?: string | null
-          id: string
-          metadata?: Json | null
-          product_id?: string | null
-          recurring_interval?: string | null
-          type: string
-          unit_amount?: number | null
-        }
-        Update: {
-          active?: boolean | null
-          created_at?: string
-          currency?: string | null
-          id?: string
-          metadata?: Json | null
-          product_id?: string | null
-          recurring_interval?: string | null
-          type?: string
-          unit_amount?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "stripe_prices_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "stripe_products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      stripe_products: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          metadata: Json | null
-          name: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id: string
-          metadata?: Json | null
-          name: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          metadata?: Json | null
-          name?: string
-        }
-        Relationships: []
-      }
       subscriptions: {
         Row: {
-          cancel_at_period_end: boolean | null
-          canceled_at: string | null
           created_at: string | null
           current_period_end: string | null
           current_period_start: string | null
@@ -666,12 +444,8 @@ export type Database = {
           id: string
           plan_id: string
           status: string | null
-          stripe_price_id: string | null
-          stripe_subscription_id: string | null
         }
         Insert: {
-          cancel_at_period_end?: boolean | null
-          canceled_at?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -679,12 +453,8 @@ export type Database = {
           id?: string
           plan_id: string
           status?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
         }
         Update: {
-          cancel_at_period_end?: boolean | null
-          canceled_at?: string | null
           created_at?: string | null
           current_period_end?: string | null
           current_period_start?: string | null
@@ -692,8 +462,6 @@ export type Database = {
           id?: string
           plan_id?: string
           status?: string | null
-          stripe_price_id?: string | null
-          stripe_subscription_id?: string | null
         }
         Relationships: [
           {
