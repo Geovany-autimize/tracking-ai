@@ -35,8 +35,8 @@ export function CurrentPlanCard() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
+      <CardContent className="space-y-6">
+        <div className="space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Valor mensal</span>
             <span className="font-semibold">
@@ -47,19 +47,35 @@ export function CurrentPlanCard() {
             <span className="text-muted-foreground">Próxima cobrança</span>
             <span className="font-medium">{nextBilling}</span>
           </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Status</span>
+            <Badge variant={isPremium ? 'default' : 'secondary'}>
+              {subscription.status === 'active' ? 'Ativo' : subscription.status}
+            </Badge>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 pt-2">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => openBillingPortal()}
-            disabled={isOpeningPortal}
-          >
-            <ExternalLink className="mr-2 h-4 w-4" />
-            {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
-          </Button>
-        </div>
+        {plan.monthly_credits && (
+          <div className="pt-4 border-t space-y-2">
+            <h4 className="text-sm font-medium">Recursos inclusos</h4>
+            <ul className="text-sm text-muted-foreground space-y-1">
+              <li>✓ {plan.monthly_credits.toLocaleString('pt-BR')} créditos/mês</li>
+              <li>✓ Rastreamento em tempo real</li>
+              <li>✓ Notificações automáticas</li>
+              <li>✓ Integrações com WhatsApp</li>
+            </ul>
+          </div>
+        )}
+
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => openBillingPortal()}
+          disabled={isOpeningPortal}
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          {isOpeningPortal ? 'Carregando...' : 'Gerenciar Pagamento'}
+        </Button>
       </CardContent>
     </Card>
   );

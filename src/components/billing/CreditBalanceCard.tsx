@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Target, ShoppingCart, AlertTriangle } from 'lucide-react';
+import { Target, ShoppingCart, AlertTriangle, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -10,9 +10,10 @@ import { cn } from '@/lib/utils';
 
 interface CreditBalanceCardProps {
   onPurchaseClick: () => void;
+  onAutoRechargeClick: () => void;
 }
 
-export function CreditBalanceCard({ onPurchaseClick }: CreditBalanceCardProps) {
+export function CreditBalanceCard({ onPurchaseClick, onAutoRechargeClick }: CreditBalanceCardProps) {
   const { plan, usage, subscription } = useAuth();
 
   if (!plan || !usage || !subscription) return null;
@@ -87,14 +88,24 @@ export function CreditBalanceCard({ onPurchaseClick }: CreditBalanceCardProps) {
             </span>
           </div>
 
-          <Button 
-            className="w-full" 
-            onClick={onPurchaseClick}
-            variant={isCritical ? 'default' : 'outline'}
-          >
-            <ShoppingCart className="mr-2 h-4 w-4" />
-            Comprar Créditos
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              className="flex-1" 
+              onClick={onPurchaseClick}
+              variant="outline"
+            >
+              <ShoppingCart className="mr-2 h-4 w-4" />
+              Comprar Créditos
+            </Button>
+            <Button 
+              className="flex-1" 
+              onClick={onAutoRechargeClick}
+              variant="outline"
+            >
+              <Zap className="mr-2 h-4 w-4" />
+              Auto Recharge
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

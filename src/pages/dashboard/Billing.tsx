@@ -1,17 +1,16 @@
-import PageHeader from '@/components/app/PageHeader';
 import { CurrentPlanCard } from '@/components/billing/CurrentPlanCard';
 import { CreditBalanceCard } from '@/components/billing/CreditBalanceCard';
-import { CreditPackagesGrid } from '@/components/billing/CreditPackagesGrid';
 import { BillingHistoryTable } from '@/components/billing/BillingHistoryTable';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCircle2 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 export default function BillingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [showPackages, setShowPackages] = useState(false);
+  const [showAutoRecharge, setShowAutoRecharge] = useState(false);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -28,26 +27,52 @@ export default function BillingPage() {
     }
   }, [searchParams, setSearchParams, toast]);
 
+  const handleAutoRecharge = () => {
+    toast({
+      title: "Em breve",
+      description: "A configuração de Auto Recharge estará disponível em breve.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <header>
-        <h2 className="text-2xl font-semibold">Faturamento</h2>
+        <h2 className="text-2xl font-semibold">Configurações</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Gerencie seu plano, créditos e histórico de pagamentos
+          Gerencie integrações e faturamento
         </p>
       </header>
 
-      {/* Cards principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <CurrentPlanCard />
-        <CreditBalanceCard onPurchaseClick={() => setShowPackages(!showPackages)} />
-      </div>
+      <Tabs defaultValue="billing" className="space-y-6">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger 
+            value="integrations" 
+            onClick={() => navigate('/dashboard/settings')}
+          >
+            Integrações
+          </TabsTrigger>
+          <TabsTrigger value="billing">
+            Faturamento
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Grid de pacotes */}
-      <CreditPackagesGrid />
+        <TabsContent value="billing" className="space-y-6">
+          {/* Cards principais */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CurrentPlanCard />
+            <CreditBalanceCard 
+              onPurchaseClick={() => toast({
+                title: "Em breve",
+                description: "A compra de créditos estará disponível em breve.",
+              })}
+              onAutoRechargeClick={handleAutoRecharge}
+            />
+          </div>
 
-      {/* Histórico */}
-      <BillingHistoryTable />
+          {/* Histórico */}
+          <BillingHistoryTable />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
