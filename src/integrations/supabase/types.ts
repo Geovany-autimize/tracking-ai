@@ -426,6 +426,7 @@ export type Database = {
           monthly_credits: number | null
           name: string
           price_cents: number | null
+          stripe_price_id: string | null
         }
         Insert: {
           features?: Json | null
@@ -434,6 +435,7 @@ export type Database = {
           monthly_credits?: number | null
           name: string
           price_cents?: number | null
+          stripe_price_id?: string | null
         }
         Update: {
           features?: Json | null
@@ -442,6 +444,7 @@ export type Database = {
           monthly_credits?: number | null
           name?: string
           price_cents?: number | null
+          stripe_price_id?: string | null
         }
         Relationships: []
       }
