@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.remove-auto-recharge-payment]
 verify_jwt = false
+
+[functions.consume-credit]
+verify_jwt = false

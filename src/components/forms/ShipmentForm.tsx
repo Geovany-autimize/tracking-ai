@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
+import { consumeCredit } from '@/lib/credits';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -102,6 +103,19 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
         toast({
           title: 'Código de rastreio duplicado',
           description: 'Este código de rastreio já existe para você',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Consumir 1 crédito ANTES de criar o shipment
+      const creditResult = await consumeCredit();
+      
+      if (!creditResult.success) {
+        toast({
+          title: 'Sem créditos disponíveis',
+          description: 'Você precisa comprar mais créditos para criar rastreios',
           variant: 'destructive',
         });
         setIsLoading(false);

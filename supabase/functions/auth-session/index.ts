@@ -126,15 +126,16 @@ serve(async (req) => {
     }
 
 
-    // Get current month usage
-    const now = new Date();
-    const periodYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const { data: usage } = await supabase
-      .from('monthly_usage')
-      .select('used_credits')
-      .eq('customer_id', customer.id)
-      .eq('period_ym', periodYm)
-      .single();
+    // Calculate used credits from credit_purchases (consumed_credits sum)
+    const { data: creditPurchases } = await supabase
+      .from("credit_purchases")
+      .select("consumed_credits")
+      .eq("customer_id", customer.id);
+
+    const usedCredits = creditPurchases?.reduce(
+      (sum, purchase) => sum + purchase.consumed_credits, 
+      0
+    ) || 0;
 
     // Get available extra credits
     const { data: extraCredits } = await supabase
@@ -168,8 +169,7 @@ serve(async (req) => {
         } : null,
         plan: plan,
         usage: {
-          used_credits: usage?.used_credits || 0,
-          period_ym: periodYm,
+          used_credits: usedCredits,
           extra_credits: totalExtraCredits,
         },
       }),
