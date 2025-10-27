@@ -116,31 +116,31 @@ export default function DashboardHome() {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
               <Link to="/dashboard/shipments">
-                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
+                <Button variant="outline" className="justify-start gap-2 w-full">
                   <PackageSearch className="h-4 w-4" />
                   Ver Rastreios
                 </Button>
               </Link>
               <Link to="/dashboard/customers">
-                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
+                <Button variant="outline" className="justify-start gap-2 w-full">
                   <Users className="h-4 w-4" />
                   Clientes
                 </Button>
               </Link>
               <Link to="/dashboard/insights">
-                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
+                <Button variant="outline" className="justify-start gap-2 w-full">
                   <Sparkles className="h-4 w-4" />
                   Insights
                 </Button>
               </Link>
               <Link to="/dashboard/settings">
-                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
+                <Button variant="outline" className="justify-start gap-2 w-full">
                   <Settings className="h-4 w-4" />
                   Configurações
                 </Button>
               </Link>
               <Link to="/dashboard/profile">
-                <Button variant="ghost" className="justify-start gap-2 h-auto py-3 w-full">
+                <Button variant="outline" className="justify-start gap-2 w-full">
                   <User className="h-4 w-4" />
                   Meu Perfil
                 </Button>
@@ -189,13 +189,13 @@ export default function DashboardHome() {
             <div className="space-y-2 mt-4">
               {whatsappStatus !== 'connected' && (
                 <Link to="/dashboard/settings/integrations/whatsapp" className="block">
-                  <Button variant="ghost" className="w-full" size="sm">
+                  <Button variant="outline" className="w-full" size="sm">
                     Configurar WhatsApp
                   </Button>
                 </Link>
               )}
               <Link to="/dashboard/settings" className="block">
-                <Button variant="ghost" className="w-full" size="sm">
+                <Button variant="outline" className="w-full" size="sm">
                   Completar Configuração
                 </Button>
               </Link>
