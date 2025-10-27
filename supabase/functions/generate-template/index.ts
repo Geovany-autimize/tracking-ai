@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,15 +83,28 @@ serve(async (req) => {
       );
     }
 
-    const { trigger, tone = 'friendly' } = body;
+    // Validate inputs with Zod
+    const templateSchema = z.object({
+      trigger: z.enum(['pending', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'info_received', 'failed_attempt', 'available_for_pickup', 'exception', 'expired'], {
+        errorMap: () => ({ message: 'Trigger inválido' })
+      }),
+      tone: z.enum(['formal', 'casual', 'friendly'], {
+        errorMap: () => ({ message: 'Tom inválido' })
+      }).optional().default('friendly'),
+    });
 
-    if (!trigger || trigger.trim().length === 0) {
-      console.error('❌ Trigger não fornecido');
+    const validation = templateSchema.safeParse(body);
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      console.error('❌ Erro de validação:', firstError.message);
       return new Response(
-        JSON.stringify({ error: 'Tipo de template é obrigatório' }),
+        JSON.stringify({ error: firstError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { trigger, tone } = validation.data;
 
     console.log('✅ Trigger:', trigger);
     console.log('✅ Tom:', tone);

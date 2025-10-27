@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,14 +15,25 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password } = await req.json();
+    const body = await req.json();
 
-    if (!email || !password) {
+    // Validate inputs with Zod
+    const loginSchema = z.object({
+      email: z.string().email('Email inválido').max(255, 'Email muito longo'),
+      password: z.string().min(1, 'Senha é obrigatória').max(128, 'Senha muito longa'),
+    });
+
+    const validation = loginSchema.safeParse(body);
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
       return new Response(
-        JSON.stringify({ error: 'E-mail e senha são obrigatórios' }),
+        JSON.stringify({ error: firstError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const { email, password } = validation.data;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

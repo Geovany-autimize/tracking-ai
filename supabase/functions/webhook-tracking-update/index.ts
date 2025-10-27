@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.76.1';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { 
   getNotificationTypeFromStatus,
   STATUS_TITLES,
@@ -323,13 +324,76 @@ Deno.serve(async (req) => {
   try {
     console.log('Webhook received - Processing tracking updates...');
 
+    // Validate webhook authentication
+    const authHeader = req.headers.get('authorization');
+    const expectedToken = Deno.env.get('SHIP24_WEBHOOK_SECRET');
+    
+    if (!expectedToken) {
+      console.error('SHIP24_WEBHOOK_SECRET not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+      console.warn('Unauthorized webhook attempt', { 
+        hasAuth: !!authHeader,
+        ip: req.headers.get('x-forwarded-for') || 'unknown'
+      });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Initialize Supabase client with service role key
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Parse webhook payload
-    const payload: WebhookPayload[] = await req.json();
+    // Parse and validate webhook payload
+    let payload;
+    try {
+      payload = await req.json();
+    } catch (e) {
+      console.error('Invalid JSON payload:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON payload' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate payload structure with Zod
+    const webhookSchema = z.array(z.object({
+      body: z.object({
+        trackings: z.array(z.object({
+          tracker: z.object({
+            trackerId: z.string().uuid(),
+            trackingNumber: z.string().max(100),
+          }),
+          shipment: z.object({
+            statusMilestone: z.string().max(50),
+          }),
+          events: z.array(z.object({
+            eventId: z.string(),
+            occurrenceDatetime: z.string(),
+            location: z.string().max(500),
+            statusMilestone: z.string().max(50),
+          })).max(1000), // Prevent DoS with too many events
+        })).max(100), // Max 100 trackings per webhook
+      }),
+    }));
+
+    const validation = webhookSchema.safeParse(payload);
+    
+    if (!validation.success) {
+      console.error('Invalid payload structure:', validation.error);
+      return new Response(
+        JSON.stringify({ error: 'Invalid payload structure' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!Array.isArray(payload) || payload.length === 0) {
       console.error('Invalid payload format');

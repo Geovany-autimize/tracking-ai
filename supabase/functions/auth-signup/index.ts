@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,38 +14,29 @@ serve(async (req) => {
   }
 
   try {
-    const { name, email, whatsapp_e164, password, plan } = await req.json();
+    const body = await req.json();
 
-    // Validate inputs
-    if (!email || !password || !name || !whatsapp_e164) {
+    // Validate inputs with Zod
+    const signupSchema = z.object({
+      name: z.string().min(2, 'Nome muito curto').max(100, 'Nome muito longo'),
+      email: z.string().email('Email inválido').max(255, 'Email muito longo'),
+      password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres').max(128, 'Senha muito longa'),
+      whatsapp_e164: z.string().regex(/^\+[1-9]\d{1,14}$/, 'WhatsApp inválido. Use o formato internacional (+55 11 99999-9999)'),
+      plan: z.enum(['free', 'premium']).optional().default('free'),
+    });
+
+    const validation = signupSchema.safeParse(body);
+    
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
       return new Response(
-        JSON.stringify({ error: 'Nome, email, WhatsApp e senha são obrigatórios' }),
+        JSON.stringify({ error: firstError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate WhatsApp format (E.164)
-    if (!whatsapp_e164.match(/^\+[1-9]\d{1,14}$/)) {
-      return new Response(
-        JSON.stringify({ error: 'WhatsApp inválido. Use o formato internacional (+55 11 99999-9999)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (password.length < 8) {
-      return new Response(
-        JSON.stringify({ error: 'A senha deve ter pelo menos 8 caracteres' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const planId = plan || 'free';
-    if (!['free', 'premium'].includes(planId)) {
-      return new Response(
-        JSON.stringify({ error: 'Plano inválido' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { name, email, whatsapp_e164, password, plan } = validation.data;
+    const planId = plan;
 
     // Create Supabase client with service role
     const supabase = createClient(
