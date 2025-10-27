@@ -573,6 +573,13 @@ export type Database = {
         | "delivery"
         | "exception"
         | "out_for_delivery"
+        | "info_received"
+        | "in_transit"
+        | "failed_attempt"
+        | "delivered"
+        | "available_for_pickup"
+        | "expired"
+        | "pending"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -705,6 +712,13 @@ export const Constants = {
         "delivery",
         "exception",
         "out_for_delivery",
+        "info_received",
+        "in_transit",
+        "failed_attempt",
+        "delivered",
+        "available_for_pickup",
+        "expired",
+        "pending",
       ],
     },
   },

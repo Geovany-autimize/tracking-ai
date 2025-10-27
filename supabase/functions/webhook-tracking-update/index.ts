@@ -99,6 +99,51 @@ function mapApiStatusToInternal(statusMilestone: string): string {
   return statusMap[statusMilestone] || 'pending';
 }
 
+// Prioridade de status milestones (maior = mais importante)
+const STATUS_PRIORITY: Record<string, number> = {
+  'delivered': 100,
+  'out_for_delivery': 90,
+  'failed_attempt': 80,
+  'exception': 80,
+  'available_for_pickup': 70,
+  'in_transit': 50,
+  'info_received': 30,
+  'pending': 10,
+  'expired': 5,
+};
+
+// Encontra o evento mais relevante considerando timestamp E prioridade de status
+function getMostRelevantEvent(events: TrackingEvent[]): TrackingEvent | null {
+  if (!events || events.length === 0) return null;
+  
+  // Ordenar por datetime (mais recente primeiro)
+  const sortedByDate = [...events].sort((a, b) => {
+    const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
+    const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
+    return dateB - dateA;
+  });
+  
+  const mostRecent = sortedByDate[0];
+  const mostRecentTime = new Date(mostRecent.datetime || mostRecent.occurrenceDatetime).getTime();
+  
+  // Considerar eventos no mesmo minuto (60 segundos de diferença)
+  const sameMinuteEvents = sortedByDate.filter(event => {
+    const eventTime = new Date(event.datetime || event.occurrenceDatetime).getTime();
+    return Math.abs(mostRecentTime - eventTime) <= 60000; // 60 segundos
+  });
+  
+  // Se há múltiplos eventos no mesmo minuto, usar prioridade de status
+  if (sameMinuteEvents.length > 1) {
+    return sameMinuteEvents.reduce((best, current) => {
+      const currentPriority = STATUS_PRIORITY[current.statusMilestone] || 0;
+      const bestPriority = STATUS_PRIORITY[best.statusMilestone] || 0;
+      return currentPriority > bestPriority ? current : best;
+    });
+  }
+  
+  return mostRecent;
+}
+
 // Funções removidas - agora usamos o mapeamento centralizado de status-mappings.ts
 
 // Gera mensagem de notificação
@@ -337,13 +382,23 @@ Deno.serve(async (req) => {
           return dateB - dateA; // Ordem decrescente (mais recente primeiro)
         });
 
-        // Atualizar shipment
+        // Usar o evento mais relevante (considerando prioridade de status)
+        const mostRelevantEvent = getMostRelevantEvent(combinedEvents);
+        if (!mostRelevantEvent) {
+          console.error('No relevant event found');
+          continue;
+        }
+        
+        const statusMilestone = mostRelevantEvent.statusMilestone as StatusMilestone;
+        console.log(`📦 Most relevant event: ${statusMilestone} at ${mostRelevantEvent.datetime} (from ${combinedEvents.length} events)`);
+
+        // Atualizar shipment com status do evento mais relevante
         const { error: updateError } = await supabase
           .from('shipments')
           .update({
             tracking_events: combinedEvents,
             shipment_data: tracking.shipment,
-            status: mapApiStatusToInternal(tracking.shipment.statusMilestone),
+            status: mapApiStatusToInternal(statusMilestone), // Usar status do evento mais recente
             last_update: new Date().toISOString(),
           })
           .eq('id', shipment.id);
@@ -355,10 +410,6 @@ Deno.serve(async (req) => {
         }
 
         console.log(`Successfully updated shipment ${shipment.id}`);
-
-        // Criar notificação para o cliente
-        const latestEvent = combinedEvents[0]; // Evento mais recente
-        const statusMilestone = tracking.shipment.statusMilestone as StatusMilestone;
         
         // Validação e logging
         if (!isValidStatusMilestone(statusMilestone)) {
@@ -371,9 +422,9 @@ Deno.serve(async (req) => {
         
         const notificationMessage = generateNotificationMessage(
           tracking.tracker.trackingNumber,
-          latestEvent?.courierName || null,
-          latestEvent?.location || null,
-          tracking.shipment.statusMilestone
+          mostRelevantEvent?.courierName || null,
+          mostRelevantEvent?.location || null,
+          statusMilestone
         );
 
         const { error: notificationError } = await supabase
@@ -385,9 +436,9 @@ Deno.serve(async (req) => {
             notification_type: notificationType,
             title: notificationTitle,
             message: notificationMessage,
-            status_milestone: tracking.shipment.statusMilestone,
-            courier_name: latestEvent?.courierName || null,
-            location: latestEvent?.location || null,
+            status_milestone: statusMilestone, // Usar o milestone do evento mais recente
+            courier_name: mostRelevantEvent?.courierName || null,
+            location: mostRelevantEvent?.location || null,
             is_read: false,
           });
 
@@ -472,16 +523,16 @@ Deno.serve(async (req) => {
                   tracking_code: tracking.tracker.trackingNumber,
                   tracker_id: tracking.tracker.trackerId,
                   status: STATUS_TRANSLATIONS[statusMilestone] || 'Em processamento',
-                  status_milestone: tracking.shipment.statusMilestone,
-                  transportadora: latestEvent?.courierName || 'Transportadora',
-                  localizacao: latestEvent?.location || 'Em trânsito',
-                  data_atualizacao: formatDateTime(latestEvent?.datetime || new Date().toISOString()),
+                  status_milestone: statusMilestone,
+                  transportadora: mostRelevantEvent?.courierName || 'Transportadora',
+                  localizacao: mostRelevantEvent?.location || 'Em trânsito',
+                  data_atualizacao: formatDateTime(mostRelevantEvent?.datetime || new Date().toISOString()),
                   
                   // Evento Atual
-                  evento_descricao: latestEvent?.status || '',
-                  evento_data: formatDate(latestEvent?.datetime),
-                  evento_hora: formatTime(latestEvent?.datetime),
-                  evento_localizacao: latestEvent?.location || '',
+                  evento_descricao: mostRelevantEvent?.status || '',
+                  evento_data: formatDate(mostRelevantEvent?.datetime),
+                  evento_hora: formatTime(mostRelevantEvent?.datetime),
+                  evento_localizacao: mostRelevantEvent?.location || '',
                   
                   // Entrega
                   previsao_entrega: formatDate(tracking.shipment.delivery?.estimatedDeliveryDate),
@@ -517,7 +568,7 @@ Deno.serve(async (req) => {
                   tracking: {
                     tracking_code: tracking.tracker.trackingNumber,
                     tracker_id: trackerId,
-                    latest_event: latestEvent,
+                    latest_event: mostRelevantEvent,
                   },
                   template: {
                     name: template.name,
