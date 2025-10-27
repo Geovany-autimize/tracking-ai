@@ -145,19 +145,19 @@ const STATUS_PRIORITY: Record<string, number> = {
 function getMostRelevantEvent(events: TrackingEvent[]): TrackingEvent | null {
   if (!events || events.length === 0) return null;
   
-  // Ordenar por datetime (mais recente primeiro)
+  // Ordenar por occurrenceDatetime (mais recente primeiro)
   const sortedByDate = [...events].sort((a, b) => {
-    const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
-    const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
+    const dateA = new Date(a.occurrenceDatetime).getTime();
+    const dateB = new Date(b.occurrenceDatetime).getTime();
     return dateB - dateA;
   });
   
   const mostRecent = sortedByDate[0];
-  const mostRecentTime = new Date(mostRecent.datetime || mostRecent.occurrenceDatetime).getTime();
+  const mostRecentTime = new Date(mostRecent.occurrenceDatetime).getTime();
   
   // Considerar eventos no mesmo minuto (60 segundos de diferença)
   const sameMinuteEvents = sortedByDate.filter(event => {
-    const eventTime = new Date(event.datetime || event.occurrenceDatetime).getTime();
+    const eventTime = new Date(event.occurrenceDatetime).getTime();
     return Math.abs(mostRecentTime - eventTime) <= 60000; // 60 segundos
   });
   
@@ -396,7 +396,7 @@ Deno.serve(async (req) => {
         }
         
         const statusMilestone = mostRelevantEvent.statusMilestone as StatusMilestone;
-        console.log(`📦 Most relevant event: ${statusMilestone} at ${mostRelevantEvent.datetime} (from ${combinedEvents.length} events)`);
+        console.log(`📦 Most relevant event: ${statusMilestone} at ${mostRelevantEvent.occurrenceDatetime} (from ${combinedEvents.length} events)`);
 
         // Atualizar shipment com status do evento mais relevante
         const { error: updateError } = await supabase
@@ -486,25 +486,32 @@ Deno.serve(async (req) => {
               // Funções auxiliares para formatação
               const formatDate = (dateStr: string | null) => {
                 if (!dateStr) return '';
-                return new Date(dateStr).toLocaleDateString('pt-BR');
+                const date = new Date(dateStr);
+                return date.toLocaleDateString('pt-BR', {
+                  timeZone: 'America/Sao_Paulo'
+                });
               };
               
               const formatDateTime = (dateStr: string | null) => {
                 if (!dateStr) return '';
-                return new Date(dateStr).toLocaleString('pt-BR', {
+                const date = new Date(dateStr);
+                return date.toLocaleString('pt-BR', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
                   hour: '2-digit',
-                  minute: '2-digit'
+                  minute: '2-digit',
+                  timeZone: 'America/Sao_Paulo'
                 });
               };
               
               const formatTime = (dateStr: string | null) => {
                 if (!dateStr) return '';
-                return new Date(dateStr).toLocaleTimeString('pt-BR', {
+                const date = new Date(dateStr);
+                return date.toLocaleTimeString('pt-BR', {
                   hour: '2-digit',
-                  minute: '2-digit'
+                  minute: '2-digit',
+                  timeZone: 'America/Sao_Paulo'
                 });
               };
               
@@ -532,12 +539,12 @@ Deno.serve(async (req) => {
                   status_milestone: statusMilestone,
                   transportadora: mostRelevantEvent?.courierName || 'Transportadora',
                   localizacao: mostRelevantEvent?.location || 'Em trânsito',
-                  data_atualizacao: formatDateTime(mostRelevantEvent?.datetime || new Date().toISOString()),
+                  data_atualizacao: formatDateTime(mostRelevantEvent?.occurrenceDatetime || new Date().toISOString()),
                   
                   // Evento Atual
                   evento_descricao: mostRelevantEvent?.status || '',
-                  evento_data: formatDate(mostRelevantEvent?.datetime),
-                  evento_hora: formatTime(mostRelevantEvent?.datetime),
+                  evento_data: formatDate(mostRelevantEvent?.occurrenceDatetime),
+                  evento_hora: formatTime(mostRelevantEvent?.occurrenceDatetime),
                   evento_localizacao: mostRelevantEvent?.location || '',
                   
                   // Entrega

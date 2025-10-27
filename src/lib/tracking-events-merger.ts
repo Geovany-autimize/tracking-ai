@@ -47,10 +47,10 @@ export function mergeTrackingEvents(
     }
   }
   
-  // Converter map para array e ordenar por datetime (mais recente primeiro)
+  // Converter map para array e ordenar por occurrenceDatetime (mais recente primeiro)
   const mergedEvents = Array.from(eventMap.values()).sort((a, b) => {
-    const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
-    const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
+    const dateA = new Date(a.occurrenceDatetime).getTime();
+    const dateB = new Date(b.occurrenceDatetime).getTime();
     return dateB - dateA; // Ordem decrescente (mais recente primeiro)
   });
   

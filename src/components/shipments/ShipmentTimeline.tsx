@@ -46,7 +46,7 @@ const getStatusClass = (milestone: string): string => {
 export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimelineProps) {
   // Ordenar eventos do mais recente para o mais antigo
   const sortedEvents = [...events].sort((a, b) => 
-    new Date(b.datetime).getTime() - new Date(a.datetime).getTime()
+    new Date(b.occurrenceDatetime).getTime() - new Date(a.occurrenceDatetime).getTime()
   );
 
   if (events.length === 0) {
@@ -130,7 +130,7 @@ export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimeline
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(event.datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    {format(new Date(event.occurrenceDatetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                   </p>
 
                   {(event.courierName || event.courierCode) && (
