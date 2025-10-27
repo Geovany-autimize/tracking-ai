@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 
 export const Navbar = () => {
+  const logoPng = `${import.meta.env.BASE_URL}logo.png`;
+  const logoSvg = `${import.meta.env.BASE_URL}logo.svg`;
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState<string>("#");
 
@@ -40,7 +42,11 @@ export const Navbar = () => {
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
       <nav className="container max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
-        <a href="/" className="flex items-center gap-2">
+        <a href="/" className="flex items-center gap-2" aria-label={SITE.name}>
+          <picture>
+            <source srcSet={logoSvg} type="image/svg+xml" />
+            <img src={logoPng} alt={SITE.name} className="h-7 w-7" />
+          </picture>
           <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             {SITE.logoText}
           </span>

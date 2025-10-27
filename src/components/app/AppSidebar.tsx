@@ -56,7 +56,14 @@ export function AppSidebar() {
               </div>
             ) : (
               <Link to="/dashboard" className="flex items-center justify-center">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-secondary shadow-lg cursor-pointer hover:scale-105 transition-transform" />
+                <picture>
+                  <source srcSet={`${import.meta.env.BASE_URL}logo.svg`} type="image/svg+xml" />
+                  <img
+                    src={`${import.meta.env.BASE_URL}logo.png`}
+                    alt="TrackingAI"
+                    className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform"
+                  />
+                </picture>
               </Link>
             )}
             {!collapsed && <SidebarTrigger className="ml-2 shrink-0" />}
