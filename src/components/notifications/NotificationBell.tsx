@@ -12,25 +12,27 @@ export function NotificationBell() {
 
   return (
     <Popover>
-      <SidebarMenuButton
-        asChild
-        tooltip="Notificações"
-        size="lg"
-        className={cn(
-          "relative transition-all duration-200 h-12",
-          collapsed && "mx-auto justify-center"
-        )}
-      >
-        <PopoverTrigger>
-          <Bell className="h-5 w-5 shrink-0" />
-          {!collapsed && <span>Notificações</span>}
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center animate-pulse">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
+      <div className="relative">
+        <SidebarMenuButton
+          asChild
+          tooltip="Notificações"
+          size="lg"
+          className={cn(
+            "transition-all duration-200 h-12",
+            collapsed && "mx-auto justify-center"
           )}
-        </PopoverTrigger>
-      </SidebarMenuButton>
+        >
+          <PopoverTrigger className="w-full">
+            <Bell className="h-5 w-5 shrink-0" />
+            {!collapsed && <span>Notificações</span>}
+          </PopoverTrigger>
+        </SidebarMenuButton>
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs font-medium flex items-center justify-center animate-pulse pointer-events-none z-10">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </div>
       <PopoverContent className="w-[400px] p-0" align="start" side="right">
         <NotificationsPanel />
       </PopoverContent>

@@ -8,6 +8,35 @@ import {
   type StatusMilestone
 } from '../_shared/status-mappings.ts';
 
+/**
+ * Mescla eventos de rastreamento de forma consistente
+ * Remove duplicatas e mantém ordem cronológica
+ */
+function mergeTrackingEvents(existingEvents: TrackingEvent[], newEvents: TrackingEvent[]): TrackingEvent[] {
+  const eventMap = new Map<string, TrackingEvent>();
+  
+  // Adicionar eventos existentes
+  for (const event of existingEvents) {
+    if (event.eventId) {
+      eventMap.set(event.eventId, event);
+    }
+  }
+  
+  // Adicionar/atualizar com novos eventos
+  for (const event of newEvents) {
+    if (event.eventId) {
+      eventMap.set(event.eventId, event);
+    }
+  }
+  
+  // Ordenar por datetime (mais recente primeiro)
+  return Array.from(eventMap.values()).sort((a, b) => {
+    const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
+    const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
+    return dateB - dateA;
+  });
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -355,32 +384,9 @@ Deno.serve(async (req) => {
         // Enriquecer eventos com nomes das transportadoras
         const enrichedEvents = await enrichEventsWithCourierNames(supabase, tracking.events);
 
-        // Buscar eventos existentes
+        // Buscar eventos existentes e mesclar com novos
         const existingEvents = (shipment as any).tracking_events || [];
-        
-        // Combinar eventos existentes com novos (evitar duplicatas por eventId)
-        const eventMap = new Map();
-        
-        // Adicionar eventos existentes ao map
-        for (const event of existingEvents) {
-          if (event.eventId) {
-            eventMap.set(event.eventId, event);
-          }
-        }
-        
-        // Adicionar/atualizar com novos eventos
-        for (const event of enrichedEvents) {
-          if (event.eventId) {
-            eventMap.set(event.eventId, event);
-          }
-        }
-        
-        // Converter map para array e ordenar por datetime (mais recente primeiro)
-        const combinedEvents = Array.from(eventMap.values()).sort((a, b) => {
-          const dateA = new Date(a.datetime || a.occurrenceDatetime).getTime();
-          const dateB = new Date(b.datetime || b.occurrenceDatetime).getTime();
-          return dateB - dateA; // Ordem decrescente (mais recente primeiro)
-        });
+        const combinedEvents = mergeTrackingEvents(existingEvents, enrichedEvents);
 
         // Usar o evento mais relevante (considerando prioridade de status)
         const mostRelevantEvent = getMostRelevantEvent(combinedEvents);

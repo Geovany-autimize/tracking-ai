@@ -114,18 +114,27 @@ export default function ShipmentDetails() {
 
       console.log('[ShipmentDetails] Parsed tracking data:', trackingData);
 
-      // Importar função de enriquecimento
+      // Importar funções necessárias
       const { enrichEventsWithCourierNames } = await import('@/lib/tracking-api');
+      const { mergeTrackingEvents } = await import('@/lib/tracking-events-merger');
       
       // Enriquecer eventos com nomes das transportadoras
       const enrichedEvents = await enrichEventsWithCourierNames(trackingData.events);
 
-      // Atualizar banco de dados
+      // Buscar eventos existentes antes de atualizar (com validação de tipo)
+      const existingEvents = Array.isArray(shipmentData?.tracking_events) 
+        ? shipmentData.tracking_events as any[]
+        : [];
+      
+      // Mesclar eventos existentes com novos (evita perder eventos do webhook)
+      const mergedEvents = mergeTrackingEvents(existingEvents, enrichedEvents);
+
+      // Atualizar banco de dados com eventos mesclados
       const {
         error
       } = await supabase.from('shipments').update({
         tracker_id: trackingData.tracker.trackerId,
-        tracking_events: enrichedEvents as any,
+        tracking_events: mergedEvents as any,
         shipment_data: trackingData.shipment as any,
         status: mapApiStatusToInternal(trackingData.shipment.statusMilestone),
         last_update: new Date().toISOString()
