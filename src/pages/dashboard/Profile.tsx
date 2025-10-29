@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AvatarUploader from '@/components/profile/AvatarUploader';
 import { useState } from 'react';
+import PhoneField from '@/components/forms/PhoneField';
 
 export default function ProfilePage() {
   const { customer } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null | undefined>(customer?.avatar_url);
+  const [phone, setPhone] = useState(customer?.whatsapp_e164 || '');
 
   const initials = customer?.name
     ?.split(' ')
@@ -68,12 +70,10 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="phone">WhatsApp</Label>
-              <Input
-                id="phone"
-                type="tel"
-                defaultValue={customer?.whatsapp_e164 || ''}
-                placeholder="+55 11 99999-9999"
+              <PhoneField
+                label="WhatsApp"
+                value={phone}
+                onChange={setPhone}
               />
             </div>
           </div>

@@ -278,6 +278,7 @@ export default function CustomerDetails() {
                 setPhone(value);
                 handleFieldChange();
               }}
+              helperText="Número para contato e notificações"
             />
 
             <div className="space-y-2">

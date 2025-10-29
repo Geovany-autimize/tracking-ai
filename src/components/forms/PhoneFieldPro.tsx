@@ -1,8 +1,15 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { getCountryList, formatNational, toE164FromCountry, parseDirectE164 } from "@/lib/phone";
+import {
+  getCountryList,
+  formatNational,
+  toE164FromCountry,
+  parseDirectE164,
+  getMaxNationalDigitsForCountry,
+  getNationalPlaceholder,
+} from "@/lib/phone";
 import { cn } from "@/lib/utils";
 
-type Props = {
+export type PhoneFieldProps = {
   label?: string;
   required?: boolean;
   value: string; // E.164 ou vazio
@@ -27,7 +34,7 @@ export default function PhoneFieldPro({
   helperText = "Selecione o país ou digite o DDI (+55) e informe seu número.",
   defaultCountry = "BR",
   name = "whatsapp_e164",
-}: Props) {
+}: PhoneFieldProps) {
   const id = useId();
   const allCountries = useMemo(() => getCountryList(), []);
   const def = allCountries.find((c) => c.iso2.toUpperCase() === defaultCountry.toUpperCase()) || allCountries[0];
@@ -38,6 +45,7 @@ export default function PhoneFieldPro({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const popRef = useRef<HTMLDivElement>(null);
+  const internalUpdateRef = useRef(false);
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -63,14 +71,52 @@ export default function PhoneFieldPro({
     });
   }, [q, allCountries]);
 
+  const maxDigits = useMemo(() => getMaxNationalDigitsForCountry(countryIso), [countryIso]);
+  const placeholder = useMemo(() => getNationalPlaceholder(countryIso) || "(62) 98888-0000", [countryIso]);
+  const national = digits ? formatNational(digits, countryIso) : "";
+
+  useEffect(() => {
+    setDigits((prev) => (prev.length > maxDigits ? prev.slice(0, maxDigits) : prev));
+  }, [maxDigits]);
+
+  // Quando o value externo muda (ex.: edição de cliente), sincroniza o estado interno
+  useEffect(() => {
+    if (internalUpdateRef.current) {
+      internalUpdateRef.current = false;
+      return;
+    }
+
+    if (!value) {
+      setDigits("");
+      setCountryIso(def.iso2);
+      return;
+    }
+
+    const parsed = parseDirectE164(value);
+    if (parsed) {
+      const nextIso = parsed.iso2 || def.iso2;
+      const nextMax = getMaxNationalDigitsForCountry(nextIso);
+      setCountryIso(nextIso);
+      setDigits(parsed.national.replace(/\D/g, "").slice(0, nextMax));
+      return;
+    }
+
+    // fallback: mantém apenas dígitos caso o value não seja parseável
+    const sanitized = value.replace(/\D/g, "");
+    const nextMax = getMaxNationalDigitsForCountry(countryIso || def.iso2);
+    setDigits(sanitized.slice(0, nextMax));
+  }, [value, def.iso2]);
+
   // Atualiza E.164 com base no país selecionado
   useEffect(() => {
     const e164 = toE164FromCountry(countryIso, digits);
-    onChange(e164);
-  }, [countryIso, digits, onChange]);
+    if (e164 !== value) {
+      internalUpdateRef.current = true;
+      onChange(e164);
+    }
+  }, [countryIso, digits, onChange, value]);
 
   const flag = isoToFlagEmoji(countryIso);
-  const national = formatNational(digits, countryIso);
 
   return (
     <div className="space-y-2">
@@ -148,7 +194,7 @@ export default function PhoneFieldPro({
             name={name}
             inputMode="tel"
             autoComplete="tel"
-            placeholder="(62) 98888-0000"
+            placeholder={placeholder}
             value={national}
             onChange={(e) => {
               const val = e.target.value.trim();
@@ -158,17 +204,18 @@ export default function PhoneFieldPro({
                 const parsed = parseDirectE164(val.replace(/\s+/g, ""));
                 if (parsed && parsed.iso2) {
                   // ajuste de estado para refletir o número colado
-                  setCountryIso(parsed.iso2);
+                  const nextIso = parsed.iso2;
+                  const nextMax = getMaxNationalDigitsForCountry(nextIso);
+                  setCountryIso(nextIso);
                   // extrai apenas os dígitos do nacional formatado para manter a máscara
-                  const onlyDigits = parsed.national.replace(/\D/g, "");
+                  const onlyDigits = parsed.national.replace(/\D/g, "").slice(0, nextMax);
                   setDigits(onlyDigits);
-                  onChange(parsed.e164);
                   return;
                 }
               }
 
               // fluxo normal: digita nacional -> converte para E.164 usando país selecionado
-              const onlyDigits = val.replace(/\D/g, "").slice(0, 20);
+              const onlyDigits = val.replace(/\D/g, "").slice(0, maxDigits);
               setDigits(onlyDigits);
             }}
             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

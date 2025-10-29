@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import PhoneFieldPro from "@/components/forms/PhoneFieldPro";
+import PhoneField from "@/components/forms/PhoneField";
 import PasswordField from "@/components/forms/PasswordField";
 import { isValidE164 } from '@/lib/phone';
 
@@ -142,7 +142,7 @@ export default function Signup() {
             {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
           </div>
 
-          <PhoneFieldPro
+          <PhoneField
             label="WhatsApp"
             required
             value={whatsappE164}

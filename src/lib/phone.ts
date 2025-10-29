@@ -19,9 +19,10 @@ export function getCountryList() {
 }
 
 export function formatNational(digits: string, iso2?: string) {
+  const clean = digits.replace(/\D/g, '');
+  if (!clean) return "";
   const typer = new AsYouType(iso2 as any);
-  typer.input(digits);
-  return typer.getNationalNumber();
+  return typer.input(clean);
 }
 
 // novo: obtém DDI pelo ISO2 (ex.: 'BR' -> '55')
@@ -37,6 +38,33 @@ export function toE164FromCountry(iso2: string, digits: string) {
   const pn = parsePhoneNumberFromString(raw as any);
   if (pn && pn.isValid()) return pn.number;
   return '';
+}
+
+export function getMaxNationalDigitsForCountry(iso2?: string) {
+  if (!iso2) return 15;
+  try {
+    const ddi = getCountryCallingCode(iso2.toUpperCase() as any);
+    let max = 0;
+    for (let len = 1; len <= 15; len++) {
+      const digits = '9'.repeat(len);
+      const pn = parsePhoneNumberFromString(`+${ddi}${digits}`);
+      if (pn?.isPossible?.()) {
+        max = len;
+      }
+    }
+    return max || 15;
+  } catch {
+    return 15;
+  }
+}
+
+export function getNationalPlaceholder(iso2?: string) {
+  if (!iso2) return "";
+  const maxDigits = getMaxNationalDigitsForCountry(iso2);
+  if (!maxDigits) return "";
+  const formatted = formatNational('9'.repeat(maxDigits), iso2);
+  if (!formatted) return "";
+  return formatted.replace(/\d/g, '9');
 }
 
 // quando o usuário cola/digita algo começando por '+', tenta parsear direto
