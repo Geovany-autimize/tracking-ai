@@ -1,6 +1,6 @@
 export const SITE = {
-  name: "TrackingAI",
-  logoText: "TrackingAI",
+  name: "Tracking AI",
+  logoText: "Tracking AI",
   appUrl: "/login",
   nav: [
     { label: "Benefícios", href: "#beneficios" },

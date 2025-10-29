@@ -55,16 +55,12 @@ export function AppSidebar() {
                 <Logo variant="app" />
               </div>
             ) : (
-              <Link to="/dashboard" className="flex items-center justify-center">
-                <picture>
-                  <source srcSet={`${import.meta.env.BASE_URL}logo.svg`} type="image/svg+xml" />
-                  <img
-                    src={`${import.meta.env.BASE_URL}logo.png`}
-                    alt="TrackingAI"
-                    className="h-10 w-10 cursor-pointer hover:scale-105 transition-transform"
-                  />
-                </picture>
-              </Link>
+              <Logo
+                variant="app"
+                showText={false}
+                className="justify-center"
+                iconClassName="h-10 w-10 hover:scale-105 transition-transform"
+              />
             )}
             {!collapsed && <SidebarTrigger className="ml-2 shrink-0" />}
           </div>
