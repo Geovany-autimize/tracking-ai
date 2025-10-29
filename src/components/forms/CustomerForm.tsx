@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import PhoneField from './PhoneField';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHighlights } from '@/contexts/HighlightsContext';
 import { toast } from '@/hooks/use-toast';
 
 interface CustomerFormProps {
@@ -16,6 +17,7 @@ interface CustomerFormProps {
 
 export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) {
   const { customer } = useAuth();
+  const { addNew } = useHighlights();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -87,7 +89,7 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
         }
       }
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from('shipment_customers')
         .insert({
           customer_id: customer.id,
@@ -96,7 +98,9 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
           email: normalizedEmail,
           phone: phone || null,
           notes: notes || null,
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -104,6 +108,10 @@ export default function CustomerForm({ open, onOpenChange }: CustomerFormProps) 
         title: 'Cliente adicionado',
         description: `${firstName} ${lastName} foi adicionado com sucesso`,
       });
+
+      if (inserted?.id) {
+        addNew('customer', inserted.id);
+      }
 
       // Resetar e fechar
       setFirstName('');

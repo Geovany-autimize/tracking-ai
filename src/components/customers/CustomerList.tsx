@@ -16,6 +16,8 @@ import { BulkActionsBar } from '@/components/ui/bulk-actions-bar';
 import { BulkEditCustomerDialog } from '@/components/dialogs/BulkEditCustomerDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { useHighlights } from '@/contexts/HighlightsContext';
 
 interface CustomerListProps {
   refreshTrigger?: number;
@@ -26,6 +28,7 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { isNew, dismiss } = useHighlights();
 
   const { data: customers, isLoading, refetch } = useQuery({
     queryKey: ['shipment_customers', customer?.id, refreshTrigger],
@@ -157,8 +160,11 @@ export default function CustomerList({ refreshTrigger }: CustomerListProps) {
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
                   </TableCell>
-                  <TableCell className="font-medium cursor-pointer" onClick={() => navigate(`/dashboard/customers/${c.id}`)}>
-                    {c.first_name} {c.last_name}
+                  <TableCell className="font-medium cursor-pointer" onClick={() => { dismiss('customer', c.id); navigate(`/dashboard/customers/${c.id}`); }}>
+                    <span>{c.first_name} {c.last_name}</span>
+                    {isNew('customer', c.id) && (
+                      <Badge variant="secondary" className="ml-2">Novo</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/customers/${c.id}`)}>{c.email}</TableCell>
                   <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/customers/${c.id}`)}>{c.phone || '—'}</TableCell>

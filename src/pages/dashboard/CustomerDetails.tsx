@@ -15,6 +15,7 @@ import { ArrowLeft, Save, Loader2, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import PhoneField from '@/components/forms/PhoneField';
 import QuickShipmentForm from '@/components/forms/QuickShipmentForm';
+import { useHighlights } from '@/contexts/HighlightsContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -38,6 +39,7 @@ export default function CustomerDetails() {
   const [notes, setNotes] = useState('');
   const [isEdited, setIsEdited] = useState(false);
   const [shipmentFormOpen, setShipmentFormOpen] = useState(false);
+  const { dismiss } = useHighlights();
 
   // Carregar dados do cliente
   const { data: customerData, isLoading: isLoadingCustomer } = useQuery({
@@ -60,6 +62,8 @@ export default function CustomerDetails() {
       setEmail(data.email);
       setPhone(data.phone || '');
       setNotes(data.notes || '');
+      // ao abrir detalhes, remover destaque se existir
+      dismiss('customer', data.id);
       
       return data;
     },

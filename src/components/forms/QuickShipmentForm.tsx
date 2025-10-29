@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
+import { useHighlights } from '@/contexts/HighlightsContext';
 
 interface QuickShipmentFormProps {
   open: boolean;
@@ -24,6 +25,7 @@ export default function QuickShipmentForm({
   onShipmentCreated,
 }: QuickShipmentFormProps) {
   const { customer } = useAuth();
+  const { addNew } = useHighlights();
   const [trackingCode, setTrackingCode] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +97,11 @@ export default function QuickShipmentForm({
           variant: 'destructive'
         });
       }
+
+        // destacar como novo na lista
+        if (insertedData?.id) {
+          addNew('shipment', insertedData.id);
+        }
 
         setTrackingCode('');
         setAutoTracking(true);

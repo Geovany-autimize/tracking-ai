@@ -23,6 +23,7 @@ import BillingPage from "./pages/dashboard/Billing";
 import BillingSuccess from "./pages/dashboard/billing/Success";
 import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
+import { HighlightsProvider } from "@/contexts/HighlightsContext";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <WhatsAppProvider>
+            <HighlightsProvider>
             <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
@@ -56,6 +58,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
             </Routes>
+            </HighlightsProvider>
           </WhatsAppProvider>
         </AuthProvider>
       </BrowserRouter>

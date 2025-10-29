@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 import { consumeCredit } from '@/lib/credits';
+import { useHighlights } from '@/contexts/HighlightsContext';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -29,6 +30,7 @@ type Customer = {
 
 export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) {
   const { customer } = useAuth();
+  const { addNew } = useHighlights();
   const [trackingCode, setTrackingCode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [customerSearch, setCustomerSearch] = useState('');
@@ -171,6 +173,11 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
           description: 'Porém houve erro ao sincronizar com a API. Use o botão Atualizar',
           variant: 'destructive',
         });
+      }
+
+      // destacar como novo na lista
+      if (insertedData?.id) {
+        addNew('shipment', insertedData.id);
       }
 
       // Resetar e fechar

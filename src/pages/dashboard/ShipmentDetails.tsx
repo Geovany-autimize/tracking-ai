@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShipmentTimeline } from '@/components/shipments/ShipmentTimeline';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect } from 'react';
+import { useHighlights } from '@/contexts/HighlightsContext';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -59,6 +60,7 @@ export default function ShipmentDetails() {
     customer
   } = useAuth();
   const [autoTracking, setAutoTracking] = useState(true);
+  const { dismiss } = useHighlights();
 
   // Estado para gerenciar o diálogo de trocar cliente
   const [showChangeCustomerDialog, setShowChangeCustomerDialog] = useState(false);
@@ -89,6 +91,10 @@ export default function ShipmentDetails() {
   useEffect(() => {
     if (shipmentData) {
       setAutoTracking(shipmentData.auto_tracking ?? true);
+      // remover destaque ao abrir detalhes
+      if (shipmentData.id) {
+        dismiss('shipment', shipmentData.id);
+      }
     }
   }, [shipmentData]);
 

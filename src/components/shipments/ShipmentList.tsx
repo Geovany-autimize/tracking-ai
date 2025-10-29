@@ -17,6 +17,7 @@ import { BulkActionsBar } from '@/components/ui/bulk-actions-bar';
 import { BulkEditShipmentDialog } from '@/components/dialogs/BulkEditDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { useHighlights } from '@/contexts/HighlightsContext';
 
 interface ShipmentListProps {
   refreshTrigger?: number;
@@ -34,6 +35,7 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
   const navigate = useNavigate();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const { isNew, dismiss } = useHighlights();
 
   const { data: shipments, isLoading, refetch } = useQuery({
     queryKey: ['shipments', customer?.id, refreshTrigger],
@@ -173,25 +175,28 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox checked={selectedIds.has(s.id)} onCheckedChange={() => toggleSelect(s.id)} />
                     </TableCell>
-                    <TableCell className="font-mono font-medium cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
-                      {s.tracking_code}
+                    <TableCell className="font-mono font-medium cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
+                      <span>{s.tracking_code}</span>
+                      {isNew('shipment', s.id) && (
+                        <Badge variant="secondary" className="ml-2">Novo</Badge>
+                      )}
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
+                    <TableCell className="cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
                       {customerName}
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
+                    <TableCell className="cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
                       <Badge variant={status.variant}>
                         {status.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
+                    <TableCell className="cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
                       {s.auto_tracking ? (
                         <Badge variant="outline">Ativo</Badge>
                       ) : (
                         <Badge variant="secondary">Desativado</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-muted-foreground cursor-pointer" onClick={() => navigate(`/dashboard/shipments/${s.id}`)}>
+                    <TableCell className="text-muted-foreground cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
                       {format(new Date(s.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                     </TableCell>
                   </TableRow>

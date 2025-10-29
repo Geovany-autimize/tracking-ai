@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { useHighlights } from '@/contexts/HighlightsContext';
 
 interface QuickCustomerFormProps {
   open: boolean;
@@ -40,6 +41,7 @@ export default function QuickCustomerForm({
   initialName = '' 
 }: QuickCustomerFormProps) {
   const { customer } = useAuth();
+  const { addNew } = useHighlights();
   
   // Parse initial name into first and last name
   const names = initialName.split(' ');
@@ -157,6 +159,11 @@ export default function QuickCustomerForm({
       // Notify parent component
       if (onCustomerCreated && newCustomer) {
         onCustomerCreated(newCustomer.id);
+      }
+
+      // highlight como novo (efeito temporário na lista)
+      if (newCustomer?.id) {
+        addNew('customer', newCustomer.id);
       }
     } catch (error) {
       console.error('Error creating customer:', error);
