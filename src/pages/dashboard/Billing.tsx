@@ -213,13 +213,6 @@ export default function BillingPage() {
 
   return (
     <div className="space-y-12 max-w-7xl mx-auto">
-      {/* Header */}
-      <header>
-        <h2 className="text-3xl font-bold">Planos e Faturamento</h2>
-        <p className="text-muted-foreground mt-2">
-          Gerencie sua assinatura e acompanhe seu uso
-        </p>
-      </header>
 
       {/* Cancelamento pendente */}
       {subscription?.cancel_at_period_end && plan?.id !== 'free' && (
