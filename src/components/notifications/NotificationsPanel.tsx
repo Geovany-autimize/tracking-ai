@@ -2,11 +2,12 @@ import { useNotifications } from '@/contexts/NotificationsContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { NotificationItem } from './NotificationItem';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, Volume2, VolumeX } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function NotificationsPanel() {
-  const { notifications, clearAllNotifications, loading } = useNotifications();
+  const { notifications, clearAllNotifications, loading, soundEnabled, toggleSound } = useNotifications();
 
   if (loading) {
     return (
@@ -19,19 +20,39 @@ export function NotificationsPanel() {
   return (
     <div className="flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 pb-3">
+      <div className="flex items-center justify-between gap-3 p-4 pb-3">
         <h3 className="font-semibold text-lg">Notificações</h3>
-        {notifications.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllNotifications}
-            className="text-xs h-8 gap-1"
-          >
-            <CheckCheck className="h-3 w-3" />
-            Limpar notificações
-          </Button>
-        )}
+        <div className="flex items-center gap-1.5">
+          <TooltipProvider delayDuration={250}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={toggleSound}
+                >
+                  {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <p>{soundEnabled ? 'Desativar som' : 'Ativar som'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          {notifications.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllNotifications}
+              className="text-xs h-8 gap-1"
+            >
+              <CheckCheck className="h-3 w-3" />
+              Limpar notificações
+            </Button>
+          )}
+        </div>
       </div>
       
       <Separator />

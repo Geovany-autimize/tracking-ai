@@ -45,67 +45,67 @@ const corsHeaders = {
 
 interface TrackingEvent {
   eventId: string;
-  trackingNumber: string;
-  eventTrackingNumber: string;
+  trackingNumber?: string | null;
+  eventTrackingNumber?: string | null;
   status: string;
   occurrenceDatetime: string;
-  datetime: string;
-  hasNoTime: boolean;
-  utcOffset: string | null;
-  location: string;
-  sourceCode: string;
-  courierCode: string;
+  datetime?: string | null;
+  hasNoTime?: boolean | null;
+  utcOffset?: string | null;
+  location?: string | null;
+  sourceCode?: string | null;
+  courierCode?: string | null;
   courierName?: string;
-  statusCode: string | null;
-  statusCategory: string | null;
+  statusCode?: string | null;
+  statusCategory?: string | null;
   statusMilestone: string;
   order?: number | null;
 }
 
 interface TrackingData {
   metadata?: {
-    generatedAt: string;
-    messageId: string;
+    generatedAt?: string | null;
+    messageId?: string | null;
   };
   tracker: {
     trackerId: string;
     trackingNumber: string;
-    shipmentReference: string | null;
-    clientTrackerId: string | null;
-    isSubscribed: boolean;
-    createdAt: string;
+    shipmentReference?: string | null;
+    clientTrackerId?: string | null;
+    isSubscribed?: boolean;
+    createdAt?: string | null;
   };
   shipment: {
-    shipmentId: string;
-    statusCode: string;
-    statusCategory: string;
+    shipmentId?: string | null;
+    statusCode?: string | null;
+    statusCategory?: string | null;
     statusMilestone: string;
-    originCountryCode: string | null;
-    destinationCountryCode: string | null;
-    delivery: {
-      estimatedDeliveryDate: string | null;
-      service: string | null;
-      signedBy: string | null;
+    originCountryCode?: string | null;
+    destinationCountryCode?: string | null;
+    delivery?: {
+      estimatedDeliveryDate?: string | null;
+      service?: string | null;
+      signedBy?: string | null;
     };
-    trackingNumbers: Array<{ tn: string }>;
-    recipient: {
-      name: string | null;
-      address: string | null;
-      postCode: string | null;
-      city: string | null;
-      subdivision: string | null;
+    trackingNumbers?: Array<{ tn?: string | null }>;
+    recipient?: {
+      name?: string | null;
+      address?: string | null;
+      postCode?: string | null;
+      city?: string | null;
+      subdivision?: string | null;
     };
   };
   events: TrackingEvent[];
-  statistics: {
-    timestamps: {
-      infoReceivedDatetime: string | null;
-      inTransitDatetime: string | null;
-      outForDeliveryDatetime: string | null;
-      failedAttemptDatetime: string | null;
-      availableForPickupDatetime: string | null;
-      exceptionDatetime: string | null;
-      deliveredDatetime: string | null;
+  statistics?: {
+    timestamps?: {
+      infoReceivedDatetime?: string | null;
+      inTransitDatetime?: string | null;
+      outForDeliveryDatetime?: string | null;
+      failedAttemptDatetime?: string | null;
+      availableForPickupDatetime?: string | null;
+      exceptionDatetime?: string | null;
+      deliveredDatetime?: string | null;
     };
   };
 }
@@ -115,6 +115,91 @@ interface WebhookPayload {
     trackings: TrackingData[];
   };
 }
+
+const trackingEventSchema = z.object({
+  eventId: z.string(),
+  trackingNumber: z.string().max(150).nullable().optional(),
+  eventTrackingNumber: z.string().max(150).nullable().optional(),
+  status: z.string(),
+  occurrenceDatetime: z.string(),
+  datetime: z.string().nullable().optional(),
+  hasNoTime: z.boolean().nullable().optional(),
+  utcOffset: z.string().nullable().optional(),
+  location: z.string().max(500).nullable().optional(),
+  sourceCode: z.string().max(200).nullable().optional(),
+  courierCode: z.string().max(200).nullable().optional(),
+  statusCode: z.string().nullable().optional(),
+  statusCategory: z.string().nullable().optional(),
+  statusMilestone: z.string().max(50),
+  order: z.number().int().nullable().optional(),
+}).passthrough();
+
+const trackingDataSchema = z.object({
+  metadata: z.object({
+    generatedAt: z.string().optional().nullable(),
+    messageId: z.string().optional().nullable(),
+  }).optional(),
+  tracker: z.object({
+    trackerId: z.string().uuid(),
+    trackingNumber: z.string().max(150),
+    shipmentReference: z.string().optional().nullable(),
+    clientTrackerId: z.string().optional().nullable(),
+    isSubscribed: z.boolean().optional(),
+    createdAt: z.string().optional().nullable(),
+  }),
+  shipment: z.object({
+    shipmentId: z.string().optional().nullable(),
+    statusCode: z.string().optional().nullable(),
+    statusCategory: z.string().optional().nullable(),
+    statusMilestone: z.string().max(50),
+    originCountryCode: z.string().optional().nullable(),
+    destinationCountryCode: z.string().optional().nullable(),
+    delivery: z.object({
+      estimatedDeliveryDate: z.string().optional().nullable(),
+      service: z.string().optional().nullable(),
+      signedBy: z.string().optional().nullable(),
+    }).optional(),
+    trackingNumbers: z.array(
+      z.object({
+        tn: z.string().max(150).optional().nullable(),
+      }).passthrough()
+    ).optional(),
+    recipient: z.object({
+      name: z.string().optional().nullable(),
+      address: z.string().optional().nullable(),
+      postCode: z.string().optional().nullable(),
+      city: z.string().optional().nullable(),
+      subdivision: z.string().optional().nullable(),
+    }).optional(),
+  }),
+  events: z.array(trackingEventSchema).max(1000),
+  statistics: z.object({
+    timestamps: z.object({
+      infoReceivedDatetime: z.string().optional().nullable(),
+      inTransitDatetime: z.string().optional().nullable(),
+      outForDeliveryDatetime: z.string().optional().nullable(),
+      failedAttemptDatetime: z.string().optional().nullable(),
+      availableForPickupDatetime: z.string().optional().nullable(),
+      exceptionDatetime: z.string().optional().nullable(),
+      deliveredDatetime: z.string().optional().nullable(),
+    }).partial().optional(),
+  }).optional(),
+}).passthrough();
+
+const webhookSchema = z.array(z.object({
+  body: z.object({
+    trackings: z.array(trackingDataSchema).max(100),
+  }),
+}).passthrough());
+
+type ShipmentRecord = {
+  id: string;
+  customer_id: string;
+  tracking_code: string;
+  tracking_events: TrackingEvent[] | null;
+  shipment_customer_id: string | null;
+  tracker_id?: string | null;
+};
 
 // Mapeia status da API para status interno
 function mapApiStatusToInternal(statusMilestone: string): string {
@@ -315,6 +400,115 @@ async function enrichEventsWithCourierNames(
   });
 }
 
+type FindShipmentOptions = {
+  persist: boolean;
+  requestId?: string;
+  correlationId?: string | null;
+};
+
+async function findShipmentForTracking(
+  supabase: any,
+  tracking: TrackingData,
+  options: FindShipmentOptions = { persist: true }
+): Promise<{ shipment: ShipmentRecord | null; relinked: boolean; error?: string }> {
+  const trackerId = tracking.tracker.trackerId;
+  const selectColumns =
+    'id, customer_id, tracking_code, tracking_events, shipment_customer_id, tracker_id, created_at';
+  const { persist, requestId, correlationId } = options;
+
+  // Buscar por tracker_id primeiro
+  const trackerQuery = supabase
+    .from('shipments')
+    .select(selectColumns)
+    .eq('tracker_id', trackerId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  let { data: shipment, error } = await trackerQuery.maybeSingle();
+
+  if (error) {
+    console.error(`Error fetching shipment by tracker_id ${trackerId}:`, error);
+    return { shipment: null, relinked: false, error: error.message };
+  }
+
+  if (shipment) {
+    return { shipment, relinked: false };
+  }
+
+  // Fallback: buscar por tracking_code/trackingNumbers conhecidos
+  const candidateCodes = new Set<string>();
+  if (tracking.tracker.trackingNumber) {
+    candidateCodes.add(tracking.tracker.trackingNumber);
+  }
+  (tracking.shipment?.trackingNumbers || []).forEach((item) => {
+    if (item?.tn) {
+      candidateCodes.add(item.tn);
+    }
+  });
+
+  if (candidateCodes.size === 0) {
+    return { shipment: null, relinked: false };
+  }
+
+  const trackingQuery = supabase
+    .from('shipments')
+    .select(selectColumns)
+    .in('tracking_code', Array.from(candidateCodes))
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const {
+    data: fallbackShipment,
+    error: fallbackError,
+  } = await trackingQuery.maybeSingle();
+
+  if (fallbackError) {
+    console.error(
+      `Error fetching shipment by tracking_code for trackerId ${trackerId}:`,
+      fallbackError
+    );
+    return { shipment: null, relinked: false, error: fallbackError.message };
+  }
+
+  if (!fallbackShipment) {
+    return { shipment: null, relinked: false };
+  }
+
+  // Atualizar tracker_id se estiver vazio ou diferente
+  if (!fallbackShipment.tracker_id || fallbackShipment.tracker_id !== trackerId) {
+    if (persist) {
+      const { error: updateTrackerError } = await supabase
+        .from('shipments')
+        .update({ tracker_id: trackerId })
+        .eq('id', fallbackShipment.id);
+
+      if (updateTrackerError) {
+        console.error(
+          `Failed to link trackerId ${trackerId} with shipment ${fallbackShipment.id}:`,
+          updateTrackerError
+        );
+        // Ainda retornamos o shipment sem relinked para não interromper o fluxo,
+        // mas registramos o erro.
+        return {
+          shipment: fallbackShipment,
+          relinked: false,
+          error: `Failed to persist tracker_id: ${updateTrackerError.message}`,
+        };
+      }
+
+      fallbackShipment.tracker_id = trackerId;
+      return { shipment: fallbackShipment, relinked: true };
+    } else {
+      console.log(
+        `[${requestId ?? 'dry-run'}] [${correlationId ?? trackerId}] Dry-run: skipping tracker_id relink for shipment ${fallbackShipment.id}`
+      );
+      return { shipment: fallbackShipment, relinked: false };
+    }
+  }
+
+  return { shipment: fallbackShipment, relinked: false };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -322,14 +516,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('Webhook received - Processing tracking updates...');
+    const requestId = crypto.randomUUID();
+    const url = new URL(req.url);
+    const isDryRun = req.headers.get('x-dry-run') === '1' || url.searchParams.get('dry') === '1';
+
+    console.log(`[${requestId}] Webhook received - processing tracking updates (dryRun=${isDryRun})`);
 
     // Validate webhook authentication
     const authHeader = req.headers.get('authorization');
     const expectedToken = Deno.env.get('SHIP24_WEBHOOK_SECRET');
     
     if (!expectedToken) {
-      console.error('SHIP24_WEBHOOK_SECRET not configured');
+      console.error(`[${requestId}] SHIP24_WEBHOOK_SECRET not configured`);
       return new Response(
         JSON.stringify({ error: 'Server configuration error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -337,7 +535,7 @@ Deno.serve(async (req) => {
     }
 
     if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-      console.warn('Unauthorized webhook attempt', { 
+      console.warn(`[${requestId}] Unauthorized webhook attempt`, { 
         hasAuth: !!authHeader,
         ip: req.headers.get('x-forwarded-for') || 'unknown'
       });
@@ -353,97 +551,145 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse and validate webhook payload
-    let payload;
+    let rawPayload: unknown;
     try {
-      payload = await req.json();
+      rawPayload = await req.json();
     } catch (e) {
-      console.error('Invalid JSON payload:', e);
+      console.error(`[${requestId}] Invalid JSON payload:`, e);
       return new Response(
         JSON.stringify({ error: 'Invalid JSON payload' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Validate payload structure with Zod
-    const webhookSchema = z.array(z.object({
-      body: z.object({
-        trackings: z.array(z.object({
-          tracker: z.object({
-            trackerId: z.string().uuid(),
-            trackingNumber: z.string().max(100),
-          }),
-          shipment: z.object({
-            statusMilestone: z.string().max(50),
-          }),
-          events: z.array(z.object({
-            eventId: z.string(),
-            occurrenceDatetime: z.string(),
-            location: z.string().max(500),
-            statusMilestone: z.string().max(50),
-          })).max(1000), // Prevent DoS with too many events
-        })).max(100), // Max 100 trackings per webhook
-      }),
-    }));
+    // Normalizar payload para lidar com payloads inválidos enviados como string ou objeto
+    const normalizePayload = (input: unknown): WebhookPayload[] | null => {
+      if (input == null) return null;
 
-    const validation = webhookSchema.safeParse(payload);
-    
-    if (!validation.success) {
-      console.error('Invalid payload structure:', validation.error);
-      return new Response(
-        JSON.stringify({ error: 'Invalid payload structure' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    
-    if (!Array.isArray(payload) || payload.length === 0) {
-      console.error('Invalid payload format');
+      // Algumas integrações enviam o corpo como string JSON
+      if (typeof input === 'string') {
+        try {
+          return normalizePayload(JSON.parse(input));
+        } catch (error) {
+          console.error('Failed to parse payload string:', error);
+          return null;
+        }
+      }
+
+      if (Array.isArray(input)) {
+        return input.map((item) => {
+          if (item && typeof item === 'object' && 'body' in item) {
+            const casted = item as Record<string, unknown>;
+            const body = casted.body;
+            if (typeof body === 'string') {
+              try {
+                casted.body = JSON.parse(body);
+              } catch (error) {
+                console.error('Failed to parse item.body string:', error);
+                casted.body = {};
+              }
+            }
+            return casted as WebhookPayload;
+          }
+          return { body: { trackings: [] } } as WebhookPayload;
+        });
+      }
+
+      // Caso venha um objeto simples com body
+      if (typeof input === 'object' && 'body' in (input as Record<string, unknown>)) {
+        return normalizePayload([input]);
+      }
+
+      return null;
+    };
+
+    const normalizedPayload = normalizePayload(rawPayload);
+
+    if (!normalizedPayload) {
+      console.error(`[${requestId}] Could not normalize payload:`, rawPayload);
       return new Response(
         JSON.stringify({ error: 'Invalid payload format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    if (!Array.isArray(normalizedPayload) || normalizedPayload.length === 0) {
+      console.error(`[${requestId}] Invalid payload format - empty array`, normalizedPayload);
+      return new Response(
+        JSON.stringify({ error: 'Invalid payload format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate payload structure with Zod
+    const validation = webhookSchema.safeParse(normalizedPayload);
+    
+    if (!validation.success) {
+      const flat = validation.error.flatten();
+      console.error(`[${requestId}] Invalid payload structure:`, flat);
+      return new Response(
+        JSON.stringify({ error: 'Invalid payload structure' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const payload = validation.data;
+
+    const totalTrackings = payload.reduce((acc, item) => acc + (item.body?.trackings?.length ?? 0), 0);
+    console.log(`[${requestId}] Normalized payload envelopes=${payload.length} trackings=${totalTrackings}`);
+    if (isDryRun) {
+      console.log(`[${requestId}] Dry-run mode enabled - no database or external side effects will be executed`);
+    }
+
     const webhookData = payload[0];
     
     if (!webhookData.body?.trackings || !Array.isArray(webhookData.body.trackings)) {
-      console.error('No trackings found in payload');
+      console.error(`[${requestId}] No trackings found in payload`);
       return new Response(
         JSON.stringify({ error: 'No trackings found in payload' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Processing ${webhookData.body.trackings.length} tracking update(s)...`);
+    console.log(`[${requestId}] Processing ${webhookData.body.trackings.length} tracking update(s)...`);
 
     const results = [];
     const errors = [];
+    const shouldPersist = !isDryRun;
 
     for (const tracking of webhookData.body.trackings) {
       const trackerId = tracking.tracker.trackerId;
+      const correlationId = tracking.metadata?.messageId ?? trackerId;
       
       try {
-        console.log(`Processing trackerId: ${trackerId}`);
+        console.log(`[${requestId}] [${correlationId}] Processing trackerId: ${trackerId}`);
 
-        // Buscar shipment pelo tracker_id (incluir tracking_events para merge)
-        const { data: shipment, error: fetchError } = await supabase
-          .from('shipments')
-          .select('id, customer_id, tracking_code, tracking_events, shipment_customer_id')
-          .eq('tracker_id', trackerId)
-          .maybeSingle();
+        const {
+          shipment,
+          relinked,
+          error: fetchError,
+        } = await findShipmentForTracking(supabase, tracking, {
+          persist: shouldPersist,
+          requestId,
+          correlationId,
+        });
 
         if (fetchError) {
-          console.error(`Error fetching shipment for trackerId ${trackerId}:`, fetchError);
-          errors.push({ trackerId, error: fetchError.message });
+          console.error(`[${requestId}] [${correlationId}] Error fetching shipment: ${fetchError}`);
+          errors.push({ trackerId, correlationId, error: fetchError });
           continue;
         }
 
         if (!shipment) {
-          console.warn(`No shipment found for trackerId: ${trackerId}`);
-          errors.push({ trackerId, error: 'Shipment not found' });
+          console.warn(`[${requestId}] [${correlationId}] No shipment found for trackerId`);
+          errors.push({ trackerId, correlationId, error: 'Shipment not found' });
           continue;
         }
 
-        console.log(`Found shipment ${shipment.id} for trackerId ${trackerId}`);
+        console.log(`[${requestId}] [${correlationId}] Found shipment ${shipment.id} for trackerId ${trackerId}`);
+        if (relinked) {
+          console.log(`[${requestId}] [${correlationId}] Linked shipment ${shipment.id} to trackerId ${trackerId} via tracking code`);
+        }
 
         // Enriquecer eventos com nomes das transportadoras
         const enrichedEvents = await enrichEventsWithCourierNames(supabase, tracking.events);
@@ -463,32 +709,36 @@ Deno.serve(async (req) => {
         console.log(`📦 Most relevant event: ${statusMilestone} at ${mostRelevantEvent.occurrenceDatetime} (from ${combinedEvents.length} events)`);
 
         // Atualizar shipment com status do evento mais relevante
-        const { error: updateError } = await supabase
-          .from('shipments')
-          .update({
-            tracking_events: combinedEvents,
-            shipment_data: tracking.shipment,
-            status: mapApiStatusToInternal(statusMilestone), // Usar status do evento mais recente
-            last_update: new Date().toISOString(),
-          })
-          .eq('id', shipment.id);
+        if (shouldPersist) {
+          const { error: updateError } = await supabase
+            .from('shipments')
+            .update({
+              tracking_events: combinedEvents,
+              shipment_data: tracking.shipment,
+              status: mapApiStatusToInternal(statusMilestone), // Usar status do evento mais recente
+              last_update: new Date().toISOString(),
+            })
+            .eq('id', shipment.id);
 
-        if (updateError) {
-          console.error(`Error updating shipment ${shipment.id}:`, updateError);
-          errors.push({ trackerId, shipmentId: shipment.id, error: updateError.message });
-          continue;
+          if (updateError) {
+            console.error(`[${requestId}] [${correlationId}] Error updating shipment ${shipment.id}:`, updateError);
+            errors.push({ trackerId, shipmentId: shipment.id, correlationId, error: updateError.message });
+            continue;
+          }
+        } else {
+          console.log(`[${requestId}] [${correlationId}] Dry-run: skipping shipment update for ${shipment.id}`);
         }
 
-        console.log(`Successfully updated shipment ${shipment.id}`);
+        console.log(`[${requestId}] [${correlationId}] Successfully processed shipment ${shipment.id}`);
         
         // Validação e logging
         if (!isValidStatusMilestone(statusMilestone)) {
-          console.warn(`⚠️ Status milestone desconhecido: ${statusMilestone}`);
+          console.warn(`[${requestId}] [${correlationId}] ⚠️ Status milestone desconhecido: ${statusMilestone}`);
         }
         
         const notificationType = getNotificationTypeFromStatus(statusMilestone);
         const notificationTitle = STATUS_TITLES[statusMilestone] || '📦 Atualização de rastreamento';
-        console.log(`📍 Milestone: ${statusMilestone} → Notification: ${notificationType}`);
+        console.log(`[${requestId}] [${correlationId}] 📍 Milestone: ${statusMilestone} → Notification: ${notificationType}`);
         
         const notificationMessage = generateNotificationMessage(
           tracking.tracker.trackingNumber,
@@ -497,26 +747,30 @@ Deno.serve(async (req) => {
           statusMilestone
         );
 
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert({
-            customer_id: shipment.customer_id,
-            shipment_id: shipment.id,
-            tracking_code: tracking.tracker.trackingNumber,
-            notification_type: notificationType,
-            title: notificationTitle,
-            message: notificationMessage,
-            status_milestone: statusMilestone, // Usar o milestone do evento mais recente
-            courier_name: mostRelevantEvent?.courierName || null,
-            location: mostRelevantEvent?.location || null,
-            is_read: false,
-          });
+        if (shouldPersist) {
+          const { error: notificationError } = await supabase
+            .from('notifications')
+            .insert({
+              customer_id: shipment.customer_id,
+              shipment_id: shipment.id,
+              tracking_code: tracking.tracker.trackingNumber,
+              notification_type: notificationType,
+              title: notificationTitle,
+              message: notificationMessage,
+              status_milestone: statusMilestone, // Usar o milestone do evento mais recente
+              courier_name: mostRelevantEvent?.courierName || null,
+              location: mostRelevantEvent?.location || null,
+              is_read: false,
+            });
 
-        if (notificationError) {
-          console.error(`Failed to create notification for shipment ${shipment.id}:`, notificationError);
-          // Não falha a atualização completa se a notificação falhar
+          if (notificationError) {
+            console.error(`[${requestId}] [${correlationId}] Failed to create notification for shipment ${shipment.id}:`, notificationError);
+            // Não falha a atualização completa se a notificação falhar
+          } else {
+            console.log(`[${requestId}] [${correlationId}] Created notification for shipment ${shipment.id}`);
+          }
         } else {
-          console.log(`Created notification for shipment ${shipment.id}`);
+          console.log(`[${requestId}] [${correlationId}] Dry-run: skipping notification insert for shipment ${shipment.id}`);
         }
 
         // Processar e enviar templates de WhatsApp
@@ -636,32 +890,35 @@ Deno.serve(async (req) => {
 
                 const processedMessage = processTemplate(template.message_content, templateVars);
                 
-                // Enviar dados completos para N8N webhook
-                await sendToN8NWebhook({
-                  customer: {
-                    full_name: `${shipmentCustomer.first_name} ${shipmentCustomer.last_name}`,
-                    phone: shipmentCustomer.phone,
-                  },
-                  tracking: {
-                    tracking_code: tracking.tracker.trackingNumber,
-                    tracker_id: trackerId,
-                    latest_event: mostRelevantEvent,
-                  },
-                  template: {
-                    name: template.name,
-                    content: processedMessage,
-                  },
-                  whatsapp_instance: whatsappInstance,
-                });
+                if (shouldPersist) {
+                  await sendToN8NWebhook({
+                    customer: {
+                      full_name: `${shipmentCustomer.first_name} ${shipmentCustomer.last_name}`,
+                      phone: shipmentCustomer.phone,
+                    },
+                    tracking: {
+                      tracking_code: tracking.tracker.trackingNumber,
+                      tracker_id: trackerId,
+                      latest_event: mostRelevantEvent,
+                    },
+                    template: {
+                      name: template.name,
+                      content: processedMessage,
+                    },
+                    whatsapp_instance: whatsappInstance,
+                  });
 
-                console.log(`Sent data to N8N webhook for template: ${template.name}`);
+                  console.log(`[${requestId}] [${correlationId}] Sent data to N8N webhook for template: ${template.name}`);
+                } else {
+                  console.log(`[${requestId}] [${correlationId}] Dry-run: skipping N8N webhook call for template: ${template.name}`);
+                }
               }
             } else {
-              console.log('No phone number found for shipment customer');
+              console.log(`[${requestId}] [${correlationId}] No phone number found for shipment customer`);
             }
           }
         } catch (templateError) {
-          console.error('Error processing templates:', templateError);
+          console.error(`[${requestId}] [${correlationId}] Error processing templates:`, templateError);
           // Não falha o processo se templates falharem
         }
 
@@ -671,12 +928,15 @@ Deno.serve(async (req) => {
           trackingCode: shipment.tracking_code,
           status: mapApiStatusToInternal(tracking.shipment.statusMilestone),
           eventsCount: combinedEvents.length,
+          dryRun: isDryRun,
+          correlationId,
         });
 
       } catch (error) {
-        console.error(`Error processing trackerId ${trackerId}:`, error);
+        console.error(`[${requestId}] [${correlationId}] Error processing trackerId ${trackerId}:`, error);
         errors.push({
           trackerId,
+          correlationId,
           error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
@@ -684,12 +944,15 @@ Deno.serve(async (req) => {
 
     const response = {
       success: errors.length === 0,
-      message: `Processed ${results.length} shipment(s) successfully${errors.length > 0 ? `, ${errors.length} error(s)` : ''}`,
+      dryRun: isDryRun,
+      message: isDryRun
+        ? `Dry-run: would process ${results.length} shipment(s)${errors.length > 0 ? `, ${errors.length} error(s)` : ''}`
+        : `Processed ${results.length} shipment(s) successfully${errors.length > 0 ? `, ${errors.length} error(s)` : ''}`,
       updated: results,
       errors: errors.length > 0 ? errors : undefined,
     };
 
-    console.log('Webhook processing completed:', response);
+    console.log(`[${requestId}] Webhook processing completed:`, response);
 
     return new Response(
       JSON.stringify(response),
