@@ -23,13 +23,13 @@ type BrandConfig = {
   /** Default SVG fallback when no bitmap loads */
   vector?: JSX.Element;
   /** Primary image (custom upload) */
-  imageSrc?: string;
+  defaultImage?: string;
   imageAlt?: string;
 };
 
 const brandConfig: Record<BrandKey, BrandConfig> = {
   whatsapp: {
-    wrapperClass: "p-0 bg-transparent ring-0",
+    wrapperClass: "p-2",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <circle cx="32" cy="32" r="30" fill="#25D366" />
@@ -40,10 +40,10 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
         <path d="M13 51l3.5-9.9A19 19 0 0 1 13 32c0-10.5 8.5-19 19-19s19 8.5 19 19-8.5 19-19 19a19 19 0 0 1-9-2.2L13 51Z" fill="none" stroke="#0f3d25" strokeWidth="2" />
       </svg>
     ),
+    defaultImage: "/logos/whatsapp.png",
   },
   bling: {
-    wrapperClass: "p-2 bg-white",
-    imageSrc: "/logos/custom/bling.png",
+    wrapperClass: "p-2",
     imageAlt: "Bling",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -54,8 +54,8 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
     ),
   },
   tiny: {
-    wrapperClass: "p-2 bg-white",
-    imageSrc: "/logos/tiny.jpg",
+    wrapperClass: "p-2",
+    defaultImage: "/logos/tiny.jpg",
     imageAlt: "Tiny",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -65,8 +65,7 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
     ),
   },
   shopify: {
-    wrapperClass: "p-0 bg-transparent ring-0",
-    imageSrc: "/logos/custom/shopify.png",
+    wrapperClass: "p-2",
     imageAlt: "Shopify",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -77,8 +76,7 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
     ),
   },
   "mercado-livre": {
-    wrapperClass: "p-0 bg-transparent ring-0",
-    imageSrc: "/logos/custom/mercado-livre.png",
+    wrapperClass: "p-2",
     imageAlt: "Mercado Livre",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -89,8 +87,7 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
     ),
   },
   shopee: {
-    wrapperClass: "p-0 bg-transparent ring-0",
-    imageSrc: "/logos/custom/shopee.png",
+    wrapperClass: "p-2",
     imageAlt: "Shopee",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -101,8 +98,8 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
     ),
   },
   shein: {
-    wrapperClass: "p-0 bg-transparent ring-0",
-    imageSrc: "/logos/custom/shein.png",
+    wrapperClass: "p-2",
+    defaultImage: "/logos/custom/shein.png",
     imageAlt: "Shein",
     vector: (
       <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -117,12 +114,11 @@ export function BrandLogo({ brand, size = 48, className }: BrandLogoProps) {
   const config = brandConfig[brand];
 
   const imageCandidates = useMemo(() => {
-    const list: string[] = [];
-    if (config.imageSrc) list.push(config.imageSrc);
     const base = `/logos/custom/${brand}`;
-    list.push(`${base}.svg`, `${base}.png`, `${base}.jpg`);
+    const list: string[] = [`${base}.svg`, `${base}.png`, `${base}.jpg`];
+    if (config.defaultImage) list.push(config.defaultImage);
     return Array.from(new Set(list));
-  }, [brand, config.imageSrc]);
+  }, [brand, config.defaultImage]);
 
   const [index, setIndex] = useState(0);
   const [useVector, setUseVector] = useState(imageCandidates.length === 0);
@@ -138,7 +134,7 @@ export function BrandLogo({ brand, size = 48, className }: BrandLogoProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-lg shrink-0 ring-1 ring-border/40 bg-white",
+        "flex items-center justify-center rounded-lg shrink-0 ring-1 ring-border/40 bg-white dark:bg-white shadow-sm",
         config.wrapperClass ?? "p-2",
         className,
       )}
@@ -158,4 +154,3 @@ export function BrandLogo({ brand, size = 48, className }: BrandLogoProps) {
     </div>
   );
 }
-
