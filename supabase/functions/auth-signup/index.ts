@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { sanitizeError, checkRateLimit } from "../_shared/error-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,7 +14,31 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+
   try {
+    // Rate limiting - 3 signups per 60 minutes per IP
+    const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+    const rateLimitCheck = await checkRateLimit(supabase, `signup:${clientIp}`, 3, 60);
+
+    if (!rateLimitCheck.allowed) {
+      const minutesLeft = rateLimitCheck.lockedUntil 
+        ? Math.ceil((rateLimitCheck.lockedUntil.getTime() - Date.now()) / 60000)
+        : 60;
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `Muitas tentativas. Tente novamente em ${minutesLeft} minutos.`,
+          requestId
+        }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
 
     // Validate inputs with Zod
@@ -37,12 +62,6 @@ serve(async (req) => {
 
     const { name, email, whatsapp_e164, password, plan } = validation.data;
     const planId = plan;
-
-    // Create Supabase client with service role
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
 
     // Check if email already exists
     const { data: existingCustomer } = await supabase
@@ -128,10 +147,10 @@ serve(async (req) => {
         used_credits: 0,
       });
 
-    // Create session token
+    // Create session token - 7 days validity (reduced from 30 for security)
     const sessionToken = crypto.randomUUID();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     const { error: sessionError } = await supabase
       .from('sessions')
@@ -164,9 +183,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error in auth-signup:', error);
+    const sanitized = sanitizeError(error, requestId);
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
+      JSON.stringify(sanitized),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

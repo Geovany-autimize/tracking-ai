@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
+import { sanitizeError } from "../_shared/error-utils.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,7 +56,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== Requisição recebida ===');
+  const requestId = crypto.randomUUID();
+  console.log(`[${requestId}] Requisição recebida`);
 
   try {
     // Get API key
@@ -234,12 +236,9 @@ A mensagem deve seguir todas as regras especificadas e ser adequada para este co
     );
 
   } catch (error) {
-    console.error('❌ Erro fatal:', error);
+    const sanitized = sanitizeError(error, requestId);
     return new Response(
-      JSON.stringify({ 
-        error: 'Erro interno ao gerar template',
-        details: error instanceof Error ? error.message : String(error)
-      }),
+      JSON.stringify(sanitized),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

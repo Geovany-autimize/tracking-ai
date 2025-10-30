@@ -370,6 +370,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          attempt_count: number
+          created_at: string
+          identifier: string
+          locked_until: string | null
+          window_start: string
+        }
+        Insert: {
+          attempt_count?: number
+          created_at?: string
+          identifier: string
+          locked_until?: string | null
+          window_start?: string
+        }
+        Update: {
+          attempt_count?: number
+          created_at?: string
+          identifier?: string
+          locked_until?: string | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           created_at: string | null
