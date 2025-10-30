@@ -1,10 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Package, Truck, Home, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { Package, Truck, Home, AlertCircle, Clock, MapPin } from 'lucide-react';
 import { TrackingEvent, ShipmentData } from '@/lib/tracking-api';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { getShipmentStatusInfo, resolveShipmentStatus } from '@/lib/shipment-status';
 
 interface ShipmentTimelineProps {
   events?: TrackingEvent[];
@@ -12,7 +13,9 @@ interface ShipmentTimelineProps {
 }
 
 const getStatusIcon = (milestone: string) => {
-  switch (milestone) {
+  const status = resolveShipmentStatus(milestone);
+
+  switch (status) {
     case 'delivered':
       return Home;
     case 'out_for_delivery':
@@ -23,23 +26,6 @@ const getStatusIcon = (milestone: string) => {
       return AlertCircle;
     default:
       return Clock;
-  }
-};
-
-const getStatusClass = (milestone: string): string => {
-  switch (milestone) {
-    case 'delivered':
-      return 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20';
-    case 'out_for_delivery':
-      return 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20';
-    case 'in_transit':
-      return 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20';
-    case 'exception':
-      return 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20';
-    case 'pending':
-      return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20';
-    default:
-      return 'bg-muted text-muted-foreground border-muted';
   }
 };
 
@@ -84,6 +70,8 @@ export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimeline
         <div className="space-y-6">
           {sortedEvents.map((event, index) => {
             const Icon = getStatusIcon(event.statusMilestone);
+            const statusInfo = getShipmentStatusInfo(event.statusMilestone);
+            const StatusBadgeIcon = statusInfo.icon;
             const isFirstEvent = index === 0;
 
             return (
@@ -116,8 +104,9 @@ export function ShipmentTimeline({ events = [], shipmentData }: ShipmentTimeline
                       </Badge>
                     )}
                     {event.statusMilestone && (
-                      <Badge className={cn("text-xs", getStatusClass(event.statusMilestone))}>
-                        {event.statusMilestone}
+                      <Badge className={cn("text-xs gap-1.5", statusInfo.badgeClass)}>
+                        <StatusBadgeIcon className="h-3.5 w-3.5" />
+                        <span className="font-semibold">{statusInfo.label}</span>
                       </Badge>
                     )}
                   </div>

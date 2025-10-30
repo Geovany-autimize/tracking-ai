@@ -18,17 +18,12 @@ import { BulkEditShipmentDialog } from '@/components/dialogs/BulkEditDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useHighlights } from '@/contexts/HighlightsContext';
+import { getShipmentStatusInfo, type ShipmentStatus } from '@/lib/shipment-status';
+import { cn } from '@/lib/utils';
 
 interface ShipmentListProps {
   refreshTrigger?: number;
 }
-
-const statusConfig = {
-  pending: { label: 'Pendente', variant: 'secondary' as const },
-  in_transit: { label: 'Em Trânsito', variant: 'default' as const },
-  delivered: { label: 'Entregue', variant: 'default' as const },
-  failed: { label: 'Falha', variant: 'destructive' as const },
-};
 
 export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
   const { customer } = useAuth();
@@ -68,7 +63,7 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
   const { selectedIds, toggleSelect, toggleSelectAll, clearSelection, isAllSelected, isIndeterminate, selectedCount } = useTableSelection(allIds);
 
   const bulkUpdateMutation = useMutation({
-    mutationFn: async (updates: { status?: string; auto_tracking?: boolean }) => {
+    mutationFn: async (updates: { status?: ShipmentStatus; auto_tracking?: boolean }) => {
       const ids = Array.from(selectedIds);
       const { error } = await supabase.from('shipments').update(updates).in('id', ids);
       if (error) throw error;
@@ -165,7 +160,8 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
             </TableHeader>
             <TableBody>
               {sortedData.map((s) => {
-                const status = statusConfig[s.status as keyof typeof statusConfig] || statusConfig.pending;
+                const statusInfo = getShipmentStatusInfo(s.status);
+                const StatusIcon = statusInfo.icon;
                 const customerName = s.shipment_customer 
                   ? `${s.shipment_customer.first_name} ${s.shipment_customer.last_name}`
                   : '—';
@@ -185,8 +181,12 @@ export default function ShipmentList({ refreshTrigger }: ShipmentListProps) {
                       {customerName}
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>
-                      <Badge variant={status.variant}>
-                        {status.label}
+                      <Badge
+                        variant="outline"
+                        className={cn('gap-1.5 px-2.5 py-1.5', statusInfo.badgeClass)}
+                      >
+                        <StatusIcon className="h-4 w-4" />
+                        <span className="font-semibold">{statusInfo.label}</span>
                       </Badge>
                     </TableCell>
                     <TableCell className="cursor-pointer" onClick={() => { dismiss('shipment', s.id); navigate(`/dashboard/shipments/${s.id}`); }}>

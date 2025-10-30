@@ -12,12 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { getShipmentStatusInfo, shipmentStatuses, type ShipmentStatus } from '@/lib/shipment-status';
+import { cn } from '@/lib/utils';
 
 interface BulkEditShipmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedCount: number;
-  onConfirm: (data: { status?: string; auto_tracking?: boolean }) => Promise<void>;
+  onConfirm: (data: { status?: ShipmentStatus; auto_tracking?: boolean }) => Promise<void>;
 }
 
 export function BulkEditShipmentDialog({
@@ -26,14 +29,14 @@ export function BulkEditShipmentDialog({
   selectedCount,
   onConfirm,
 }: BulkEditShipmentDialogProps) {
-  const [status, setStatus] = useState<string>('');
+  const [status, setStatus] = useState<ShipmentStatus | ''>('');
   const [autoTracking, setAutoTracking] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async () => {
     setIsLoading(true);
     try {
-      const updates: { status?: string; auto_tracking?: boolean } = {};
+      const updates: { status?: ShipmentStatus; auto_tracking?: boolean } = {};
       if (status) updates.status = status;
       if (autoTracking !== null) updates.auto_tracking = autoTracking;
       
@@ -60,16 +63,31 @@ export function BulkEditShipmentDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status} onValueChange={(value) => setStatus(value as ShipmentStatus | '')}>
               <SelectTrigger>
                 <SelectValue placeholder="Manter atual" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="in_transit">Em Trânsito</SelectItem>
-                <SelectItem value="out_for_delivery">Saiu para Entrega</SelectItem>
-                <SelectItem value="delivered">Entregue</SelectItem>
-                <SelectItem value="failed">Falhou</SelectItem>
+                <SelectItem value="">
+                  <span className="text-sm text-muted-foreground">Manter atual</span>
+                </SelectItem>
+                {shipmentStatuses.map((option) => {
+                  const info = getShipmentStatusInfo(option);
+                  const Icon = info.icon;
+                  return (
+                    <SelectItem key={option} value={option}>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={cn('gap-1.5 px-2 py-0.5 text-xs', info.badgeClass)}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span className="font-semibold">{info.label}</span>
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

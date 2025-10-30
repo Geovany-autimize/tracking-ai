@@ -18,13 +18,8 @@ import QuickShipmentForm from '@/components/forms/QuickShipmentForm';
 import { useHighlights } from '@/contexts/HighlightsContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-
-const statusConfig = {
-  pending: { label: 'Pendente', variant: 'secondary' as const },
-  in_transit: { label: 'Em Trânsito', variant: 'default' as const },
-  delivered: { label: 'Entregue', variant: 'default' as const },
-  failed: { label: 'Falha', variant: 'destructive' as const },
-};
+import { getShipmentStatusInfo } from '@/lib/shipment-status';
+import { cn } from '@/lib/utils';
 
 export default function CustomerDetails() {
   const { id } = useParams<{ id: string }>();
@@ -345,7 +340,8 @@ export default function CustomerDetails() {
                 </TableHeader>
                 <TableBody>
                   {shipments.map((shipment) => {
-                    const status = statusConfig[shipment.status as keyof typeof statusConfig] || statusConfig.pending;
+                    const statusInfo = getShipmentStatusInfo(shipment.status);
+                    const StatusIcon = statusInfo.icon;
                     
                     return (
                       <TableRow 
@@ -357,8 +353,12 @@ export default function CustomerDetails() {
                           {shipment.tracking_code}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={status.variant}>
-                            {status.label}
+                          <Badge
+                            variant="outline"
+                            className={cn('gap-1.5 px-2.5 py-1.5', statusInfo.badgeClass)}
+                          >
+                            <StatusIcon className="h-4 w-4" />
+                            <span className="font-semibold">{statusInfo.label}</span>
                           </Badge>
                         </TableCell>
                         <TableCell>

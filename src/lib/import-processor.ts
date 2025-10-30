@@ -13,11 +13,16 @@ export interface ProcessedRow<T> {
   rowIndex: number;
 }
 
+const shipmentStatusEnum = z.enum(['pending', 'in_transit', 'out_for_delivery', 'delivered', 'exception']);
+
 // Schemas
 export const shipmentImportSchema = z.object({
   tracking_code: z.string().min(1, 'Código de rastreio obrigatório'),
   customer_email: z.string().email('Email inválido'),
-  status: z.enum(['pending', 'in_transit', 'out_for_delivery', 'delivered', 'failed']).default('pending'),
+  status: shipmentStatusEnum
+    .or(z.literal('failed'))
+    .default('pending')
+    .transform(value => (value === 'failed' ? 'exception' : value)),
   auto_tracking: z.union([z.string(), z.boolean()]).transform(val => {
     if (typeof val === 'boolean') return val;
     return val.toLowerCase() === 'true' || val === '1';

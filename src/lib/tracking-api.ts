@@ -1,3 +1,5 @@
+import type { ShipmentStatus } from './shipment-status';
+
 const TRACKING_WEBHOOK_URL = 'https://webhook-n8n.autimize.com.br/webhook/be6af83d-e1f1-4fdf-b836-928e834c1548';
 const REQUEST_TIMEOUT = 10000; // 10 segundos
 
@@ -207,15 +209,21 @@ export function parseTrackingResponse(response: TrackingAPIResponse | any): Trac
 /**
  * Helper: Mapeia status da API para status interno
  */
-export function mapApiStatusToInternal(statusMilestone: string): string {
-  const statusMap: Record<string, string> = {
-    'in_transit': 'in_transit',
-    'out_for_delivery': 'out_for_delivery',
-    'delivered': 'delivered',
-    'exception': 'exception',
-    'pending': 'pending',
+export function mapApiStatusToInternal(statusMilestone: string): ShipmentStatus {
+  const normalized = statusMilestone?.toLowerCase?.() ?? '';
+  const statusMap: Record<string, ShipmentStatus> = {
+    pending: 'pending',
+    info_received: 'pending',
+    in_transit: 'in_transit',
+    out_for_delivery: 'out_for_delivery',
+    available_for_pickup: 'out_for_delivery',
+    delivered: 'delivered',
+    exception: 'exception',
+    failed: 'exception',
+    failed_attempt: 'exception',
+    expired: 'exception',
   };
-  return statusMap[statusMilestone] || 'pending';
+  return statusMap[normalized] || 'pending';
 }
 
 /**

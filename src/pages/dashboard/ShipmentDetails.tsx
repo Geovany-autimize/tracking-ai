@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { ArrowLeft, User, Loader2, Trash2, RefreshCw, ExternalLink, RefreshCw as RefreshIcon, Package, Truck, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, User, Loader2, Trash2, RefreshCw, Check, ChevronsUpDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShipmentTimeline } from '@/components/shipments/ShipmentTimeline';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,35 +21,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useTrackingRefresh } from '@/hooks/use-tracking-refresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
-import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-const statusConfig = {
-  pending: {
-    label: 'Pendente',
-    icon: <Clock className="h-4 w-4" />,
-    badgeClass: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/20'
-  },
-  in_transit: {
-    label: 'Em Trânsito',
-    icon: <Package className="h-4 w-4" />,
-    badgeClass: 'bg-[hsl(199,89%,48%)]/10 text-[hsl(199,89%,48%)] border-[hsl(199,89%,48%)]/30 hover:bg-[hsl(199,89%,48%)]/20'
-  },
-  out_for_delivery: {
-    label: 'Saiu para Entrega',
-    icon: <Truck className="h-4 w-4" />,
-    badgeClass: 'bg-[hsl(262,52%,58%)]/10 text-[hsl(262,52%,58%)] border-[hsl(262,52%,58%)]/30 hover:bg-[hsl(262,52%,58%)]/20'
-  },
-  delivered: {
-    label: 'Entregue',
-    icon: <CheckCircle2 className="h-4 w-4" />,
-    badgeClass: 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20'
-  },
-  exception: {
-    label: 'Exceção',
-    icon: <AlertCircle className="h-4 w-4" />,
-    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30 hover:bg-destructive/20'
-  }
-};
+import { getShipmentStatusInfo } from '@/lib/shipment-status';
 export default function ShipmentDetails() {
   const {
     id
@@ -248,6 +221,8 @@ export default function ShipmentDetails() {
       </div>;
   }
   const customerName = shipmentData.shipment_customer ? `${shipmentData.shipment_customer.first_name} ${shipmentData.shipment_customer.last_name}` : 'Não vinculado';
+  const statusInfo = getShipmentStatusInfo(shipmentData.status);
+  const StatusIcon = statusInfo.icon;
   return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -285,12 +260,12 @@ export default function ShipmentDetails() {
                 <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Status Atual</Label>
                   <div className="flex items-center h-[28px]">
-                    <Badge className={cn("gap-2 px-3 py-1.5 text-sm", statusConfig[shipmentData.status as keyof typeof statusConfig]?.badgeClass || '')}>
+                    <Badge className={cn("gap-2 px-3 py-1.5 text-sm", statusInfo.badgeClass)}>
                       <span className="flex-shrink-0">
-                        {statusConfig[shipmentData.status as keyof typeof statusConfig]?.icon}
+                        <StatusIcon className="h-4 w-4" />
                       </span>
                       <span className="font-semibold">
-                        {statusConfig[shipmentData.status as keyof typeof statusConfig]?.label || shipmentData.status}
+                        {statusInfo.label}
                       </span>
                     </Badge>
                   </div>
