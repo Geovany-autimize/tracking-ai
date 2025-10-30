@@ -1,208 +1,211 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useWhatsApp } from '@/hooks/use-whatsapp';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { PackageSearch, Users, Sparkles, Settings, User, AlertCircle, CheckCircle2, XCircle, Loader2, ArrowUpCircle } from 'lucide-react';
-import { ReactNode } from 'react';
 
-function StatCard({ label, value, subtitle }: { label: string; value: string | ReactNode; subtitle?: string }) {
+import { DashboardAutomationCard } from '@/components/dashboard/AutomationCard';
+import { DashboardAlertsPanel } from '@/components/dashboard/AlertsPanel';
+import { DashboardCourierPerformanceTable } from '@/components/dashboard/CourierPerformanceTable';
+import { DashboardInsightsPanel } from '@/components/dashboard/InsightsPanel';
+import { DashboardKpiSection } from '@/components/dashboard/KpiSection';
+import { DashboardRangeSelector } from '@/components/dashboard/RangeSelector';
+import { DashboardStatusDistributionChart } from '@/components/dashboard/StatusDistributionChart';
+import { DashboardTrendChart } from '@/components/dashboard/TrendChart';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  buildDashboardMetrics,
+  getDashboardRange,
+  getEarliestRequiredDate,
+  type DashboardMetrics,
+  type DashboardRangeKey,
+  type DashboardShipmentRecord,
+} from '@/lib/dashboard-metrics';
+
+const fallbackMetrics: DashboardMetrics = {
+  overview: {
+    deliveredCount: 0,
+    deliveredDelta: null,
+    averageDeliveryDays: null,
+    averageDeliveryDelta: null,
+    exceptionRate: null,
+    exceptionRateDelta: null,
+    stuckShipments: 0,
+    stuckThresholdHours: 72,
+  },
+  trends: [],
+  statusDistribution: [],
+  courierPerformance: [],
+  alerts: [],
+  insights: [],
+  automation: {
+    autoTrackingRate: null,
+    lastTrackingUpdate: null,
+    shipmentsWithAutoTracking: 0,
+    totalShipments: 0,
+  },
+};
+
+function LoadingSkeleton() {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-      </CardHeader>
-      <CardContent className="min-h-[80px] flex flex-col justify-between">
-        <div className="text-2xl font-semibold">{value}</div>
-        {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} className="h-32 rounded-lg" />
+        ))}
+      </div>
+      <Skeleton className="h-80 rounded-lg" />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Skeleton className="h-80 rounded-lg lg:col-span-2" />
+        <Skeleton className="h-80 rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <Card className="border-dashed border-muted-foreground/40">
+      <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+        <div className="space-y-2">
+          <h3 className="text-xl font-semibold">Vamos começar a monitorar suas entregas</h3>
+          <p className="max-w-md text-sm text-muted-foreground">
+            Assim que você cadastrar rastreios, exibiremos aqui os indicadores-chave de performance,
+            alertas inteligentes e recomendações acionáveis.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to="/dashboard/shipments">
+            <Plus className="mr-2 h-4 w-4" />
+            Criar primeiro rastreio
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   );
 }
 
 export default function DashboardHome() {
-  const { customer, plan, usage } = useAuth();
-  const { status: whatsappStatus, isChecking } = useWhatsApp();
+  const { customer } = useAuth();
+  const [rangeKey, setRangeKey] = useState<DashboardRangeKey>('30d');
+  const range = useMemo(() => getDashboardRange(rangeKey), [rangeKey]);
+  const earliestDate = useMemo(() => getEarliestRequiredDate(range), [range]);
 
-  const totalCredits = plan?.monthly_credits || 0;
-  const usedCredits = usage?.used_credits || 0;
-  const isQuotaExceeded = usedCredits >= totalCredits;
+  const { data: shipmentsData, isLoading, isError } = useQuery({
+    queryKey: ['dashboard_shipments', customer?.id, rangeKey, earliestDate.toISOString()],
+    enabled: !!customer?.id,
+    queryFn: async () => {
+      if (!customer?.id) return [] as DashboardShipmentRecord[];
 
-  const getNextRenewalDate = () => {
-    const now = new Date();
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    return nextMonth.toLocaleDateString('pt-BR', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
-    });
-  };
+      const earliestIso = earliestDate.toISOString();
+      const { data, error } = await supabase
+        .from('shipments')
+        .select('id,status,created_at,last_update,auto_tracking,tracking_events,shipment_data')
+        .eq('customer_id', customer.id)
+        .or(`created_at.gte.${earliestIso},last_update.gte.${earliestIso}`);
 
-  const isFreeplan = plan?.name === 'Free';
+      if (error) {
+        console.error('[Dashboard] Failed to load shipments', error);
+        throw error;
+      }
+
+      return (data || []) as DashboardShipmentRecord[];
+    },
+  });
+
+  const metrics = useMemo(() => {
+    if (!shipmentsData || shipmentsData.length === 0) {
+      return fallbackMetrics;
+    }
+    return buildDashboardMetrics(shipmentsData, range);
+  }, [shipmentsData, range]);
+
+  const hasData = shipmentsData && shipmentsData.length > 0;
 
   return (
     <div className="space-y-6">
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">
-          Bem-vindo, {customer?.name || 'Usuário'}!
-        </h2>
-      </section>
-
-      {isQuotaExceeded && (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="flex items-center gap-3 py-4">
-            <AlertCircle className="h-5 w-5 text-destructive" />
-            <div className="flex-1">
-              <p className="font-medium">Limite de créditos atingido</p>
-              <p className="text-sm text-muted-foreground">
-                Faça upgrade do seu plano para continuar rastreando
-              </p>
-            </div>
-            <Link to="/dashboard/billing">
-              <Button variant="default">Ver Planos</Button>
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Olá, {customer?.name || 'empreendedor(a)'}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Acompanhe seus indicadores logísticos sem precisar mergulhar em planilhas.
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <Button variant="outline" asChild>
+            <Link to="/dashboard/shipments">
+              <Plus className="mr-2 h-4 w-4" />
+              Novo rastreio
             </Link>
-          </CardContent>
-        </Card>
-      )}
+          </Button>
+          <DashboardRangeSelector value={rangeKey} onChange={setRangeKey} />
+        </div>
+      </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        <StatCard
-          label="Plano Atual"
-          value={
-            <div className="flex flex-col gap-1">
-              <span>{plan?.name || 'Free'}</span>
-              <Badge variant="outline" className="text-xs w-fit">
-              {totalCredits} créditos/mês
-            </Badge>
-          </div>
-        }
-        />
-        <StatCard
-          label="Créditos Usados"
-          value={`${usedCredits} / ${totalCredits}`}
-          subtitle={`Renova em ${getNextRenewalDate()}`}
-        />
-        <StatCard label="Rastreios Ativos" value="12" subtitle="Aguardando entrega" />
-        <StatCard 
-          label="Taxa de Entrega"
-          value="94.5%"
-          subtitle="↑ 2.3% vs mês anterior"
-        />
-        <StatCard 
-          label="Tempo Médio"
-          value="7.2 dias"
-          subtitle="Média de entrega"
-        />
-        <StatCard 
-          label="Clientes Ativos"
-          value="28"
-          subtitle="Com rastreios no mês"
-        />
-        <StatCard 
-          label="Taxa de Uso"
-          value={`${totalCredits > 0 ? Math.round((usedCredits / totalCredits) * 100) : 0}%`}
-          subtitle={`${totalCredits - usedCredits} créditos restantes`}
-        />
-        <StatCard label="Entregues neste mês" value="37" subtitle="Finalizados com sucesso" />
-      </section>
-
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Atalhos Rápidos</CardTitle>
-            <CardDescription>Acesse as principais funcionalidades</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-              <Link to="/dashboard/shipments">
-                <Button variant="outline" className="justify-start gap-2 w-full">
-                  <PackageSearch className="h-4 w-4" />
-                  Ver Rastreios
-                </Button>
-              </Link>
-              <Link to="/dashboard/customers">
-                <Button variant="outline" className="justify-start gap-2 w-full">
-                  <Users className="h-4 w-4" />
-                  Clientes
-                </Button>
-              </Link>
-              <Link to="/dashboard/insights">
-                <Button variant="outline" className="justify-start gap-2 w-full">
-                  <Sparkles className="h-4 w-4" />
-                  Insights
-                </Button>
-              </Link>
-              <Link to="/dashboard/settings">
-                <Button variant="outline" className="justify-start gap-2 w-full">
-                  <Settings className="h-4 w-4" />
-                  Configurações
-                </Button>
-              </Link>
-              <Link to="/dashboard/profile">
-                <Button variant="outline" className="justify-start gap-2 w-full">
-                  <User className="h-4 w-4" />
-                  Meu Perfil
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : isError ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Status da Conta</CardTitle>
-            <CardDescription>Complete sua configuração</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-center justify-between">
-                <span>E-mail verificado</span>
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
-                  Pendente
-                </Badge>
-              </li>
-              <li className="flex items-center justify-between">
-                <span>WhatsApp</span>
-                {isChecking ? (
-                  <Badge variant="outline">
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    Verificando...
-                  </Badge>
-                ) : whatsappStatus === 'connected' ? (
-                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Conectado
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="bg-red-500/10 text-red-500 border-red-500/20">
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Desconectado
-                  </Badge>
-                )}
-              </li>
-              <li className="flex items-center justify-between">
-                <span>Integração de loja</span>
-                <Badge variant="outline">Não configurada</Badge>
-              </li>
-            </ul>
-            <div className="space-y-2 mt-4">
-              {whatsappStatus !== 'connected' && (
-                <Link to="/dashboard/settings/integrations/whatsapp" className="block">
-                  <Button variant="outline" className="w-full" size="sm">
-                    Configurar WhatsApp
-                  </Button>
-                </Link>
-              )}
-              <Link to="/dashboard/settings" className="block">
-                <Button variant="outline" className="w-full" size="sm">
-                  Completar Configuração
-                </Button>
-              </Link>
-            </div>
+          <CardContent className="py-10 text-center text-sm text-destructive">
+            Não foi possível carregar os dados do dashboard. Tente novamente em instantes.
           </CardContent>
         </Card>
-      </section>
+      ) : !hasData ? (
+        <EmptyState />
+      ) : (
+        <div className="space-y-6">
+          <DashboardKpiSection metrics={metrics.overview} automation={metrics.automation} />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Evolução de rastreios</CardTitle>
+                <CardDescription>
+                  Como os novos rastreios, entregas e exceções evoluíram no período selecionado
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DashboardTrendChart data={metrics.trends} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Onde estão seus pedidos</CardTitle>
+                <CardDescription>Distribuição atual por status de entrega</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center justify-center">
+                <DashboardStatusDistributionChart data={metrics.statusDistribution} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Performance por transportadora</CardTitle>
+                <CardDescription>Compare tempos médios, exceções e gargalos de atualização</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <DashboardCourierPerformanceTable data={metrics.courierPerformance} />
+              </CardContent>
+            </Card>
+
+            <DashboardAutomationCard automation={metrics.automation} />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <DashboardAlertsPanel alerts={metrics.alerts} />
+            <DashboardInsightsPanel insights={metrics.insights} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

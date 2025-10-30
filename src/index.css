@@ -72,6 +72,14 @@ All colors MUST be HSL.
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* Charts */
+    --chart-1: 262 52% 58%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 44 90% 61%;
+    --chart-4: 157 58% 45%;
+    --chart-5: 0 63% 57%;
+    --chart-6: 271 45% 56%;
   }
 }
 
