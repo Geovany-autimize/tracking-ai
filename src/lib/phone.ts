@@ -75,9 +75,46 @@ export function parseDirectE164(input: string) {
       e164: pn.number,
       iso2: pn.country || null,
       national: pn.formatNational(),
+      international: pn.formatInternational(),
+      countryCallingCode: pn.countryCallingCode,
     };
   }
   return null;
+}
+
+export function formatE164WithCountry(value: string) {
+  const input = value.startsWith('+') ? value : `+${value}`;
+  const parsed = parseDirectE164(input);
+
+  if (parsed?.international) {
+    if (parsed.iso2 === 'BR') {
+      const digits = parsed.e164?.replace(`+${parsed.countryCallingCode}`, '') ?? '';
+      if (digits.length === 11) {
+        const ddd = digits.slice(0, 2);
+        const part1 = digits.slice(2, 7);
+        const part2 = digits.slice(7);
+        return `+${parsed.countryCallingCode} (${ddd}) ${part1}-${part2}`;
+      }
+      if (digits.length === 10) {
+        const ddd = digits.slice(0, 2);
+        const part1 = digits.slice(2, 6);
+        const part2 = digits.slice(6);
+        return `+${parsed.countryCallingCode} (${ddd}) ${part1}-${part2}`;
+      }
+    }
+    const parts = parsed.international.split(' ').filter(Boolean);
+    if (parts.length >= 3) {
+      const [countryCode, areaCode, ...rest] = parts;
+      return `${countryCode} (${areaCode}) ${rest.join(' ')}`;
+    }
+    return parsed.international;
+  }
+
+  if (parsed?.national && parsed?.countryCallingCode) {
+    return `+${parsed.countryCallingCode} ${parsed.national}`;
+  }
+
+  return parsed?.e164 || input;
 }
 
 export function isValidE164(e164: string) {

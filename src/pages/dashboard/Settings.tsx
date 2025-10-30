@@ -1,19 +1,33 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import IntegrationCard from '@/components/settings/IntegrationCard';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
+import PageHeader from '@/components/app/PageHeader';
+import { formatE164WithCountry } from '@/lib/phone';
 
 export default function SettingsPage() {
   const { status, instanceData } = useWhatsApp();
   const whatsappStatus = status === 'connected' ? 'ativo' : 'nao-configurado';
+
+  const whatsappDescription = (() => {
+    if (status === 'connected' && instanceData?.ownerJid) {
+      const number = instanceData.ownerJid.split('@')[0];
+      const formatted = number ? formatE164WithCountry(number) : null;
+      if (formatted) {
+        return `Conectado como ${formatted}`;
+      }
+    }
+    if (status === 'connected' && instanceData?.profileName) {
+      return `Conectado como ${instanceData.profileName}`;
+    }
+    return 'Envie notificações de rastreio para seus clientes';
+  })();
   
   return (
-    <div className="space-y-6 max-w-6xl">
-      <header>
-        <h2 className="text-2xl font-semibold">Configurações</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gerencie integrações e preferências da conta
-        </p>
-      </header>
+    <div className="space-y-6">
+      <PageHeader
+        title="Configurações"
+        description="Gerencie integrações e preferências da conta"
+      />
 
       <div className="space-y-6">
         {/* Disparo de Mensagens */}
@@ -26,15 +40,11 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <IntegrationCard
+              brand="whatsapp"
               title="WhatsApp"
-              description={
-                status === 'connected' && instanceData?.profileName
-                  ? `Conectado como ${instanceData.profileName}`
-                  : 'Envie notificações de rastreio para seus clientes'
-              }
+              description={whatsappDescription}
               status={whatsappStatus}
               href="/dashboard/settings/integrations/whatsapp"
-              logoUrl="/logos/whatsapp.png"
             />
           </CardContent>
         </Card>
@@ -48,48 +58,48 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <IntegrationCard
+                  brand="bling"
                   title="Bling"
                   description="Sincronize pedidos e notas fiscais"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/bling"
-                  logoUrl="/logos/bling.svg"
                 />
                 <IntegrationCard
+                  brand="tiny"
                   title="Tiny"
                   description="Integração nativa com pedidos"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/tiny"
-                  logoUrl="/logos/tiny.jpg"
                 />
                 <IntegrationCard
+                  brand="shopify"
                   title="Shopify"
                   description="Conecte sua loja Shopify"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/shopify"
-                  logoUrl="/logos/shopify.png"
                 />
                 <IntegrationCard
+                  brand="mercado-livre"
                   title="Mercado Livre"
                   description="Pedidos e rastreios do ML"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/mercado-livre"
-                  logoUrl="/logos/mercado-livre.png"
                 />
                 <IntegrationCard
+                  brand="shopee"
                   title="Shopee"
                   description="Rastreio e atualização de status"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/shopee"
-                  logoUrl="/logos/shopee.png"
                 />
                 <IntegrationCard
+                  brand="shein"
                   title="Shein"
                   description="Importe pedidos da Shein"
                   status="nao-configurado"
                   href="/dashboard/settings/integrations/shein"
-                  logoUrl="/logos/shein.png"
                 />
             </div>
           </CardContent>

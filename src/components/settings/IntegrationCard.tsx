@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
+import { BrandLogo, type BrandKey } from '@/components/brand/BrandLogo';
 
 type Props = {
   title: string;
@@ -10,6 +11,7 @@ type Props = {
   status?: 'nao-configurado' | 'ativo' | 'inativo' | 'erro';
   href?: string;
   icon?: React.ReactNode;
+  brand?: BrandKey;
   logoUrl?: string;
   className?: string;
 };
@@ -27,6 +29,7 @@ export default function IntegrationCard({
   status = 'nao-configurado', 
   href = '#', 
   icon,
+  brand,
   logoUrl,
   className 
 }: Props) {
@@ -37,18 +40,22 @@ export default function IntegrationCard({
       'flex items-start gap-3 rounded-xl border bg-card/50 p-4 hover:bg-card transition-colors',
       className
     )}>
-      <div className="h-12 w-12 rounded-lg bg-muted/30 dark:bg-muted/50 flex items-center justify-center p-2.5 border border-border/50 shrink-0">
-        {logoUrl ? (
-          <img 
-            src={logoUrl} 
-            alt={`${title} logo`} 
-            className="w-full h-full object-contain"
-            style={{ mixBlendMode: 'multiply' }}
-          />
-        ) : (
-          icon ?? <span className="text-sm">⚙️</span>
-        )}
-      </div>
+      {brand ? (
+        <BrandLogo brand={brand} />
+      ) : (
+        <div className="h-12 w-12 rounded-lg bg-white ring-1 ring-border/40 flex items-center justify-center p-2.5 shrink-0">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={`${title} logo`}
+              className="h-full w-full object-contain"
+              loading="lazy"
+            />
+          ) : (
+            icon ?? <span className="text-sm">⚙️</span>
+          )}
+        </div>
+      )}
       
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
@@ -60,11 +67,17 @@ export default function IntegrationCard({
         {description && <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>}
       </div>
       
-      <Link to={href} className="shrink-0">
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+      <Button asChild variant="ghost" size="icon" className="h-9 w-9 md:hidden" aria-label={`Configurar ${title}`}>
+        <Link to={href}>
           <Settings className="h-4 w-4" />
-        </Button>
-      </Link>
+        </Link>
+      </Button>
+      <Button asChild variant="outline" size="sm" className="hidden md:inline-flex gap-2" aria-label={`Configurar ${title}`}>
+        <Link to={href}>
+          <Settings className="h-4 w-4" />
+          Configurar
+        </Link>
+      </Button>
     </div>
   );
 }
