@@ -61,8 +61,14 @@ export default function AvatarUploader({ customerId, initialUrl, initials = '??'
       const mime = blob.type || 'image/png';
       
       // Get signed upload URL
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
       const { data: startData, error: startError } = await supabase.functions.invoke('avatar-upload-start', {
         body: { mime },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (startError || !startData?.url) {
@@ -91,6 +97,7 @@ export default function AvatarUploader({ customerId, initialUrl, initials = '??'
       // Commit and save to database
       const { data: commitData, error: commitError } = await supabase.functions.invoke('avatar-commit', {
         body: { path: startData.path, customerId },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (commitError || !commitData?.ok) {
