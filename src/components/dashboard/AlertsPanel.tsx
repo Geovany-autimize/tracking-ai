@@ -5,7 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardAlert } from '@/lib/dashboard-metrics';
+import { formatStatus } from '@/lib/dashboard-metrics';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 interface AlertsPanelProps {
   alerts: DashboardAlert[];
@@ -65,16 +67,16 @@ export function DashboardAlertsPanel({ alerts }: AlertsPanelProps) {
                         {alert.title}
                       </p>
                       <p className="text-xs text-muted-foreground">{alert.description}</p>
-                      {alert.lastActivity && (
+                      {alert.lastActivity ? (
                         <p className="text-xs text-muted-foreground">
-                          Último evento em {format(alert.lastActivity, 'dd/MM/yyyy HH:mm')}
+                          Último evento em {format(alert.lastActivity, 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <Badge variant="secondary" className="text-xs">
-                      Status: {alert.status}
+                      Status: {formatStatus(alert.status)}
                     </Badge>
                     <Button variant="outline" size="sm" asChild>
                       <Link to={`/dashboard/shipments/${alert.shipmentId}`}>Ver rastreio</Link>
@@ -89,4 +91,3 @@ export function DashboardAlertsPanel({ alerts }: AlertsPanelProps) {
     </Card>
   );
 }
-

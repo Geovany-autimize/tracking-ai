@@ -10,6 +10,7 @@ import {
   subDays,
   subHours,
 } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 type Nullable<T> = T | null | undefined;
 
@@ -113,6 +114,7 @@ interface NormalizedEvent {
 interface NormalizedShipment {
   id: string;
   status: string;
+  currentMilestone: string;
   createdAt: Date;
   lastUpdateAt: Date | null;
   autoTracking: boolean;
@@ -284,6 +286,7 @@ export function normalizeShipments(records: DashboardShipmentRecord[]): Normaliz
 
       const firstEventAt = events.length > 0 ? events[0].at : null;
       const lastEventAt = events.length > 0 ? events[events.length - 1].at : null;
+      const latestMilestone = events.length > 0 ? events[events.length - 1].milestone : record.status || 'pending';
       const lastUpdateAt = safeParseDate(record.last_update);
       const lastActivityAt = maxDate([
         lastEventAt,
@@ -297,9 +300,19 @@ export function normalizeShipments(records: DashboardShipmentRecord[]): Normaliz
         record.status === 'exception' ||
         events.some((event) => event.milestone === 'exception' || event.milestone === 'failed_attempt');
 
+      const startReference = firstEventAt ?? createdAt;
+      let deliveryDurationDays: number | null = null;
+      if (deliveredAt && startReference) {
+        const diffMs = deliveredAt.getTime() - startReference.getTime();
+        if (diffMs >= 0) {
+          deliveryDurationDays = diffMs / (1000 * 60 * 60 * 24);
+        }
+      }
+
       return {
         id: record.id,
-        status: record.status || 'pending',
+        status: record.status || latestMilestone || 'pending',
+        currentMilestone: latestMilestone || record.status || 'pending',
         createdAt,
         lastUpdateAt,
         autoTracking: Boolean(record.auto_tracking),
@@ -311,9 +324,7 @@ export function normalizeShipments(records: DashboardShipmentRecord[]): Normaliz
         lastActivityAt,
         courier,
         hasException,
-        deliveryDurationDays: deliveredAt
-          ? (deliveredAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
-          : null,
+        deliveryDurationDays,
       } satisfies NormalizedShipment;
     })
     .filter(Boolean) as NormalizedShipment[];
@@ -351,7 +362,7 @@ function computePercentile(values: number[], percentile: number): number | null 
   return sorted[index];
 }
 
-function formatStatus(status: string): string {
+export function formatStatus(status: string): string {
   return STATUS_LABELS[status] || status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -502,11 +513,11 @@ export function buildDashboardMetrics(records: DashboardShipmentRecord[], range:
       alerts.push({
         id: `${shipment.id}-stuck`,
         title: `Rastreio sem atualização há ${differenceInHours(now, shipment.lastActivityAt)}h`,
-        description: `Status atual: ${formatStatus(shipment.status)}`,
+        description: `Status atual: ${formatStatus(shipment.currentMilestone)}`,
         type: 'stuck',
         severity: 'high',
         shipmentId: shipment.id,
-        status: shipment.status,
+        status: shipment.currentMilestone,
         lastActivity: shipment.lastActivityAt,
       });
     });
@@ -515,6 +526,7 @@ export function buildDashboardMetrics(records: DashboardShipmentRecord[], range:
     .filter(
       (shipment) =>
         shipment.hasException &&
+        ['exception', 'failed_attempt'].includes(shipment.currentMilestone) &&
         (isInRange(shipment.lastActivityAt, range.start, range.end) ||
           isInRange(shipment.exceptionAt, range.start, range.end)),
     )
@@ -523,11 +535,11 @@ export function buildDashboardMetrics(records: DashboardShipmentRecord[], range:
       alerts.push({
         id: `${shipment.id}-exception`,
         title: 'Rastreio em exceção',
-        description: `Atualizado por último em ${format(shipment.lastActivityAt, 'dd/MM HH:mm')}`,
+        description: `Atualizado por último em ${format(shipment.lastActivityAt, 'dd/MM HH:mm', { locale: ptBR })}`,
         type: 'exception',
         severity: 'medium',
         shipmentId: shipment.id,
-        status: shipment.status,
+        status: shipment.currentMilestone,
         lastActivity: shipment.lastActivityAt,
       });
     });
@@ -550,7 +562,7 @@ export function buildDashboardMetrics(records: DashboardShipmentRecord[], range:
           type: 'slow',
           severity: 'low',
           shipmentId: shipment.id,
-          status: shipment.status,
+          status: shipment.currentMilestone,
           lastActivity: shipment.deliveredAt,
         });
       });

@@ -76,7 +76,6 @@ function KpiCard({
 export function DashboardKpiSection({ metrics, automation }: DashboardKpiSectionProps) {
   const deliveredValue = numberFormatter.format(metrics.deliveredCount);
   const avgDelivery = formatDays(metrics.averageDeliveryDays);
-  const exceptionRate = formatPercent(metrics.exceptionRate);
   const stuckValue = numberFormatter.format(metrics.stuckShipments);
   const autoTrackingRate =
     automation.autoTrackingRate !== null ? formatPercent(automation.autoTrackingRate) : '—';
@@ -87,7 +86,7 @@ export function DashboardKpiSection({ metrics, automation }: DashboardKpiSection
       : 'Nenhum rastreio encontrado';
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <KpiCard
         title="Entregues no período"
         value={deliveredValue}
@@ -99,12 +98,6 @@ export function DashboardKpiSection({ metrics, automation }: DashboardKpiSection
         value={avgDelivery}
         description="Dias entre criação e entrega"
         delta={metrics.averageDeliveryDelta}
-      />
-      <KpiCard
-        title="Taxa de exceções"
-        value={exceptionRate}
-        description="Proporção de rastreios com exceção"
-        delta={metrics.exceptionRateDelta}
       />
       <KpiCard
         title="Sem atualização"
