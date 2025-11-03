@@ -55,7 +55,7 @@ interface TrackingEvent {
   location?: string | null;
   sourceCode?: string | null;
   courierCode?: string | null;
-  courierName?: string;
+  courierName?: string | null;
   statusCode?: string | null;
   statusCategory?: string | null;
   statusMilestone: string;
@@ -395,7 +395,7 @@ async function enrichEventsWithCourierNames(
     const courierName = courierNameMap.get(event.courierCode);
     return {
       ...event,
-      courierName: courierName ? String(courierName) : event.courierCode
+      courierName: courierName ? String(courierName) : (event.courierCode || null)
     };
   });
 }
@@ -589,7 +589,7 @@ Deno.serve(async (req) => {
                 casted.body = {};
               }
             }
-            return casted as WebhookPayload;
+            return casted as unknown as WebhookPayload;
           }
           return { body: { trackings: [] } } as WebhookPayload;
         });
@@ -802,7 +802,7 @@ Deno.serve(async (req) => {
               const whatsappInstance = await getWhatsAppInstanceData(shipment.customer_id);
               
               // Funções auxiliares para formatação
-              const formatDate = (dateStr: string | null) => {
+              const formatDate = (dateStr: string | null | undefined) => {
                 if (!dateStr) return '';
                 const date = new Date(dateStr);
                 return date.toLocaleDateString('pt-BR', {
@@ -810,7 +810,7 @@ Deno.serve(async (req) => {
                 });
               };
               
-              const formatDateTime = (dateStr: string | null) => {
+              const formatDateTime = (dateStr: string | null | undefined) => {
                 if (!dateStr) return '';
                 const date = new Date(dateStr);
                 return date.toLocaleString('pt-BR', {

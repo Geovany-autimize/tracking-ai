@@ -34,6 +34,21 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get current avatar to delete old one
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('avatar_url')
+      .eq('id', customerId)
+      .single();
+
+    // Delete old avatar if exists
+    if (customer?.avatar_url) {
+      const oldPath = customer.avatar_url.split('/avatars/').pop();
+      if (oldPath) {
+        await supabase.storage.from('avatars').remove([`avatars/${oldPath}`]);
+      }
+    }
+
     // Get public URL
     const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
     const publicUrl = pub?.publicUrl;

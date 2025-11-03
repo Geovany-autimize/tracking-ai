@@ -82,11 +82,8 @@ export default function ProfilePage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [form.formState.isDirty]);
 
-  const accountCreatedAt = useMemo(() => {
-    if (!customer?.created_at) return null;
-    const date = new Date(customer.created_at);
-    return Number.isNaN(date.getTime()) ? null : format(date, "dd 'de' MMMM yyyy");
-  }, [customer?.created_at]);
+  // Account creation date is not tracked in the current Customer type
+  const accountCreatedAt = null;
 
   async function onSubmit(values: ProfileFormValues) {
     if (!customer?.id) return;
