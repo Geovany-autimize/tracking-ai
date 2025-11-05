@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Customer {
@@ -36,6 +36,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   checkSubscription: () => Promise<void>;
+  syncSubscriptionAndCredits: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(true);
+  const isSyncingRef = useRef(false);
 
   const getSessionToken = () => localStorage.getItem('session_token');
   const setSessionToken = (token: string) => localStorage.setItem('session_token', token);
@@ -85,13 +87,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Centralized sync function that replicates the manual refresh button behavior
+  const syncSubscriptionAndCredits = async () => {
+    if (isSyncingRef.current) {
+      console.log('[AUTH] Sync already in progress, skipping...');
+      return;
+    }
+
+    const token = getSessionToken();
+    if (!token) {
+      console.log('[AUTH] No token available for sync');
+      return;
+    }
+
+    isSyncingRef.current = true;
+    try {
+      console.log('[AUTH] Starting full subscription sync...');
+
+      // 1. Populate Stripe IDs if needed (silent - won't error if already populated)
+      await supabase.functions.invoke('populate-stripe-subscription-ids', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('[AUTH] Step 1: Stripe IDs populated');
+
+      // 2. Refresh subscription dates from Stripe
+      await supabase.functions.invoke('refresh-subscription-dates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('[AUTH] Step 2: Subscription dates refreshed');
+
+      // 3. Check subscription status and update local state
+      await checkSubscription();
+      console.log('[AUTH] Step 3: Subscription checked and state updated');
+
+      console.log('[AUTH] Full subscription sync completed successfully');
+    } catch (error) {
+      console.error('[AUTH] Error in syncSubscriptionAndCredits:', error);
+    } finally {
+      isSyncingRef.current = false;
+    }
+  };
+
   useEffect(() => {
     const initialize = async () => {
       await refreshSession();
-      // Check subscription after session refresh
+      // Full sync after session refresh
       const token = getSessionToken();
       if (token) {
-        await checkSubscription();
+        await syncSubscriptionAndCredits();
       }
     };
     initialize();
@@ -125,8 +168,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSessionToken(data.sessionToken);
     await refreshSession();
-    // Check subscription after login
-    await checkSubscription();
+    // Full sync after login
+    await syncSubscriptionAndCredits();
   };
 
   const signup = async (
@@ -163,8 +206,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSessionToken(data.sessionToken);
     await refreshSession();
-    // Check subscription after signup
-    await checkSubscription();
+    // Full sync after signup
+    await syncSubscriptionAndCredits();
   };
 
   const checkSubscription = async () => {
@@ -172,18 +215,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return;
 
     try {
-      // 1. Populate Stripe IDs if needed (silent - won't error if already populated)
-      await supabase.functions.invoke('populate-stripe-subscription-ids', {
+      // Check subscription status with proper authorization
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: { Authorization: `Bearer ${token}` },
       });
-
-      // 2. Refresh subscription dates from Stripe
-      await supabase.functions.invoke('refresh-subscription-dates', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // 3. Check subscription status
-      const { data, error } = await supabase.functions.invoke('check-subscription');
 
       if (error || !data) {
         console.error('Error checking subscription:', error);
@@ -240,6 +275,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         refreshSession,
         checkSubscription,
+        syncSubscriptionAndCredits,
       }}
     >
       {children}

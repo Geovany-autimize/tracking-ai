@@ -19,7 +19,7 @@ import { useCredits } from '@/hooks/use-credits';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BillingPage() {
-  const { customer, plan, subscription, checkSubscription } = useAuth();
+  const { customer, plan, subscription, syncSubscriptionAndCredits } = useAuth();
   const { 
     totalCredits,
     totalPurchasedCredits,
@@ -37,10 +37,11 @@ export default function BillingPage() {
 
   // Verifica status da assinatura ao carregar a página
   useEffect(() => {
-    const checkStatus = async () => {
-      await checkSubscription();
+    const syncOnLoad = async () => {
+      await syncSubscriptionAndCredits();
+      await refreshCredits();
     };
-    checkStatus();
+    syncOnLoad();
   }, []);
 
   const remainingCredits = totalCredits || 0;
@@ -222,32 +223,10 @@ export default function BillingPage() {
     const loadingToast = toast.loading('Atualizando assinatura...');
     
     try {
-      const token = localStorage.getItem('session_token');
-      if (!token) {
-        toast.error('Você precisa estar logado');
-        return;
-      }
+      // Use centralized sync function
+      await syncSubscriptionAndCredits();
 
-      // 1. Populate Stripe IDs if needed (silent - won't error if already populated)
-      await supabase.functions.invoke('populate-stripe-subscription-ids', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      // 2. Refresh subscription dates from Stripe
-      const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-subscription-dates', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (refreshError) {
-        console.error('Error refreshing dates:', refreshError);
-      } else if (refreshData?.results) {
-        console.log('Refresh results:', refreshData.results);
-      }
-
-      // 3. Check subscription status
-      await checkSubscription();
-
-      // 4. Refresh credits
+      // Refresh credits
       await refreshCredits();
 
       toast.success('Assinatura atualizada com sucesso!');
