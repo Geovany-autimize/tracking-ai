@@ -172,6 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return;
 
     try {
+      // 1. Populate Stripe IDs if needed (silent - won't error if already populated)
+      await supabase.functions.invoke('populate-stripe-subscription-ids', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // 2. Refresh subscription dates from Stripe
+      await supabase.functions.invoke('refresh-subscription-dates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // 3. Check subscription status
       const { data, error } = await supabase.functions.invoke('check-subscription');
 
       if (error || !data) {
