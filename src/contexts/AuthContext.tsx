@@ -86,7 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    refreshSession();
+    const initialize = async () => {
+      await refreshSession();
+      // Check subscription after session refresh
+      const token = getSessionToken();
+      if (token) {
+        await checkSubscription();
+      }
+    };
+    initialize();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -117,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSessionToken(data.sessionToken);
     await refreshSession();
+    // Check subscription after login
+    await checkSubscription();
   };
 
   const signup = async (
@@ -153,6 +163,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setSessionToken(data.sessionToken);
     await refreshSession();
+    // Check subscription after signup
+    await checkSubscription();
   };
 
   const checkSubscription = async () => {
