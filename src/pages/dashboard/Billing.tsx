@@ -45,8 +45,8 @@ export default function BillingPage() {
   }, []);
 
   const remainingCredits = totalCredits || 0;
-  const usagePercentage = monthlyCredits > 0 
-    ? (monthlyUsed / monthlyCredits) * 100 
+  const usagePercentage = totalPurchasedCredits > 0 
+    ? ((totalUsed || 0) / totalPurchasedCredits) * 100 
     : 0;
 
   const getNextRenewalDate = () => {
@@ -381,7 +381,7 @@ export default function BillingPage() {
                   
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      {monthlyUsed.toLocaleString('pt-BR')} de {(monthlyCredits + extraCredits).toLocaleString('pt-BR')} usados
+                      {(totalUsed || 0).toLocaleString('pt-BR')} de {totalPurchasedCredits.toLocaleString('pt-BR')} usados
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {Math.round(usagePercentage)}%
