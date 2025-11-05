@@ -110,14 +110,36 @@ serve(async (req) => {
         cancelAtPeriodEnd 
       });
       
-      // Convert subscription dates directly from Stripe (no fallbacks)
+      // Convert subscription dates directly from Stripe (if available)
       if (subscription.current_period_start) {
         subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
       }
       if (subscription.current_period_end) {
         subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       }
-      logStep("Subscription dates from Stripe", { start: subscriptionStart, end: subscriptionEnd });
+      
+      // If Stripe doesn't provide dates, try to get from DB
+      if (!subscriptionStart || !subscriptionEnd) {
+        logStep("Stripe dates missing, checking DB", { 
+          stripeStart: subscriptionStart, 
+          stripeEnd: subscriptionEnd 
+        });
+        
+        const { data: dbSub } = await supabaseClient
+          .from("subscriptions")
+          .select("current_period_start, current_period_end")
+          .eq("customer_id", sessionData.customer_id)
+          .eq("status", "active")
+          .maybeSingle();
+        
+        if (dbSub) {
+          subscriptionStart = subscriptionStart || dbSub.current_period_start;
+          subscriptionEnd = subscriptionEnd || dbSub.current_period_end;
+          logStep("Using DB dates as fallback", { start: subscriptionStart, end: subscriptionEnd });
+        }
+      }
+      
+      logStep("Subscription dates", { start: subscriptionStart, end: subscriptionEnd });
       
       const priceId = subscription.items.data[0]?.price?.id;
       // Mapeia price_id para plan_id

@@ -120,6 +120,7 @@ serve(async (req) => {
           planId = 'enterprise';
         }
 
+        // Get dates from Stripe (if available)
         const startIso = sub.current_period_start 
           ? new Date(sub.current_period_start * 1000).toISOString() 
           : null;
@@ -127,20 +128,7 @@ serve(async (req) => {
           ? new Date(sub.current_period_end * 1000).toISOString() 
           : null;
 
-        if (!startIso || !endIso) {
-          logStep("Invalid subscription dates from Stripe", { 
-            customerId: customer.id,
-            subscriptionId: sub.id 
-          });
-          results.errors.push({
-            customerId: customer.id,
-            email: customer.email,
-            error: "Invalid dates from Stripe"
-          });
-          continue;
-        }
-
-        // Check if subscription exists
+        // Check if subscription exists in DB
         const { data: existingSub } = await supabaseClient
           .from("subscriptions")
           .select("id, plan_id, current_period_start, current_period_end, cancel_at_period_end")
@@ -148,13 +136,33 @@ serve(async (req) => {
           .eq("status", "active")
           .maybeSingle();
 
+        // Use Stripe dates if available, otherwise keep existing DB dates
+        const finalStartIso = startIso || existingSub?.current_period_start;
+        const finalEndIso = endIso || existingSub?.current_period_end;
+
+        // Only error if we have no dates at all (neither Stripe nor DB)
+        if (!finalStartIso || !finalEndIso) {
+          logStep("No valid subscription dates available", { 
+            customerId: customer.id,
+            subscriptionId: sub.id,
+            stripeHasDates: !!(startIso && endIso),
+            dbHasDates: !!(existingSub?.current_period_start && existingSub?.current_period_end)
+          });
+          results.errors.push({
+            customerId: customer.id,
+            email: customer.email,
+            error: "No valid dates from Stripe or DB"
+          });
+          continue;
+        }
+
         const payload = {
           customer_id: customer.id,
           plan_id: planId,
           status: sub.status || 'active',
           cancel_at_period_end: sub.cancel_at_period_end || false,
-          current_period_start: startIso,
-          current_period_end: endIso,
+          current_period_start: finalStartIso,
+          current_period_end: finalEndIso,
         };
 
         if (existingSub) {
