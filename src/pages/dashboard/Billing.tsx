@@ -219,11 +219,11 @@ export default function BillingPage() {
   return <div className="space-y-12 max-w-7xl mx-auto">
 
       {/* Cancelamento pendente */}
-      {subscription?.cancel_at_period_end && plan?.id !== 'free' && <Alert variant="destructive" className="flex items-center gap-4">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+      {subscription?.cancel_at_period_end && plan?.id !== 'free' && <Alert className="flex items-center gap-4 border-destructive/20 bg-destructive/10">
+          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
           <div className="flex-1 min-w-0">
-            <AlertTitle className="mb-1">Assinatura cancelada</AlertTitle>
-            <AlertDescription>
+            <AlertTitle className="mb-1 text-destructive">Assinatura cancelada</AlertTitle>
+            <AlertDescription className="text-destructive/90">
               Seu plano Premium será cancelado em{' '}
               {new Date(subscription.current_period_end).toLocaleDateString('pt-BR', {
             day: '2-digit',
