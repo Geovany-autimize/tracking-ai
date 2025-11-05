@@ -281,7 +281,7 @@ export default function BillingPage() {
                   <Button variant="outline" size="sm" onClick={handleManageSubscription} disabled={isProcessing}>
                     Gerenciar assinatura
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={handleRefreshSubscription} disabled={isCheckingSubscription} title="Atualizar assinatura e créditos">
+                  <Button variant="outline" size="sm" onClick={handleRefreshSubscription} disabled={isCheckingSubscription} title="Atualizar assinatura e créditos" className="shrink-0 bg-background hover:bg-background/80">
                     <RefreshCw className={`w-4 h-4 ${isCheckingSubscription ? 'animate-spin' : ''}`} />
                   </Button>
                 </>}
