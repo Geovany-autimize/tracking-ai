@@ -457,14 +457,26 @@ export default function BillingPage() {
               onClick={() => setBuyCreditsOpen(true)}
               disabled={!canBuyExtraCredits}
               className={cn(
-                "w-full",
+                "w-full relative",
                 !canBuyExtraCredits && "opacity-60"
               )}
               size="lg"
             >
               <Zap className="w-4 h-4 mr-2" />
-              {canBuyExtraCredits ? 'Comprar Créditos Extras' : 'Requer Premium'}
+              Comprar Créditos Extras
+              {!canBuyExtraCredits && (
+                <Badge className="ml-2 bg-primary/10 text-primary border-primary/20">
+                  <Crown className="w-3 h-3 mr-1" />
+                  Premium
+                </Badge>
+              )}
             </Button>
+
+            {!canBuyExtraCredits && (
+              <p className="text-xs text-center text-muted-foreground">
+                Disponível no plano Premium
+              </p>
+            )}
 
             {/* Additional Info */}
             {!subscription?.cancel_at_period_end && subscription?.current_period_end && (
