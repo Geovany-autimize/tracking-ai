@@ -166,13 +166,20 @@ serve(async (req) => {
     try {
       if (hasActiveSub) {
         const updatePayload: any = {
-          current_period_start: subscriptionStart || null,
-          current_period_end: subscriptionEnd || null,
           cancel_at_period_end: cancelAtPeriodEnd,
           stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
           status: 'active',
           plan_id: planId,
         };
+        
+        // Only update dates if we have valid values from Stripe (don't overwrite with null)
+        if (subscriptionStart) {
+          updatePayload.current_period_start = subscriptionStart;
+        }
+        if (subscriptionEnd) {
+          updatePayload.current_period_end = subscriptionEnd;
+        }
+        
         const { error: upErr } = await supabaseClient
           .from("subscriptions")
           .update(updatePayload)
@@ -181,7 +188,10 @@ serve(async (req) => {
         if (upErr) {
           logStep("Failed to persist subscription dates", { error: upErr.message });
         } else {
-          logStep("Persisted subscription dates to DB", { start: updatePayload.current_period_start, end: updatePayload.current_period_end });
+          logStep("Persisted subscription dates to DB", { 
+            updatedStart: subscriptionStart ? "yes" : "no",
+            updatedEnd: subscriptionEnd ? "yes" : "no"
+          });
         }
       }
     } catch (e) {

@@ -33,7 +33,7 @@ serve(async (req) => {
     // Fetch all active subscriptions that have a stripe_subscription_id
     const { data: subs, error: subsError } = await supabase
       .from("subscriptions")
-      .select("id, customer_id, plan_id, stripe_subscription_id")
+      .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end")
       .eq("status", "active")
       .not("stripe_subscription_id", "is", null);
 
@@ -57,13 +57,23 @@ serve(async (req) => {
 
         const sub = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
 
-        // Compute ISO date strings if available
+        // Log raw Stripe values
+        logStep("Raw Stripe values", {
+          stripeId: sub.id,
+          current_period_start: sub.current_period_start,
+          current_period_end: sub.current_period_end,
+          start_date: sub.start_date,
+        });
+
+        // Convert Unix timestamps to ISO strings with fallback
         const startIso = sub.current_period_start
           ? new Date(sub.current_period_start * 1000).toISOString()
-          : null;
+          : (sub.start_date ? new Date(sub.start_date * 1000).toISOString() : null);
         const endIso = sub.current_period_end
           ? new Date(sub.current_period_end * 1000).toISOString()
           : null;
+
+        logStep("Converted ISO dates", { startIso, endIso });
 
         // Map price to plan_id
         const priceId = sub.items.data[0]?.price?.id;
@@ -71,9 +81,20 @@ serve(async (req) => {
         if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') planId = 'premium';
         else if (priceId) planId = 'enterprise';
 
+        // Coalesce with existing DB values to prevent overwriting with null
+        const startToSave = startIso ?? dbSub.current_period_start;
+        const endToSave = endIso ?? dbSub.current_period_end;
+
+        logStep("Values to save (after coalescing)", {
+          startToSave,
+          endToSave,
+          dbStart: dbSub.current_period_start,
+          dbEnd: dbSub.current_period_end,
+        });
+
         const payload: any = {
-          current_period_start: startIso,
-          current_period_end: endIso,
+          current_period_start: startToSave,
+          current_period_end: endToSave,
           cancel_at_period_end: sub.cancel_at_period_end || false,
           status: sub.status || 'active',
           plan_id: planId,
@@ -90,8 +111,8 @@ serve(async (req) => {
         logStep("Updated dates for subscription", {
           supabaseId: dbSub.id,
           stripeId: sub.id,
-          startIso,
-          endIso,
+          startToSave,
+          endToSave,
           cancelAtPeriodEnd: payload.cancel_at_period_end,
           status: payload.status,
           planId,
