@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X, ChevronDown } from 'lucide-react';
+import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X, ChevronDown, Database } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,6 +33,7 @@ export default function BillingPage() {
   } = useCredits();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
 
   // Verifica status da assinatura ao carregar a página
@@ -220,6 +221,56 @@ export default function BillingPage() {
     }
   };
 
+  const handleSyncAllSubscriptions = async () => {
+    const confirmed = window.confirm(
+      'ATENÇÃO: Esta operação irá sincronizar TODOS os planos de TODOS os usuários com o Stripe. Isso pode levar alguns minutos. Deseja continuar?'
+    );
+    
+    if (!confirmed) return;
+
+    setIsSyncingAll(true);
+    const loadingToast = toast.loading('Sincronizando todos os planos com o Stripe...');
+    
+    try {
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        toast.error('Você precisa estar logado');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('sync-all-subscriptions', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (error) {
+        console.error('Error syncing subscriptions:', error);
+        toast.error('Erro ao sincronizar planos', {
+          description: error.message
+        });
+        return;
+      }
+
+      const results = data?.results;
+      if (results) {
+        toast.success('Sincronização concluída!', {
+          description: `✅ ${results.updated} atualizados, ${results.created} criados, ${results.removed} removidos, ${results.skipped} ignorados${results.errors.length > 0 ? `, ${results.errors.length} erros` : ''}`,
+          duration: 10000,
+        });
+        
+        // Refresh current user's subscription
+        await checkSubscription();
+      }
+    } catch (error) {
+      console.error('Error in handleSyncAllSubscriptions:', error);
+      toast.error('Erro ao processar sincronização');
+    } finally {
+      toast.dismiss(loadingToast);
+      setIsSyncingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-12 max-w-7xl mx-auto">
 
@@ -273,6 +324,16 @@ export default function BillingPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleSyncAllSubscriptions}
+                disabled={isSyncingAll}
+                className="text-muted-foreground hover:text-foreground"
+                title="Sincronizar todos os planos com o Stripe (Admin)"
+              >
+                <Database className={`w-4 h-4 ${isSyncingAll ? 'animate-pulse' : ''}`} />
+              </Button>
               {plan?.id !== 'free' && (
                 <>
                   <Button 
