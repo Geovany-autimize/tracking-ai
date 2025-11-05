@@ -167,16 +167,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Atualiza apenas o plan_id na subscription
-      if (subscription && data.plan_id) {
-        setSubscription({
-          ...subscription,
-          plan_id: data.plan_id,
-        });
-      }
+      // Update subscription state with data from Stripe
+      const updatedSubscription: Subscription = {
+        plan_id: data.plan_id || 'free',
+        status: data.subscribed ? 'active' : 'inactive',
+        current_period_start: data.subscription_start || '',
+        current_period_end: data.subscription_end || '',
+        cancel_at_period_end: data.cancel_at_period_end || false,
+      };
+      setSubscription(updatedSubscription);
 
-      // Busca os dados do plano atualizado
-      await refreshSession();
+      // Fetch plan details if plan_id changed
+      if (data.plan_id && (!plan || plan.id !== data.plan_id)) {
+        const { data: planData, error: planError } = await supabase
+          .from('plans')
+          .select('*')
+          .eq('id', data.plan_id)
+          .single();
+
+        if (!planError && planData) {
+          setPlan(planData);
+        }
+      }
     } catch (error) {
       console.error('Error checking subscription:', error);
     }

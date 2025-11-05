@@ -95,7 +95,7 @@ serve(async (req) => {
     const hasActiveSub = subscriptions.data.length > 0;
     let planId = 'free';
     let subscriptionEnd = null;
-
+    let subscriptionStart = null;
     let cancelAtPeriodEnd = false;
     
     if (hasActiveSub) {
@@ -104,23 +104,20 @@ serve(async (req) => {
       logStep("Subscription details", { 
         subscriptionId: subscription.id, 
         status: subscription.status,
+        currentPeriodStart: subscription.current_period_start,
         currentPeriodEnd: subscription.current_period_end,
         priceId: subscription.items.data[0]?.price?.id,
         cancelAtPeriodEnd 
       });
       
-      // Validate and convert subscription end date
-      if (subscription.current_period_end) {
-        try {
-          subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-          logStep("Subscription end date converted", { endDate: subscriptionEnd });
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          logStep("Error converting date", { error: errorMsg, value: subscription.current_period_end });
-          // Use a default end date if conversion fails
-          subscriptionEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-        }
+      // Convert subscription dates directly from Stripe (no fallbacks)
+      if (subscription.current_period_start) {
+        subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
       }
+      if (subscription.current_period_end) {
+        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      }
+      logStep("Subscription dates from Stripe", { start: subscriptionStart, end: subscriptionEnd });
       
       const priceId = subscription.items.data[0]?.price?.id;
       // Mapeia price_id para plan_id
@@ -137,6 +134,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_id: planId,
+      subscription_start: subscriptionStart,
       subscription_end: subscriptionEnd,
       cancel_at_period_end: cancelAtPeriodEnd
     }), {

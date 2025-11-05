@@ -95,16 +95,19 @@ serve(async (req) => {
               planId = 'enterprise';
             }
 
-            const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : new Date().toISOString();
-            const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString();
+            const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null;
+            const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
 
-            finalSubscription = {
-              plan_id: planId,
-              status: sub.status || 'active',
-              current_period_start: startIso,
-              current_period_end: endIso,
-              cancel_at_period_end: sub.cancel_at_period_end || false,
-            };
+            // Only set subscription if we have valid dates from Stripe
+            if (startIso && endIso) {
+              finalSubscription = {
+                plan_id: planId,
+                status: sub.status || 'active',
+                current_period_start: startIso,
+                current_period_end: endIso,
+                cancel_at_period_end: sub.cancel_at_period_end || false,
+              };
+            }
           }
         }
       }
@@ -124,11 +127,17 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Check if update is needed
+      // Convert dates to epoch milliseconds for accurate comparison
+      const dbStartMs = existingSub?.current_period_start ? new Date(existingSub.current_period_start).getTime() : null;
+      const dbEndMs = existingSub?.current_period_end ? new Date(existingSub.current_period_end).getTime() : null;
+      const stripeStartMs = finalSubscription.current_period_start ? new Date(finalSubscription.current_period_start).getTime() : null;
+      const stripeEndMs = finalSubscription.current_period_end ? new Date(finalSubscription.current_period_end).getTime() : null;
+
+      // Check if update is needed (comparing by epoch milliseconds)
       const needsUpdate = !existingSub || 
         existingSub.plan_id !== finalSubscription.plan_id ||
-        existingSub.current_period_start !== finalSubscription.current_period_start ||
-        existingSub.current_period_end !== finalSubscription.current_period_end ||
+        dbStartMs !== stripeStartMs ||
+        dbEndMs !== stripeEndMs ||
         existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false);
 
       if (needsUpdate) {
@@ -137,8 +146,8 @@ serve(async (req) => {
           new: finalSubscription,
           changes: existingSub ? {
             plan: existingSub.plan_id !== finalSubscription.plan_id,
-            period_start: existingSub.current_period_start !== finalSubscription.current_period_start,
-            period_end: existingSub.current_period_end !== finalSubscription.current_period_end,
+            period_start: dbStartMs !== stripeStartMs,
+            period_end: dbEndMs !== stripeEndMs,
             cancel_flag: existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false)
           } : 'all (new subscription)'
         });
@@ -147,10 +156,16 @@ serve(async (req) => {
           customer_id: customer.id,
           plan_id: finalSubscription.plan_id,
           status: finalSubscription.status,
-          current_period_start: finalSubscription.current_period_start,
-          current_period_end: finalSubscription.current_period_end,
           cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
         } as any;
+
+        // Only include dates if Stripe provides them
+        if (stripeStartMs !== null) {
+          payload.current_period_start = finalSubscription.current_period_start;
+        }
+        if (stripeEndMs !== null) {
+          payload.current_period_end = finalSubscription.current_period_end;
+        }
 
         if (existingSub) {
           await supabase
