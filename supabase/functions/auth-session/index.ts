@@ -115,32 +115,55 @@ serve(async (req) => {
     // Sync subscriptions table with Stripe result, then fetch plan details
     let plan = null as any;
     if (finalSubscription) {
-      // Ensure DB reflects Stripe subscription
+      // Fetch all relevant fields to compare
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id')
+        .select('id, plan_id, current_period_start, current_period_end, cancel_at_period_end, status')
         .eq('customer_id', customer.id)
         .eq('status', 'active')
-        .limit(1);
+        .limit(1)
+        .single();
 
-      const payload = {
-        customer_id: customer.id,
-        plan_id: finalSubscription.plan_id,
-        status: finalSubscription.status,
-        current_period_start: finalSubscription.current_period_start,
-        current_period_end: finalSubscription.current_period_end,
-        cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
-      } as any;
+      // Check if update is needed
+      const needsUpdate = !existingSub || 
+        existingSub.plan_id !== finalSubscription.plan_id ||
+        existingSub.current_period_start !== finalSubscription.current_period_start ||
+        existingSub.current_period_end !== finalSubscription.current_period_end ||
+        existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false);
 
-      if (existingSub && existingSub.length > 0) {
-        await supabase
-          .from('subscriptions')
-          .update(payload)
-          .eq('id', existingSub[0].id);
+      if (needsUpdate) {
+        console.log('[AUTH-SESSION] 🔄 Subscription changed, syncing with Stripe', {
+          old: existingSub || 'new',
+          new: finalSubscription,
+          changes: existingSub ? {
+            plan: existingSub.plan_id !== finalSubscription.plan_id,
+            period_start: existingSub.current_period_start !== finalSubscription.current_period_start,
+            period_end: existingSub.current_period_end !== finalSubscription.current_period_end,
+            cancel_flag: existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false)
+          } : 'all (new subscription)'
+        });
+
+        const payload = {
+          customer_id: customer.id,
+          plan_id: finalSubscription.plan_id,
+          status: finalSubscription.status,
+          current_period_start: finalSubscription.current_period_start,
+          current_period_end: finalSubscription.current_period_end,
+          cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
+        } as any;
+
+        if (existingSub) {
+          await supabase
+            .from('subscriptions')
+            .update(payload)
+            .eq('id', existingSub.id);
+        } else {
+          await supabase
+            .from('subscriptions')
+            .insert(payload);
+        }
       } else {
-        await supabase
-          .from('subscriptions')
-          .insert(payload);
+        console.log('[AUTH-SESSION] ✅ No changes detected, keeping existing subscription');
       }
 
       const { data: planData } = await supabase
