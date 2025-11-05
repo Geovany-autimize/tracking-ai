@@ -122,7 +122,7 @@ serve(async (req) => {
         .eq('customer_id', customer.id)
         .eq('status', 'active')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       // Check if update is needed
       const needsUpdate = !existingSub || 

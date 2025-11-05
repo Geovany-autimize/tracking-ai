@@ -122,12 +122,12 @@ serve(async (req) => {
 
             // Registrar na tabela de auditoria (non-blocking)
             if (trackingCode) {
-              supabaseAdmin.from('credit_usage').insert({
+              void supabaseAdmin.from('credit_usage').insert({
                 customer_id: sessionData.customer_id,
                 tracking_code: trackingCode,
                 credits_consumed: 1,
                 source_type: 'monthly',
-              }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+              });
             }
 
             return new Response(JSON.stringify({
@@ -187,12 +187,12 @@ serve(async (req) => {
 
               // Registrar na tabela de auditoria (non-blocking)
               if (trackingCode) {
-                supabaseAdmin.from('credit_usage').insert({
+                void supabaseAdmin.from('credit_usage').insert({
                   customer_id: sessionData.customer_id,
                   tracking_code: trackingCode,
                   credits_consumed: 1,
                   source_type: 'monthly',
-                }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+                });
               }
 
               return new Response(JSON.stringify({
@@ -257,13 +257,13 @@ serve(async (req) => {
 
     // Registrar na tabela de auditoria (non-blocking)
     if (trackingCode) {
-      supabaseAdmin.from('credit_usage').insert({
+      void supabaseAdmin.from('credit_usage').insert({
         customer_id: sessionData.customer_id,
         tracking_code: trackingCode,
         credits_consumed: 1,
         source_type: 'purchase',
         purchase_id: availablePurchase.id,
-      }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+      });
     }
 
     // Check if auto-recharge should be triggered
