@@ -124,13 +124,16 @@ serve(async (req) => {
     let subscriptionStart = null;
     let cancelAtPeriodEnd = false;
     let stripeSubscriptionId = null;
+    let stripeCanceledAt = null;
     
     if (hasActiveSub && subscription) {
       cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
       stripeSubscriptionId = subscription.id;
+      stripeCanceledAt = subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
       logStep("Found active subscription", { 
         subscriptionId: subscription.id,
-        cancelAtPeriodEnd 
+        cancelAtPeriodEnd,
+        canceledAt: stripeCanceledAt
       });
       
       // Extract from subscription item when available (Stripe 2025 API may not include top-level period fields)
@@ -188,7 +191,8 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               current_period_start: subscriptionStart,
               current_period_end: subscriptionEnd,
-              cancel_at_period_end: cancelAtPeriodEnd
+              cancel_at_period_end: cancelAtPeriodEnd,
+              canceled_at: stripeCanceledAt
             });
 
           logStep("New subscription created from Stripe");
@@ -220,7 +224,8 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               current_period_start: subscriptionStart,
               current_period_end: subscriptionEnd,
-              cancel_at_period_end: cancelAtPeriodEnd
+              cancel_at_period_end: cancelAtPeriodEnd,
+              canceled_at: stripeCanceledAt
             });
 
           logStep("Old subscription canceled, new subscription created");
@@ -237,6 +242,7 @@ serve(async (req) => {
             stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
             status: 'active',
             plan_id: planId,
+            canceled_at: stripeCanceledAt
           };
           
           // Only update dates if we have valid values from Stripe (don't overwrite with null)

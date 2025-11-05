@@ -74,7 +74,7 @@ serve(async (req) => {
 
     // Try to resolve subscription status directly from Stripe
     let finalSubscription = dbSubscription as
-      | { plan_id: string; status: string; current_period_start: string; current_period_end: string; cancel_at_period_end?: boolean; stripe_subscription_id?: string }
+      | { plan_id: string; status: string; current_period_start: string; current_period_end: string; cancel_at_period_end?: boolean; stripe_subscription_id?: string; canceled_at?: string | null }
       | null;
 
     try {
@@ -117,6 +117,7 @@ serve(async (req) => {
 
           const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : dbSubscription?.current_period_start;
           const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : dbSubscription?.current_period_end;
+          const stripeCanceledAt = sub.canceled_at ? new Date(sub.canceled_at * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
 
           // Set subscription if we have valid dates (from Stripe or DB)
           if (startIso && endIso) {
@@ -127,6 +128,7 @@ serve(async (req) => {
               current_period_end: endIso,
               cancel_at_period_end: sub.cancel_at_period_end || false,
               stripe_subscription_id: sub.id,
+              canceled_at: stripeCanceledAt
             };
           }
         }
@@ -166,7 +168,8 @@ serve(async (req) => {
             stripe_subscription_id: stripeSubId,
             current_period_start: finalSubscription.current_period_start,
             current_period_end: finalSubscription.current_period_end,
-            cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false
+            cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
+            canceled_at: (finalSubscription as any).canceled_at || null
           });
 
         console.log('[AUTH-SESSION] ✅ New subscription created from Stripe');
@@ -198,7 +201,8 @@ serve(async (req) => {
             stripe_subscription_id: stripeSubId,
             current_period_start: finalSubscription.current_period_start,
             current_period_end: finalSubscription.current_period_end,
-            cancel_at_period_end: false
+            cancel_at_period_end: false,
+            canceled_at: (finalSubscription as any).canceled_at || null
           });
 
         console.log('[AUTH-SESSION] ✅ Old subscription canceled, new subscription created');
@@ -233,6 +237,7 @@ serve(async (req) => {
             status: finalSubscription.status,
             cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
             stripe_subscription_id: stripeSubId,
+            canceled_at: (finalSubscription as any).canceled_at || null
           } as any;
 
           // Only include dates if we have them from Stripe
