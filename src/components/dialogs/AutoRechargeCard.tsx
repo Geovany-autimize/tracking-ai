@@ -263,27 +263,25 @@ export const AutoRechargeCard = () => {
     );
   }
 
-  return (
-    <>
-      {isFreePlan && (
-        <div className="mb-4">
-          <PremiumFeatureBadge
-            title="Recarga Automática - Premium"
-            description="Mantenha suas operações sempre ativas com recarga automática de créditos. Disponível no plano Premium."
-            feature="auto_recharge"
-          />
-        </div>
-      )}
+  if (isFreePlan) {
+    return (
+      <PremiumFeatureBadge
+        title="Recarga Automática - Premium"
+        description="Mantenha suas operações sempre ativas com recarga automática de créditos. Disponível no plano Premium."
+        feature="auto_recharge"
+      />
+    );
+  }
 
-      <Card
-        className={cn(
-          'border border-border/60 transition-all duration-300',
-          isFreePlan && 'opacity-60 pointer-events-none',
-          isEnabled
-            ? 'border-green-500/40 shadow-[0_24px_60px_rgba(34,197,94,0.16)] ring-2 ring-green-500/30'
-            : 'hover:border-border'
-        )}
-      >
+  return (
+    <Card
+      className={cn(
+        'border border-border/60 transition-all duration-300',
+        isEnabled
+          ? 'border-green-500/40 shadow-[0_24px_60px_rgba(34,197,94,0.16)] ring-2 ring-green-500/30'
+          : 'hover:border-border'
+      )}
+    >
       <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <CardTitle>Recarga Automática</CardTitle>
@@ -464,6 +462,5 @@ export const AutoRechargeCard = () => {
       </Collapsible>
     </CardContent>
   </Card>
-    </>
   );
 };
