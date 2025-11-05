@@ -49,6 +49,15 @@ export default function BillingPage() {
     : 0;
 
   const getNextRenewalDate = () => {
+    // Use real subscription end date from database (synced with Stripe)
+    if (subscription?.current_period_end) {
+      return new Date(subscription.current_period_end).toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+    }
+    // Fallback to estimated date if subscription data not available
     const now = new Date();
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     return nextMonth.toLocaleDateString('pt-BR', { 
