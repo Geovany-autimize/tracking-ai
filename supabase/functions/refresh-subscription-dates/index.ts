@@ -55,16 +55,26 @@ serve(async (req) => {
           continue;
         }
 
-        const sub = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
+        const sub = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id, {
+          expand: ['items.data.price']
+        });
 
-        // Log full Stripe subscription structure for debugging
-        logStep("Full Stripe subscription object", {
+        // Log COMPLETE Stripe subscription for debugging
+        logStep("FULL STRIPE OBJECT", JSON.stringify(sub, null, 2));
+        
+        // Log specific fields we're interested in
+        logStep("Extracted fields", {
           id: sub.id,
           status: sub.status,
           current_period_start: sub.current_period_start,
           current_period_end: sub.current_period_end,
           start_date: sub.start_date,
+          created: sub.created,
           items_count: sub.items?.data?.length || 0,
+          first_item: sub.items?.data?.[0] ? {
+            id: sub.items.data[0].id,
+            price_id: sub.items.data[0].price?.id,
+          } : null,
           cancel_at_period_end: sub.cancel_at_period_end,
         });
 
