@@ -239,6 +239,25 @@ export default function BillingPage() {
           </Button>
         </Alert>}
 
+      {/* Alerta de uso de créditos */}
+      {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert className="flex items-center gap-4 border-amber-500/20 bg-amber-500/10">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="flex-1 min-w-0">
+            <AlertTitle className="mb-1 text-amber-700 dark:text-amber-400">
+              Atenção: {Math.round(usagePercentage)}% dos créditos usados
+            </AlertTitle>
+            <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
+              {isFreePlan 
+                ? 'Faça upgrade para o plano Premium para ter acesso a mais créditos e recursos avançados.'
+                : 'Considere comprar créditos extras para não ficar sem créditos durante o período.'}
+            </AlertDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => isFreePlan ? handleUpgrade('premium') : setBuyCreditsOpen(true)} disabled={isProcessing} className="shrink-0 bg-background hover:bg-background/80">
+            <Zap className="w-4 h-4 mr-2" />
+            {isFreePlan ? 'Fazer Upgrade' : 'Comprar Créditos'}
+          </Button>
+        </Alert>}
+
       {/* Current Plan Summary */}
       <Card className="border-border/50">
         <CardContent className="p-6 space-y-6">
@@ -285,9 +304,9 @@ export default function BillingPage() {
               const dayOfMonth = accountCreationDate.getDate();
               const nextReset = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
               if (nextReset <= today) {
-                nextReset.setMonth(nextReset.getMonth() + 1);
-              }
-              return <p className="text-sm text-muted-foreground mt-1">
+                  nextReset.setMonth(nextReset.getMonth() + 1);
+                }
+                return <p className="text-sm text-muted-foreground mt-1">
                     Próxima renovação em {nextReset.toLocaleDateString('pt-BR', {
                   day: '2-digit',
                   month: 'long',
@@ -338,17 +357,6 @@ export default function BillingPage() {
                       {Math.round(usagePercentage)}%
                     </p>
                   </div>
-                  
-                  {isFreePlan && customer?.created_at && (() => {
-                const accountCreationDate = new Date(customer.created_at);
-                const today = new Date();
-                const dayOfMonth = accountCreationDate.getDate();
-                const nextReset = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
-                if (nextReset <= today) {
-                  nextReset.setMonth(nextReset.getMonth() + 1);
-                }
-                return;
-              })()}
                 </div>
                 
                 {/* Background decoration */}
@@ -420,19 +428,6 @@ export default function BillingPage() {
             })}
               </p>}
 
-            {/* Usage Warning */}
-            {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert className="border-amber-500/20 bg-amber-500/10">
-                <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                <AlertTitle className="text-amber-700 dark:text-amber-400">
-                  Atenção: {Math.round(usagePercentage)}% dos créditos usados
-                </AlertTitle>
-                <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
-                  Considere fazer upgrade para não ficar sem créditos.
-                  <Button variant="link" size="sm" className="h-auto p-0 ml-1 text-amber-700 dark:text-amber-300" onClick={() => handleUpgrade('premium')}>
-                    Ver planos
-                  </Button>
-                </AlertDescription>
-              </Alert>}
           </div>
         </CardContent>
       </Card>
