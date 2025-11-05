@@ -22,6 +22,7 @@ export default function BillingPage() {
   const { customer, plan, subscription, checkSubscription } = useAuth();
   const { 
     totalCredits,
+    totalPurchasedCredits,
     totalUsed, 
     monthlyCredits, 
     monthlyUsed, 
@@ -398,23 +399,16 @@ export default function BillingPage() {
                     </div>
                   )}
                   
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Créditos usados no período:</span>
-                    <span className="font-semibold text-destructive">
-                      -{(totalUsed || 0).toLocaleString('pt-BR')}
-                    </span>
-                  </div>
-                  
                   <Separator className="my-2" />
                   
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total disponível:</span>
-                    <span className="font-semibold">{(monthlyRemaining + extraCredits).toLocaleString('pt-BR')}</span>
+                    <span className="text-muted-foreground">Total adquirido:</span>
+                    <span className="font-semibold">{totalPurchasedCredits.toLocaleString('pt-BR')}</span>
                   </div>
                   
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Já utilizados:</span>
-                    <span className="font-semibold text-destructive">-{monthlyUsed.toLocaleString('pt-BR')}</span>
+                    <span className="text-muted-foreground">Créditos utilizados:</span>
+                    <span className="font-semibold text-destructive">-{(totalUsed || 0).toLocaleString('pt-BR')}</span>
                   </div>
                   
                   <Separator className="my-2" />
