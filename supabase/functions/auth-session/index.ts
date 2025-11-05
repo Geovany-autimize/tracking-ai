@@ -13,15 +13,13 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const sessionToken = req.headers.get('x-session-token');
+    if (!sessionToken) {
       return new Response(
         JSON.stringify({ error: 'Token não fornecido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const sessionToken = authHeader.replace('Bearer ', '');
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

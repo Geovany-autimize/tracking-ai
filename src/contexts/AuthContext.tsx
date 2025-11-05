@@ -70,11 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('auth-session', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke('auth-session');
 
       if (error || !data) {
         clearSessionToken();
@@ -176,11 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!token) return;
 
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const { data, error } = await supabase.functions.invoke('check-subscription');
 
       if (error || !data) {
         console.error('Error checking subscription:', error);
@@ -205,11 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const token = getSessionToken();
     if (token) {
-      await supabase.functions.invoke('auth-logout', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      await supabase.functions.invoke('auth-logout');
     }
     clearSessionToken();
     setCustomer(null);
