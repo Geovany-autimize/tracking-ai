@@ -21,7 +21,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function BillingPage() {
   const { customer, plan, subscription, checkSubscription } = useAuth();
   const { 
-    totalCredits, 
+    totalCredits,
+    totalUsed, 
     monthlyCredits, 
     monthlyUsed, 
     monthlyRemaining,
@@ -396,6 +397,13 @@ export default function BillingPage() {
                       </span>
                     </div>
                   )}
+                  
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Créditos usados no período:</span>
+                    <span className="font-semibold text-destructive">
+                      -{(totalUsed || 0).toLocaleString('pt-BR')}
+                    </span>
+                  </div>
                   
                   <Separator className="my-2" />
                   

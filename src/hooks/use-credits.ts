@@ -40,12 +40,19 @@ export function useCredits() {
   const extraCredits = Math.max(0, (availableCredits || 0) - monthlyRemaining);
 
   return {
-    // Valores
-    totalCredits: availableCredits,
+    // Valores totais
+    totalCredits: availableCredits, // Créditos disponíveis (já descontados os usados)
+    totalUsed: usedCredits, // Total de créditos usados no período
+    
+    // Créditos mensais
     monthlyCredits,
     monthlyUsed,
     monthlyRemaining,
+    
+    // Créditos extras
     extraCredits,
+    
+    // Estado
     loading,
     
     // Funções

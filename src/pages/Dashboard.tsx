@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Package, CheckCircle, AlertTriangle, Plus, LogOut } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCredits } from "@/hooks/use-credits";
 
 export default function Dashboard() {
-  const { customer, plan, usage, loading, logout } = useAuth();
+  const { customer, plan, loading, logout } = useAuth();
+  const { totalCredits, monthlyUsed, monthlyCredits } = useCredits();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,9 +30,10 @@ export default function Dashboard() {
     return null;
   }
 
-  const totalCredits = plan.monthly_credits || 0;
-  const usedCredits = usage?.used_credits || 0;
-  const isQuotaExceeded = usedCredits >= totalCredits;
+  const availableCredits = totalCredits || 0;
+  const usedCredits = monthlyUsed || 0;
+  const planCredits = monthlyCredits || 0;
+  const isQuotaExceeded = availableCredits === 0;
   
   const nextReset = new Date();
   nextReset.setMonth(nextReset.getMonth() + 1);
@@ -54,8 +57,8 @@ export default function Dashboard() {
           
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Créditos: <span className="font-semibold text-foreground">{usedCredits}/{totalCredits}</span>
-              <span className="ml-2">Reset: {nextReset.toLocaleDateString('pt-BR')}</span>
+              Créditos: <span className="font-semibold text-foreground">{availableCredits}</span>
+              <span className="ml-2">Usados: {usedCredits}/{planCredits}</span>
             </div>
             <Badge variant={plan.id === "premium" ? "default" : "secondary"}>
               {plan.name}
@@ -76,10 +79,10 @@ export default function Dashboard() {
               <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="font-semibold text-foreground">
-                  Você atingiu seus {totalCredits} créditos deste mês
+                  Você atingiu o limite de créditos disponíveis
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Assine o Premium para continuar rastreando sem interrupções (1.500 créditos/mês).
+                  Compre mais créditos ou assine o Premium para continuar rastreando sem interrupções.
                 </p>
                 <Button className="mt-3" asChild>
                   <a href="/#pricing">Ver Planos</a>
