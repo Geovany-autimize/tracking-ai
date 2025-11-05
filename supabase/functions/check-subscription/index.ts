@@ -72,7 +72,7 @@ serve(async (req) => {
     // Check if we have stripe_subscription_id in DB
     const { data: dbSub } = await supabaseClient
       .from("subscriptions")
-      .select("stripe_subscription_id, current_period_start, current_period_end")
+      .select("id, stripe_subscription_id, current_period_start, current_period_end")
       .eq("customer_id", sessionData.customer_id)
       .eq("status", "active")
       .maybeSingle();
@@ -172,33 +172,72 @@ serve(async (req) => {
     // Persist Stripe dates in DB when available
     try {
       if (hasActiveSub) {
-        const updatePayload: any = {
-          cancel_at_period_end: cancelAtPeriodEnd,
-          stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
-          status: 'active',
-          plan_id: planId,
-        };
-        
-        // Only update dates if we have valid values from Stripe (don't overwrite with null)
-        if (subscriptionStart) {
-          updatePayload.current_period_start = subscriptionStart;
-        }
-        if (subscriptionEnd) {
-          updatePayload.current_period_end = subscriptionEnd;
-        }
-        
-        const { error: upErr } = await supabaseClient
-          .from("subscriptions")
-          .update(updatePayload)
-          .eq("customer_id", sessionData.customer_id)
-          .eq("status", "active");
-        if (upErr) {
-          logStep("Failed to persist subscription dates", { error: upErr.message });
-        } else {
-          logStep("Persisted subscription dates to DB", { 
-            updatedStart: subscriptionStart ? "yes" : "no",
-            updatedEnd: subscriptionEnd ? "yes" : "no"
+        // CRITICAL: Detect if stripe_subscription_id changed (user canceled and re-subscribed)
+        const subscriptionIdChanged = dbSub?.stripe_subscription_id 
+          && stripeSubscriptionId 
+          && dbSub.stripe_subscription_id !== stripeSubscriptionId;
+
+        if (subscriptionIdChanged) {
+          // User canceled and re-subscribed: mark old as canceled + create new
+          logStep("Stripe subscription ID changed - marking old as canceled and creating new", {
+            old_stripe_id: dbSub.stripe_subscription_id,
+            new_stripe_id: stripeSubscriptionId,
+            customer_id: sessionData.customer_id
           });
+
+          // Mark old subscription as canceled
+          await supabaseClient
+            .from("subscriptions")
+            .update({
+              status: 'canceled',
+              canceled_at: new Date().toISOString()
+            })
+            .eq("id", dbSub.id);
+
+          // Create new subscription
+          await supabaseClient
+            .from("subscriptions")
+            .insert({
+              customer_id: sessionData.customer_id,
+              plan_id: planId,
+              status: 'active',
+              stripe_subscription_id: stripeSubscriptionId,
+              current_period_start: subscriptionStart,
+              current_period_end: subscriptionEnd,
+              cancel_at_period_end: false
+            });
+
+          logStep("Old subscription canceled, new subscription created");
+        } else {
+          // Normal update flow
+          const updatePayload: any = {
+            cancel_at_period_end: cancelAtPeriodEnd,
+            stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
+            status: 'active',
+            plan_id: planId,
+          };
+          
+          // Only update dates if we have valid values from Stripe (don't overwrite with null)
+          if (subscriptionStart) {
+            updatePayload.current_period_start = subscriptionStart;
+          }
+          if (subscriptionEnd) {
+            updatePayload.current_period_end = subscriptionEnd;
+          }
+          
+          const { error: upErr } = await supabaseClient
+            .from("subscriptions")
+            .update(updatePayload)
+            .eq("customer_id", sessionData.customer_id)
+            .eq("status", "active");
+          if (upErr) {
+            logStep("Failed to persist subscription dates", { error: upErr.message });
+          } else {
+            logStep("Persisted subscription dates to DB", { 
+              updatedStart: subscriptionStart ? "yes" : "no",
+              updatedEnd: subscriptionEnd ? "yes" : "no"
+            });
+          }
         }
       }
     } catch (e) {

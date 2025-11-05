@@ -74,7 +74,7 @@ serve(async (req) => {
 
     // Try to resolve subscription status directly from Stripe
     let finalSubscription = dbSubscription as
-      | { plan_id: string; status: string; current_period_start: string; current_period_end: string; cancel_at_period_end?: boolean }
+      | { plan_id: string; status: string; current_period_start: string; current_period_end: string; cancel_at_period_end?: boolean; stripe_subscription_id?: string }
       | null;
 
     try {
@@ -126,6 +126,7 @@ serve(async (req) => {
               current_period_start: startIso,
               current_period_end: endIso,
               cancel_at_period_end: sub.cancel_at_period_end || false,
+              stripe_subscription_id: sub.id,
             };
           }
         }
@@ -146,60 +147,99 @@ serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      // Convert dates to epoch milliseconds for accurate comparison
-      const dbStartMs = existingSub?.current_period_start ? new Date(existingSub.current_period_start).getTime() : null;
-      const dbEndMs = existingSub?.current_period_end ? new Date(existingSub.current_period_end).getTime() : null;
-      const stripeStartMs = finalSubscription.current_period_start ? new Date(finalSubscription.current_period_start).getTime() : null;
-      const stripeEndMs = finalSubscription.current_period_end ? new Date(finalSubscription.current_period_end).getTime() : null;
+      const stripeSubId = (finalSubscription as any).stripe_subscription_id || null;
+      
+      // CRITICAL: Detect if stripe_subscription_id changed (user canceled and re-subscribed)
+      const subscriptionIdChanged = existingSub?.stripe_subscription_id 
+        && stripeSubId 
+        && existingSub.stripe_subscription_id !== stripeSubId;
 
-      // Check if update is needed (comparing by epoch milliseconds)
-      const needsUpdate = !existingSub || 
-        existingSub.plan_id !== finalSubscription.plan_id ||
-        dbStartMs !== stripeStartMs ||
-        dbEndMs !== stripeEndMs ||
-        existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false) ||
-        !existingSub.stripe_subscription_id;
-
-      if (needsUpdate) {
-        console.log('[AUTH-SESSION] 🔄 Subscription changed, syncing with Stripe', {
-          old: existingSub || 'new',
-          new: finalSubscription,
-          changes: existingSub ? {
-            plan: existingSub.plan_id !== finalSubscription.plan_id,
-            period_start: dbStartMs !== stripeStartMs,
-            period_end: dbEndMs !== stripeEndMs,
-            cancel_flag: existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false)
-          } : 'all (new subscription)'
+      if (subscriptionIdChanged) {
+        // User canceled and re-subscribed: mark old as canceled + create new
+        console.log('[AUTH-SESSION] 🔄 Stripe subscription ID changed - marking old as canceled and creating new', {
+          old_stripe_id: existingSub.stripe_subscription_id,
+          new_stripe_id: stripeSubId,
+          customer_id: customer.id
         });
 
-        const payload = {
-          customer_id: customer.id,
-          plan_id: finalSubscription.plan_id,
-          status: finalSubscription.status,
-          cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
-          stripe_subscription_id: dbSubscription?.stripe_subscription_id || null,
-        } as any;
+        // Mark old subscription as canceled
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString()
+          })
+          .eq('id', existingSub.id);
 
-        // Only include dates if we have them (from Stripe or DB)
-        if (finalSubscription.current_period_start) {
-          payload.current_period_start = finalSubscription.current_period_start;
-        }
-        if (finalSubscription.current_period_end) {
-          payload.current_period_end = finalSubscription.current_period_end;
-        }
+        // Create new subscription
+        await supabase
+          .from('subscriptions')
+          .insert({
+            customer_id: customer.id,
+            plan_id: finalSubscription.plan_id,
+            status: 'active',
+            stripe_subscription_id: stripeSubId,
+            current_period_start: finalSubscription.current_period_start,
+            current_period_end: finalSubscription.current_period_end,
+            cancel_at_period_end: false
+          });
 
-        if (existingSub) {
-          await supabase
-            .from('subscriptions')
-            .update(payload)
-            .eq('id', existingSub.id);
-        } else {
-          await supabase
-            .from('subscriptions')
-            .insert(payload);
-        }
+        console.log('[AUTH-SESSION] ✅ Old subscription canceled, new subscription created');
       } else {
-        console.log('[AUTH-SESSION] ✅ No changes detected, keeping existing subscription');
+        // Normal update flow: check if any fields changed
+        const dbStartMs = existingSub?.current_period_start ? new Date(existingSub.current_period_start).getTime() : null;
+        const dbEndMs = existingSub?.current_period_end ? new Date(existingSub.current_period_end).getTime() : null;
+        const stripeStartMs = finalSubscription.current_period_start ? new Date(finalSubscription.current_period_start).getTime() : null;
+        const stripeEndMs = finalSubscription.current_period_end ? new Date(finalSubscription.current_period_end).getTime() : null;
+
+        const needsUpdate = !existingSub || 
+          existingSub.plan_id !== finalSubscription.plan_id ||
+          dbStartMs !== stripeStartMs ||
+          dbEndMs !== stripeEndMs ||
+          existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false) ||
+          !existingSub.stripe_subscription_id;
+
+        if (needsUpdate) {
+          console.log('[AUTH-SESSION] 🔄 Subscription changed, syncing with Stripe', {
+            old: existingSub || 'new',
+            new: finalSubscription,
+            changes: existingSub ? {
+              plan: existingSub.plan_id !== finalSubscription.plan_id,
+              period_start: dbStartMs !== stripeStartMs,
+              period_end: dbEndMs !== stripeEndMs,
+              cancel_flag: existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false)
+            } : 'all (new subscription)'
+          });
+
+          const payload = {
+            customer_id: customer.id,
+            plan_id: finalSubscription.plan_id,
+            status: finalSubscription.status,
+            cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
+            stripe_subscription_id: stripeSubId,
+          } as any;
+
+          // Only include dates if we have them (from Stripe or DB)
+          if (finalSubscription.current_period_start) {
+            payload.current_period_start = finalSubscription.current_period_start;
+          }
+          if (finalSubscription.current_period_end) {
+            payload.current_period_end = finalSubscription.current_period_end;
+          }
+
+          if (existingSub) {
+            await supabase
+              .from('subscriptions')
+              .update(payload)
+              .eq('id', existingSub.id);
+          } else {
+            await supabase
+              .from('subscriptions')
+              .insert(payload);
+          }
+        } else {
+          console.log('[AUTH-SESSION] ✅ No changes detected, keeping existing subscription');
+        }
       }
 
       const { data: planData } = await supabase
