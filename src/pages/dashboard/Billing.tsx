@@ -381,7 +381,7 @@ export default function BillingPage() {
                   
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      {monthlyUsed.toLocaleString('pt-BR')} de {monthlyCredits.toLocaleString('pt-BR')} usados
+                      {monthlyUsed.toLocaleString('pt-BR')} de {(monthlyCredits + extraCredits).toLocaleString('pt-BR')} usados
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {Math.round(usagePercentage)}%
