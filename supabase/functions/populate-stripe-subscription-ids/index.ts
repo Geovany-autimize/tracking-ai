@@ -129,21 +129,36 @@ serve(async (req) => {
           stripe_subscription_id: matchedSub.id,
         };
 
-        // ALWAYS update dates from Stripe (timestamps are in seconds)
-        if (matchedSub.current_period_start) {
-          updatePayload.current_period_start = new Date(matchedSub.current_period_start * 1000).toISOString();
+        // Extract period timestamps prioritizing subscription item fields
+        const item: any = (matchedSub.items?.data?.[0] as any) || null;
+        const startTs: number | null =
+          (item?.current_period_start as number | undefined) ??
+          (matchedSub.current_period_start as number | undefined) ??
+          (matchedSub.start_date as number | undefined) ??
+          null;
+        const endTs: number | null =
+          (item?.current_period_end as number | undefined) ??
+          (matchedSub.current_period_end as number | undefined) ??
+          null;
+        const formatPgTs = (ts: number | null) => ts ? new Date(ts * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
+
+        const startIso = formatPgTs(startTs);
+        const endIso = formatPgTs(endTs);
+
+        if (startIso) {
+          updatePayload.current_period_start = startIso;
           logStep("Updating start date", {
             supabaseId: sub.id,
-            stripeTimestamp: matchedSub.current_period_start,
-            isoDate: updatePayload.current_period_start
+            stripeTimestamp: startTs,
+            isoDate: startIso
           });
         }
-        if (matchedSub.current_period_end) {
-          updatePayload.current_period_end = new Date(matchedSub.current_period_end * 1000).toISOString();
+        if (endIso) {
+          updatePayload.current_period_end = endIso;
           logStep("Updating end date", {
             supabaseId: sub.id,
-            stripeTimestamp: matchedSub.current_period_end,
-            isoDate: updatePayload.current_period_end
+            stripeTimestamp: endTs,
+            isoDate: endIso
           });
         }
 

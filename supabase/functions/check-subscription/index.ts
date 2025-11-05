@@ -133,18 +133,25 @@ serve(async (req) => {
         cancelAtPeriodEnd 
       });
       
-      // Convert subscription dates from Stripe (if available)
-      if (subscription.current_period_start) {
-        subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
-      }
-      if (subscription.current_period_end) {
-        subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-      }
+      // Extract from subscription item when available (Stripe 2025 API may not include top-level period fields)
+      const item: any = (subscription.items?.data?.[0] as any) || null;
+      const startTs: number | null =
+        (item?.current_period_start as number | undefined) ??
+        (subscription.current_period_start as number | undefined) ??
+        (subscription.start_date as number | undefined) ??
+        null;
+      const endTs: number | null =
+        (item?.current_period_end as number | undefined) ??
+        (subscription.current_period_end as number | undefined) ??
+        null;
+      const formatPgTs = (ts: number | null) => ts ? new Date(ts * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
+      subscriptionStart = formatPgTs(startTs);
+      subscriptionEnd = formatPgTs(endTs);
       
-      // If Stripe doesn't provide dates, use DB fallback
+      // If still missing, use DB fallback
       if (!subscriptionStart || !subscriptionEnd) {
-        subscriptionStart = subscriptionStart || dbSub?.current_period_start;
-        subscriptionEnd = subscriptionEnd || dbSub?.current_period_end;
+        subscriptionStart = subscriptionStart || dbSub?.current_period_start || null;
+        subscriptionEnd = subscriptionEnd || dbSub?.current_period_end || null;
         logStep("Using DB dates as fallback", { start: subscriptionStart, end: subscriptionEnd });
       }
       

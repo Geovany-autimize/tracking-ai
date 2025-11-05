@@ -78,40 +78,26 @@ serve(async (req) => {
           cancel_at_period_end: sub.cancel_at_period_end,
         });
 
-        // Validate that we have the required timestamp fields
-        if (!sub.current_period_start || !sub.current_period_end) {
-          logStep("WARNING: Missing period timestamps from Stripe", {
-            stripeId: sub.id,
-            has_start: !!sub.current_period_start,
-            has_end: !!sub.current_period_end,
-            has_start_date: !!sub.start_date
-          });
-        }
+        // Extract period timestamps prioritizing subscription item fields (Stripe 2025 API may not include top-level period fields)
+        const firstItem: any = sub.items?.data?.[0] ?? null;
+        const startTs: number | null =
+          (firstItem?.current_period_start as number | undefined) ??
+          (sub.current_period_start as number | undefined) ??
+          (sub.start_date as number | undefined) ??
+          null;
+        const endTs: number | null =
+          (firstItem?.current_period_end as number | undefined) ??
+          (sub.current_period_end as number | undefined) ??
+          null;
 
-        // Convert Unix timestamps to ISO strings with validation and fallback
-        let startIso: string | null = null;
-        let endIso: string | null = null;
+        // Convert to RFC3339 UTC without milliseconds, e.g., 2025-10-26T14:55:38+00:00
+        const formatPgTs = (ts: number | null) =>
+          ts ? new Date(ts * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
 
-        try {
-          if (sub.current_period_start && typeof sub.current_period_start === 'number') {
-            startIso = new Date(sub.current_period_start * 1000).toISOString();
-          } else if (sub.start_date && typeof sub.start_date === 'number') {
-            startIso = new Date(sub.start_date * 1000).toISOString();
-            logStep("Using start_date as fallback for current_period_start");
-          }
+        const startIso: string | null = formatPgTs(startTs);
+        const endIso: string | null = formatPgTs(endTs);
 
-          if (sub.current_period_end && typeof sub.current_period_end === 'number') {
-            endIso = new Date(sub.current_period_end * 1000).toISOString();
-          }
-        } catch (dateError) {
-          logStep("ERROR converting dates", {
-            error: dateError instanceof Error ? dateError.message : String(dateError),
-            raw_start: sub.current_period_start,
-            raw_end: sub.current_period_end
-          });
-        }
-
-        logStep("Converted ISO dates", { startIso, endIso });
+        logStep("Extracted and formatted period timestamps", { startTs, endTs, startIso, endIso });
 
         // Map price to plan_id
         const priceId = sub.items.data[0]?.price?.id;
