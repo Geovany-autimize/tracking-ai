@@ -51,7 +51,7 @@ serve(async (req) => {
     // Get customer data
     const { data: customer, error: customerError } = await supabase
       .from('customers')
-      .select('id, email, name, whatsapp_e164, avatar_url, status')
+      .select('id, email, name, whatsapp_e164, avatar_url, status, created_at')
       .eq('id', session.customer_id)
       .single();
 
@@ -276,6 +276,7 @@ serve(async (req) => {
           whatsapp_e164: customer.whatsapp_e164,
           avatar_url: customer.avatar_url,
           status: customer.status,
+          created_at: customer.created_at,
         },
         subscription: finalSubscription ? {
           plan_id: finalSubscription.plan_id,
