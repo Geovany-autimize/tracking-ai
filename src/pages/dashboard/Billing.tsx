@@ -240,13 +240,13 @@ export default function BillingPage() {
         </Alert>}
 
       {/* Alerta de uso de créditos */}
-      {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert variant="destructive" className="flex items-center gap-4 bg-destructive/10 border-destructive/20">
-          <AlertCircle className="h-4 w-4 shrink-0 text-destructive" />
+      {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert className="flex items-center gap-4 border-amber-500/20 bg-amber-500/10">
+          <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="flex-1 min-w-0">
-            <AlertTitle className="mb-1 text-destructive">
+            <AlertTitle className="mb-1 text-amber-700 dark:text-amber-400">
               Atenção: {Math.round(usagePercentage)}% dos créditos usados
             </AlertTitle>
-            <AlertDescription className="text-destructive/90">
+            <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
               {isFreePlan 
                 ? 'Faça upgrade para o plano Premium para ter acesso a mais créditos e recursos avançados.'
                 : 'Considere comprar créditos extras para não ficar sem créditos durante o período.'}
