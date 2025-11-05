@@ -106,10 +106,22 @@ serve(async (req) => {
           continue;
         }
 
-        // Update with stripe_subscription_id
+        // Update with stripe_subscription_id and dates
+        const updatePayload: any = {
+          stripe_subscription_id: matchedSub.id,
+        };
+
+        // Add dates if available from Stripe
+        if (matchedSub.current_period_start) {
+          updatePayload.current_period_start = new Date(matchedSub.current_period_start * 1000).toISOString();
+        }
+        if (matchedSub.current_period_end) {
+          updatePayload.current_period_end = new Date(matchedSub.current_period_end * 1000).toISOString();
+        }
+
         const { error: updateError } = await supabaseClient
           .from("subscriptions")
-          .update({ stripe_subscription_id: matchedSub.id })
+          .update(updatePayload)
           .eq("id", sub.id);
 
         if (updateError) throw updateError;
