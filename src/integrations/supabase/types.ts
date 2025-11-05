@@ -96,7 +96,6 @@ export type Database = {
       }
       credit_purchases: {
         Row: {
-          consumed_credits: number
           created_at: string
           credits_amount: number
           customer_id: string
@@ -111,7 +110,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          consumed_credits?: number
           created_at?: string
           credits_amount: number
           customer_id: string
@@ -126,7 +124,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          consumed_credits?: number
           created_at?: string
           credits_amount?: number
           customer_id?: string
@@ -146,6 +143,67 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_usage: {
+        Row: {
+          created_at: string
+          credits_consumed: number
+          customer_id: string
+          id: string
+          purchase_id: string | null
+          shipment_id: string | null
+          source_type: string
+          subscription_period_end: string | null
+          subscription_period_start: string | null
+          tracking_code: string
+        }
+        Insert: {
+          created_at?: string
+          credits_consumed?: number
+          customer_id: string
+          id?: string
+          purchase_id?: string | null
+          shipment_id?: string | null
+          source_type: string
+          subscription_period_end?: string | null
+          subscription_period_start?: string | null
+          tracking_code: string
+        }
+        Update: {
+          created_at?: string
+          credits_consumed?: number
+          customer_id?: string
+          id?: string
+          purchase_id?: string | null
+          shipment_id?: string | null
+          source_type?: string
+          subscription_period_end?: string | null
+          subscription_period_start?: string | null
+          tracking_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_usage_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_usage_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "credit_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_usage_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
             referencedColumns: ["id"]
           },
         ]
@@ -281,38 +339,6 @@ export type Database = {
             columns: ["shipment_id"]
             isOneToOne: false
             referencedRelation: "shipments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      oauth_accounts: {
-        Row: {
-          created_at: string | null
-          customer_id: string
-          id: string
-          provider: string
-          provider_account_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          customer_id: string
-          id?: string
-          provider: string
-          provider_account_id: string
-        }
-        Update: {
-          created_at?: string | null
-          customer_id?: string
-          id?: string
-          provider?: string
-          provider_account_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "oauth_accounts_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -589,6 +615,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_shipment_with_credit: {
+        Args: {
+          p_auto_tracking?: boolean
+          p_customer_id: string
+          p_purchase_id?: string
+          p_shipment_customer_id?: string
+          p_source_type: string
+          p_subscription_period_end?: string
+          p_subscription_period_start?: string
+          p_tracking_code: string
+        }
+        Returns: Json
+      }
       get_customer_id_from_request: { Args: never; Returns: string }
     }
     Enums: {

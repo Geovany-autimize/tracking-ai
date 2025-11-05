@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Calcula créditos disponíveis para um cliente
- * Soma todos os créditos não expirados menos os consumidos
+ * Usa credit_usage como fonte única da verdade
  */
 export async function getAvailableCredits(customerId: string): Promise<number> {
   // Monthly subscription credits
@@ -25,12 +25,14 @@ export async function getAvailableCredits(customerId: string): Promise<number> {
         .single();
       const monthlyCredits = plan?.monthly_credits || 0;
       if (monthlyCredits > 0) {
+        // Contar créditos consumidos via credit_usage (não via shipments)
         const { count } = await supabase
-          .from('shipments')
+          .from('credit_usage')
           .select('id', { count: 'exact', head: true })
           .eq('customer_id', customerId)
-          .gte('created_at', subscription.current_period_start)
-          .lt('created_at', subscription.current_period_end);
+          .eq('source_type', 'monthly')
+          .gte('subscription_period_start', subscription.current_period_start)
+          .lt('subscription_period_end', subscription.current_period_end);
         const usedThisPeriod = count || 0;
         monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
       }
@@ -39,34 +41,43 @@ export async function getAvailableCredits(customerId: string): Promise<number> {
     console.error('Error computing monthly credits:', e);
   }
 
-  // Extra purchased credits (non-expired)
-  const { data: purchases, error } = await supabase
+  // Extra purchased credits (non-expired) - calcular via credit_usage
+  const { data: purchases, error: purchasesError } = await supabase
     .from("credit_purchases")
-    .select("credits_amount, consumed_credits")
+    .select("id, credits_amount")
     .eq("customer_id", customerId)
     .eq("status", "completed")
     .gt("expires_at", new Date().toISOString());
 
-  if (error) {
-    console.error("Error fetching available credits:", error);
+  if (purchasesError) {
+    console.error("Error fetching credit purchases:", purchasesError);
     return monthlyRemaining; // Return monthly if purchases query fails
   }
 
-  const extraRemaining = purchases?.reduce(
-    (sum, purchase) => sum + (purchase.credits_amount - purchase.consumed_credits),
-    0
-  ) || 0;
+  // Para cada compra, contar créditos consumidos via credit_usage
+  let extraRemaining = 0;
+  for (const purchase of purchases || []) {
+    const { count } = await supabase
+      .from('credit_usage')
+      .select('id', { count: 'exact', head: true })
+      .eq('customer_id', customerId)
+      .eq('source_type', 'purchase')
+      .eq('purchase_id', purchase.id);
+    
+    const usedFromPurchase = count || 0;
+    extraRemaining += Math.max(0, purchase.credits_amount - usedFromPurchase);
+  }
 
   return monthlyRemaining + extraRemaining;
 }
 
 /**
  * Calcula créditos usados por um cliente
- * Soma todos os consumed_credits
+ * Usa credit_usage como fonte única da verdade
  */
 export async function getUsedCredits(customerId: string): Promise<number> {
-  // If subscription exists, used credits are shipments created in current period
   try {
+    // Contar créditos mensais usados no período atual
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('current_period_start, current_period_end, status')
@@ -77,43 +88,40 @@ export async function getUsedCredits(customerId: string): Promise<number> {
       .single();
 
     if (subscription) {
+      // Contar via credit_usage
       const { count } = await supabase
-        .from('shipments')
+        .from('credit_usage')
         .select('id', { count: 'exact', head: true })
         .eq('customer_id', customerId)
-        .gte('created_at', subscription.current_period_start)
-        .lt('created_at', subscription.current_period_end);
+        .eq('source_type', 'monthly')
+        .gte('subscription_period_start', subscription.current_period_start)
+        .lt('subscription_period_end', subscription.current_period_end);
       return count || 0;
     }
   } catch (e) {
     console.error('Error computing used credits (monthly):', e);
   }
 
-  // Fallback: sum of consumed extra credits
-  const { data: purchases, error } = await supabase
-    .from('credit_purchases')
-    .select('consumed_credits')
-    .eq('customer_id', customerId);
+  // Fallback: contar créditos extras consumidos via credit_usage
+  const { count } = await supabase
+    .from('credit_usage')
+    .select('id', { count: 'exact', head: true })
+    .eq('customer_id', customerId)
+    .eq('source_type', 'purchase');
 
-  if (error) {
-    console.error('Error fetching used credits:', error);
-    return 0;
-  }
-
-  return purchases?.reduce(
-    (sum, purchase) => sum + purchase.consumed_credits,
-    0
-  ) || 0;
+  return count || 0;
 }
 
 /**
  * Consome um crédito via edge function
- * Retorna true se sucesso, false se sem créditos
+ * @param trackingCode Opcional: código de rastreio para auditoria
+ * @returns Resultado do consumo
  */
-export async function consumeCredit(): Promise<{ success: boolean; message: string }> {
+export async function consumeCredit(trackingCode?: string): Promise<{ success: boolean; message: string; remaining_credits?: number }> {
   try {
     const { data, error } = await supabase.functions.invoke("consume-credit", {
       method: "POST",
+      body: trackingCode ? { tracking_code: trackingCode } : undefined,
     });
 
     if (error) throw error;
@@ -121,6 +129,7 @@ export async function consumeCredit(): Promise<{ success: boolean; message: stri
     return {
       success: data.success,
       message: data.message || data.error || "Erro desconhecido",
+      remaining_credits: data.remaining_credits,
     };
   } catch (error) {
     console.error("Error consuming credit:", error);

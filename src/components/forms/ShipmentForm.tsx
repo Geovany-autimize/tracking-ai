@@ -6,15 +6,16 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
-import { consumeCredit } from '@/lib/credits';
+import { getAvailableCredits } from '@/lib/credits';
 import { useHighlights } from '@/contexts/HighlightsContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -29,7 +30,7 @@ type Customer = {
 };
 
 export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) {
-  const { customer } = useAuth();
+  const { customer, refreshSession } = useAuth();
   const { addNew } = useHighlights();
   const [trackingCode, setTrackingCode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
@@ -39,12 +40,20 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [quickFormOpen, setQuickFormOpen] = useState(false);
+  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
 
   useEffect(() => {
     if (open && customer?.id) {
       loadCustomers();
+      checkCredits();
     }
   }, [open, customer?.id]);
+
+  const checkCredits = async () => {
+    if (!customer?.id) return;
+    const credits = await getAvailableCredits(customer.id);
+    setAvailableCredits(credits);
+  };
 
   const loadCustomers = async () => {
     if (!customer?.id) return;
@@ -93,50 +102,46 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
     setIsLoading(true);
 
     try {
-      // Verificar se o tracking code já existe para este cliente
-      const { data: existingShipment } = await supabase
-        .from('shipments')
-        .select('id')
-        .eq('customer_id', customer.id)
-        .eq('tracking_code', trackingCode)
-        .maybeSingle();
-
-      if (existingShipment) {
-        toast({
-          title: 'Código de rastreio duplicado',
-          description: 'Este código de rastreio já existe para você',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Consumir 1 crédito ANTES de criar o shipment
-      const creditResult = await consumeCredit();
-      
-      if (!creditResult.success) {
-        toast({
-          title: 'Sem créditos disponíveis',
-          description: 'Você precisa comprar mais créditos para criar rastreios',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: insertedData, error } = await supabase
-        .from('shipments')
-        .insert({
-          customer_id: customer.id,
-          shipment_customer_id: selectedCustomer,
+      // Usar nova função que cria shipment e consome crédito atomicamente
+      const { data: result, error } = await supabase.functions.invoke('create-shipment-with-credit', {
+        body: {
           tracking_code: trackingCode,
+          shipment_customer_id: selectedCustomer,
           auto_tracking: autoTracking,
-          status: 'pending',
-        })
-        .select()
-        .single();
+        },
+      });
 
       if (error) throw error;
+
+      if (!result.success) {
+        // Tratar erros específicos
+        if (result.error === 'DUPLICATE_TRACKING_CODE') {
+          toast({
+            title: 'Código de rastreio duplicado',
+            description: 'Este código de rastreio já existe para você',
+            variant: 'destructive',
+          });
+        } else if (result.error === 'NO_CREDITS') {
+          toast({
+            title: 'Sem créditos disponíveis',
+            description: 'Você precisa comprar mais créditos para criar rastreios',
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(result.error || result.message || 'Erro ao criar rastreio');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Buscar shipment criado para processar API
+      const { data: insertedData, error: fetchError } = await supabase
+        .from('shipments')
+        .select('*')
+        .eq('id', result.shipment_id)
+        .single();
+
+      if (fetchError) throw fetchError;
 
       // Enviar para API de rastreio e processar resposta
       try {
@@ -180,6 +185,18 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
         addNew('shipment', insertedData.id);
       }
 
+      // Atualizar créditos na UI e mostrar feedback
+      await refreshSession();
+      await checkCredits(); // Atualizar contador
+      
+      const remainingCredits = result.remaining_credits ?? 0;
+      toast({
+        title: 'Rastreio criado com sucesso',
+        description: remainingCredits > 0 
+          ? `${remainingCredits} créditos restantes`
+          : 'Você está sem créditos. Considere comprar mais.',
+      });
+
       // Resetar e fechar
       setTrackingCode('');
       setSelectedCustomer('');
@@ -221,6 +238,24 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Alerta de créditos insuficientes */}
+          {availableCredits !== null && availableCredits === 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Você não tem créditos disponíveis. <a href="/dashboard/billing" className="underline font-semibold">Compre créditos</a> para criar rastreios.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {availableCredits !== null && availableCredits > 0 && (
+            <Alert>
+              <AlertDescription className="text-sm text-muted-foreground">
+                Você tem {availableCredits} crédito{availableCredits !== 1 ? 's' : ''} disponível{availableCredits !== 1 ? 'eis' : ''}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Código de Rastreio */}
           <div className="space-y-2">
             <Label htmlFor="tracking-code">Código de Rastreio *</Label>
@@ -335,7 +370,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="default" disabled={isLoading}>
+            <Button type="submit" variant="default" disabled={isLoading || (availableCredits !== null && availableCredits === 0)}>
               {isLoading ? 'Salvando...' : 'Adicionar Rastreio'}
             </Button>
           </DialogFooter>

@@ -24,7 +24,7 @@ export default function QuickShipmentForm({
   customerId,
   onShipmentCreated,
 }: QuickShipmentFormProps) {
-  const { customer } = useAuth();
+  const { customer, refreshSession } = useAuth();
   const { addNew } = useHighlights();
   const [trackingCode, setTrackingCode] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
@@ -36,33 +36,46 @@ export default function QuickShipmentForm({
 
     setIsLoading(true);
     try {
-      // Verificar duplicata
-      const { data: existing } = await supabase
-        .from('shipments')
-        .select('id')
-        .eq('customer_id', customer.id)
-        .eq('tracking_code', trackingCode)
-        .maybeSingle();
+      // Usar nova função que cria shipment e consome crédito atomicamente
+      const { data: result, error } = await supabase.functions.invoke('create-shipment-with-credit', {
+        body: {
+          tracking_code: trackingCode,
+          shipment_customer_id: customerId,
+          auto_tracking: autoTracking,
+        },
+      });
 
-      if (existing) {
-        toast({
-          title: 'Código duplicado',
-          description: 'Este código de rastreio já existe',
-          variant: 'destructive',
-        });
+      if (error) throw error;
+
+      if (!result.success) {
+        // Tratar erros específicos
+        if (result.error === 'DUPLICATE_TRACKING_CODE') {
+          toast({
+            title: 'Código duplicado',
+            description: 'Este código de rastreio já existe',
+            variant: 'destructive',
+          });
+        } else if (result.error === 'NO_CREDITS') {
+          toast({
+            title: 'Sem créditos disponíveis',
+            description: 'Você precisa comprar mais créditos para criar rastreios',
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(result.error || result.message || 'Erro ao criar rastreio');
+        }
         setIsLoading(false);
         return;
       }
 
-      const { data: insertedData, error } = await supabase.from('shipments').insert({
-        customer_id: customer.id,
-        shipment_customer_id: customerId,
-        tracking_code: trackingCode,
-        auto_tracking: autoTracking,
-        status: 'pending',
-      }).select().single();
+      // Buscar shipment criado para processar API
+      const { data: insertedData, error: fetchError } = await supabase
+        .from('shipments')
+        .select('*')
+        .eq('id', result.shipment_id)
+        .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
 
       // Enviar para API de rastreio e processar resposta
       try {
@@ -102,6 +115,17 @@ export default function QuickShipmentForm({
         if (insertedData?.id) {
           addNew('shipment', insertedData.id);
         }
+
+        // Atualizar créditos na UI e mostrar feedback
+        await refreshSession();
+        
+        const remainingCredits = result.remaining_credits ?? 0;
+        toast({
+          title: 'Rastreio criado com sucesso',
+          description: remainingCredits > 0 
+            ? `${remainingCredits} créditos restantes`
+            : 'Você está sem créditos. Considere comprar mais.',
+        });
 
         setTrackingCode('');
         setAutoTracking(true);

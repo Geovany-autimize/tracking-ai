@@ -20,6 +20,15 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Parse request body for tracking_code (optional)
+    let trackingCode: string | null = null;
+    try {
+      const body = await req.json().catch(() => ({}));
+      trackingCode = body.tracking_code || null;
+    } catch {
+      // Body is optional
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -111,6 +120,16 @@ serve(async (req) => {
               0
             );
 
+            // Registrar na tabela de auditoria (non-blocking)
+            if (trackingCode) {
+              supabaseAdmin.from('credit_usage').insert({
+                customer_id: sessionData.customer_id,
+                tracking_code: trackingCode,
+                credits_consumed: 1,
+                source_type: 'monthly',
+              }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+            }
+
             return new Response(JSON.stringify({
               success: true,
               message: 'Crédito mensal consumido com sucesso',
@@ -165,6 +184,16 @@ serve(async (req) => {
                 (sum, p) => sum + (p.credits_amount - p.consumed_credits),
                 0
               );
+
+              // Registrar na tabela de auditoria (non-blocking)
+              if (trackingCode) {
+                supabaseAdmin.from('credit_usage').insert({
+                  customer_id: sessionData.customer_id,
+                  tracking_code: trackingCode,
+                  credits_consumed: 1,
+                  source_type: 'monthly',
+                }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+              }
 
               return new Response(JSON.stringify({
                 success: true,
@@ -225,6 +254,17 @@ serve(async (req) => {
       purchaseId: availablePurchase.id,
       newConsumedCount: availablePurchase.consumed_credits + 1 
     });
+
+    // Registrar na tabela de auditoria (non-blocking)
+    if (trackingCode) {
+      supabaseAdmin.from('credit_usage').insert({
+        customer_id: sessionData.customer_id,
+        tracking_code: trackingCode,
+        credits_consumed: 1,
+        source_type: 'purchase',
+        purchase_id: availablePurchase.id,
+      }).catch((e) => logStep('Error recording credit_usage (non-blocking)', { error: e.message }));
+    }
 
     // Check if auto-recharge should be triggered
     const { data: autoRechargeSettings } = await supabaseAdmin
