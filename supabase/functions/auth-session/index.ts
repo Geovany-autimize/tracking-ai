@@ -138,24 +138,41 @@ serve(async (req) => {
     // Sync subscriptions table with Stripe result, then fetch plan details
     let plan = null as any;
     if (finalSubscription) {
-      // Fetch all relevant fields to compare
+      // Fetch most recent active subscription
       const { data: existingSub } = await supabase
         .from('subscriptions')
         .select('id, plan_id, current_period_start, current_period_end, cancel_at_period_end, status, stripe_subscription_id')
         .eq('customer_id', customer.id)
         .eq('status', 'active')
+        .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const stripeSubId = (finalSubscription as any).stripe_subscription_id || null;
       
-      // CRITICAL: Detect if stripe_subscription_id changed (user canceled and re-subscribed)
-      const subscriptionIdChanged = existingSub?.stripe_subscription_id 
-        && stripeSubId 
-        && existingSub.stripe_subscription_id !== stripeSubId;
+      // CASE 1: No active subscription in DB but exists in Stripe → CREATE
+      if (!existingSub) {
+        console.log('[AUTH-SESSION] 🆕 No active subscription in DB, creating new from Stripe', {
+          stripe_subscription_id: stripeSubId,
+          customer_id: customer.id
+        });
 
-      if (subscriptionIdChanged) {
-        // User canceled and re-subscribed: mark old as canceled + create new
+        await supabase
+          .from('subscriptions')
+          .insert({
+            customer_id: customer.id,
+            plan_id: finalSubscription.plan_id,
+            status: 'active',
+            stripe_subscription_id: stripeSubId,
+            current_period_start: finalSubscription.current_period_start,
+            current_period_end: finalSubscription.current_period_end,
+            cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false
+          });
+
+        console.log('[AUTH-SESSION] ✅ New subscription created from Stripe');
+      }
+      // CASE 2: Subscription exists AND stripe_subscription_id changed → CANCEL old + CREATE new
+      else if (existingSub.stripe_subscription_id && stripeSubId && existingSub.stripe_subscription_id !== stripeSubId) {
         console.log('[AUTH-SESSION] 🔄 Stripe subscription ID changed - marking old as canceled and creating new', {
           old_stripe_id: existingSub.stripe_subscription_id,
           new_stripe_id: stripeSubId,
@@ -185,14 +202,15 @@ serve(async (req) => {
           });
 
         console.log('[AUTH-SESSION] ✅ Old subscription canceled, new subscription created');
-      } else {
-        // Normal update flow: check if any fields changed
-        const dbStartMs = existingSub?.current_period_start ? new Date(existingSub.current_period_start).getTime() : null;
-        const dbEndMs = existingSub?.current_period_end ? new Date(existingSub.current_period_end).getTime() : null;
+      }
+      // CASE 3: Same subscription → UPDATE if changed
+      else {
+        const dbStartMs = existingSub.current_period_start ? new Date(existingSub.current_period_start).getTime() : null;
+        const dbEndMs = existingSub.current_period_end ? new Date(existingSub.current_period_end).getTime() : null;
         const stripeStartMs = finalSubscription.current_period_start ? new Date(finalSubscription.current_period_start).getTime() : null;
         const stripeEndMs = finalSubscription.current_period_end ? new Date(finalSubscription.current_period_end).getTime() : null;
 
-        const needsUpdate = !existingSub || 
+        const needsUpdate = 
           existingSub.plan_id !== finalSubscription.plan_id ||
           dbStartMs !== stripeStartMs ||
           dbEndMs !== stripeEndMs ||
@@ -200,26 +218,24 @@ serve(async (req) => {
           !existingSub.stripe_subscription_id;
 
         if (needsUpdate) {
-          console.log('[AUTH-SESSION] 🔄 Subscription changed, syncing with Stripe', {
-            old: existingSub || 'new',
-            new: finalSubscription,
-            changes: existingSub ? {
+          console.log('[AUTH-SESSION] 🔄 Updating existing subscription', {
+            stripe_subscription_id: stripeSubId,
+            changes: {
               plan: existingSub.plan_id !== finalSubscription.plan_id,
               period_start: dbStartMs !== stripeStartMs,
               period_end: dbEndMs !== stripeEndMs,
               cancel_flag: existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false)
-            } : 'all (new subscription)'
+            }
           });
 
           const payload = {
-            customer_id: customer.id,
             plan_id: finalSubscription.plan_id,
             status: finalSubscription.status,
             cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
             stripe_subscription_id: stripeSubId,
           } as any;
 
-          // Only include dates if we have them (from Stripe or DB)
+          // Only include dates if we have them from Stripe
           if (finalSubscription.current_period_start) {
             payload.current_period_start = finalSubscription.current_period_start;
           }
@@ -227,16 +243,12 @@ serve(async (req) => {
             payload.current_period_end = finalSubscription.current_period_end;
           }
 
-          if (existingSub) {
-            await supabase
-              .from('subscriptions')
-              .update(payload)
-              .eq('id', existingSub.id);
-          } else {
-            await supabase
-              .from('subscriptions')
-              .insert(payload);
-          }
+          await supabase
+            .from('subscriptions')
+            .update(payload)
+            .eq('id', existingSub.id);
+            
+          console.log('[AUTH-SESSION] ✅ Subscription updated successfully');
         } else {
           console.log('[AUTH-SESSION] ✅ No changes detected, keeping existing subscription');
         }

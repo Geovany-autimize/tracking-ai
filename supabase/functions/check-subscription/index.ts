@@ -172,13 +172,29 @@ serve(async (req) => {
     // Persist Stripe dates in DB when available
     try {
       if (hasActiveSub) {
-        // CRITICAL: Detect if stripe_subscription_id changed (user canceled and re-subscribed)
-        const subscriptionIdChanged = dbSub?.stripe_subscription_id 
-          && stripeSubscriptionId 
-          && dbSub.stripe_subscription_id !== stripeSubscriptionId;
+        // CASE 1: No active subscription in DB but exists in Stripe → CREATE
+        if (!dbSub) {
+          logStep("No active subscription in DB, creating new from Stripe", {
+            stripe_subscription_id: stripeSubscriptionId,
+            customer_id: sessionData.customer_id
+          });
 
-        if (subscriptionIdChanged) {
-          // User canceled and re-subscribed: mark old as canceled + create new
+          await supabaseClient
+            .from("subscriptions")
+            .insert({
+              customer_id: sessionData.customer_id,
+              plan_id: planId,
+              status: 'active',
+              stripe_subscription_id: stripeSubscriptionId,
+              current_period_start: subscriptionStart,
+              current_period_end: subscriptionEnd,
+              cancel_at_period_end: cancelAtPeriodEnd
+            });
+
+          logStep("New subscription created from Stripe");
+        }
+        // CASE 2: Subscription exists in DB AND stripe_subscription_id changed → CANCEL old + CREATE new
+        else if (dbSub.stripe_subscription_id && stripeSubscriptionId && dbSub.stripe_subscription_id !== stripeSubscriptionId) {
           logStep("Stripe subscription ID changed - marking old as canceled and creating new", {
             old_stripe_id: dbSub.stripe_subscription_id,
             new_stripe_id: stripeSubscriptionId,
@@ -204,12 +220,18 @@ serve(async (req) => {
               stripe_subscription_id: stripeSubscriptionId,
               current_period_start: subscriptionStart,
               current_period_end: subscriptionEnd,
-              cancel_at_period_end: false
+              cancel_at_period_end: cancelAtPeriodEnd
             });
 
           logStep("Old subscription canceled, new subscription created");
-        } else {
-          // Normal update flow
+        }
+        // CASE 3: Same subscription → UPDATE
+        else {
+          logStep("Updating existing subscription", {
+            stripe_subscription_id: stripeSubscriptionId,
+            customer_id: sessionData.customer_id
+          });
+
           const updatePayload: any = {
             cancel_at_period_end: cancelAtPeriodEnd,
             stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
@@ -231,9 +253,9 @@ serve(async (req) => {
             .eq("customer_id", sessionData.customer_id)
             .eq("status", "active");
           if (upErr) {
-            logStep("Failed to persist subscription dates", { error: upErr.message });
+            logStep("Failed to update subscription", { error: upErr.message });
           } else {
-            logStep("Persisted subscription dates to DB", { 
+            logStep("Subscription updated successfully", { 
               updatedStart: subscriptionStart ? "yes" : "no",
               updatedEnd: subscriptionEnd ? "yes" : "no"
             });
@@ -241,7 +263,7 @@ serve(async (req) => {
         }
       }
     } catch (e) {
-      logStep("Error while persisting subscription dates", { error: e instanceof Error ? e.message : String(e) });
+      logStep("Error while persisting subscription", { error: e instanceof Error ? e.message : String(e) });
     }
 
     return new Response(JSON.stringify({
