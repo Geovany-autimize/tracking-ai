@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.sync-all-subscriptions]
 verify_jwt = false
+
+[functions.populate-stripe-subscription-ids]
+verify_jwt = false

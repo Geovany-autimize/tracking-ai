@@ -131,7 +131,7 @@ serve(async (req) => {
         // Check if subscription exists in DB
         const { data: existingSub } = await supabaseClient
           .from("subscriptions")
-          .select("id, plan_id, current_period_start, current_period_end, cancel_at_period_end")
+          .select("id, plan_id, current_period_start, current_period_end, cancel_at_period_end, stripe_subscription_id")
           .eq("customer_id", customer.id)
           .eq("status", "active")
           .maybeSingle();
@@ -163,6 +163,7 @@ serve(async (req) => {
           cancel_at_period_end: sub.cancel_at_period_end || false,
           current_period_start: finalStartIso,
           current_period_end: finalEndIso,
+          stripe_subscription_id: sub.id,
         };
 
         if (existingSub) {

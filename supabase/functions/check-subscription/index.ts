@@ -68,49 +68,72 @@ serve(async (req) => {
     logStep("Customer authenticated", { customerId: sessionData.customer_id, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     
-    if (customers.data.length === 0) {
-      logStep("No customer found, returning free plan");
-      return new Response(JSON.stringify({ 
-        subscribed: false,
-        plan_id: 'free'
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
+    // Check if we have stripe_subscription_id in DB
+    const { data: dbSub } = await supabaseClient
+      .from("subscriptions")
+      .select("stripe_subscription_id, current_period_start, current_period_end")
+      .eq("customer_id", sessionData.customer_id)
+      .eq("status", "active")
+      .maybeSingle();
+    
+    let subscription = null;
+    
+    // PRIORITY: Use stripe_subscription_id if available (1 API call)
+    if (dbSub?.stripe_subscription_id) {
+      try {
+        subscription = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
+        logStep("Retrieved subscription by ID", { subscriptionId: subscription.id });
+      } catch (err) {
+        logStep("Subscription ID not found in Stripe, falling back to email lookup");
+      }
+    }
+    
+    // FALLBACK: Use email lookup (3 API calls)
+    if (!subscription) {
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+      
+      if (customers.data.length === 0) {
+        logStep("No customer found, returning free plan");
+        return new Response(JSON.stringify({ 
+          subscribed: false,
+          plan_id: 'free'
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      const customerId = customers.data[0].id;
+      logStep("Found Stripe customer", { customerId });
+
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 1,
       });
+
+      if (subscriptions.data.length > 0) {
+        subscription = subscriptions.data[0];
+      }
     }
 
-    const customerId = customers.data[0].id;
-    logStep("Found Stripe customer", { customerId });
-
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 1,
-    });
-    
-    logStep("Subscriptions query result", { count: subscriptions.data.length });
-    
-    const hasActiveSub = subscriptions.data.length > 0;
+    const hasActiveSub = !!subscription;
     let planId = 'free';
     let subscriptionEnd = null;
     let subscriptionStart = null;
     let cancelAtPeriodEnd = false;
+    let stripeSubscriptionId = null;
     
-    if (hasActiveSub) {
-      const subscription = subscriptions.data[0];
+    if (hasActiveSub && subscription) {
       cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
-      logStep("Subscription details", { 
-        subscriptionId: subscription.id, 
-        status: subscription.status,
-        currentPeriodStart: subscription.current_period_start,
-        currentPeriodEnd: subscription.current_period_end,
-        priceId: subscription.items.data[0]?.price?.id,
+      stripeSubscriptionId = subscription.id;
+      logStep("Found active subscription", { 
+        subscriptionId: subscription.id,
         cancelAtPeriodEnd 
       });
       
-      // Convert subscription dates directly from Stripe (if available)
+      // Convert subscription dates from Stripe (if available)
       if (subscription.current_period_start) {
         subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
       }
@@ -118,25 +141,11 @@ serve(async (req) => {
         subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
       }
       
-      // If Stripe doesn't provide dates, try to get from DB
+      // If Stripe doesn't provide dates, use DB fallback
       if (!subscriptionStart || !subscriptionEnd) {
-        logStep("Stripe dates missing, checking DB", { 
-          stripeStart: subscriptionStart, 
-          stripeEnd: subscriptionEnd 
-        });
-        
-        const { data: dbSub } = await supabaseClient
-          .from("subscriptions")
-          .select("current_period_start, current_period_end")
-          .eq("customer_id", sessionData.customer_id)
-          .eq("status", "active")
-          .maybeSingle();
-        
-        if (dbSub) {
-          subscriptionStart = subscriptionStart || dbSub.current_period_start;
-          subscriptionEnd = subscriptionEnd || dbSub.current_period_end;
-          logStep("Using DB dates as fallback", { start: subscriptionStart, end: subscriptionEnd });
-        }
+        subscriptionStart = subscriptionStart || dbSub?.current_period_start;
+        subscriptionEnd = subscriptionEnd || dbSub?.current_period_end;
+        logStep("Using DB dates as fallback", { start: subscriptionStart, end: subscriptionEnd });
       }
       
       logStep("Subscription dates", { start: subscriptionStart, end: subscriptionEnd });

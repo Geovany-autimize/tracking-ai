@@ -570,6 +570,7 @@ export type Database = {
           id: string
           plan_id: string
           status: string | null
+          stripe_subscription_id: string | null
         }
         Insert: {
           cancel_at_period_end?: boolean | null
@@ -581,6 +582,7 @@ export type Database = {
           id?: string
           plan_id: string
           status?: string | null
+          stripe_subscription_id?: string | null
         }
         Update: {
           cancel_at_period_end?: boolean | null
@@ -592,6 +594,7 @@ export type Database = {
           id?: string
           plan_id?: string
           status?: string | null
+          stripe_subscription_id?: string | null
         }
         Relationships: [
           {

@@ -62,10 +62,10 @@ serve(async (req) => {
       );
     }
 
-    // Get active subscription from DB (fallback)
+    // Get active subscription from DB
     const { data: dbSubscription } = await supabase
       .from('subscriptions')
-      .select('plan_id, status, current_period_start, current_period_end')
+      .select('plan_id, status, current_period_start, current_period_end, stripe_subscription_id')
       .eq('customer_id', customer.id)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -81,33 +81,52 @@ serve(async (req) => {
       const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
       if (stripeKey && customer.email) {
         const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
-        const stripeCustomers = await stripe.customers.list({ email: customer.email, limit: 1 });
-        if (stripeCustomers.data.length > 0) {
-          const stripeCustomerId = stripeCustomers.data[0].id;
-          const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active', limit: 1 });
-          if (subs.data.length > 0) {
-            const sub = subs.data[0];
-            const priceId = sub.items.data[0]?.price?.id;
-            let planId = 'free';
-            if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') {
-              planId = 'premium';
-            } else if (priceId) {
-              planId = 'enterprise';
+        
+        let sub = null;
+        
+        // PRIORITY: Use stripe_subscription_id if available (1 API call)
+        if (dbSubscription?.stripe_subscription_id) {
+          try {
+            sub = await stripe.subscriptions.retrieve(dbSubscription.stripe_subscription_id);
+            console.log('[AUTH-SESSION] Retrieved subscription by ID:', sub.id);
+          } catch (err) {
+            console.log('[AUTH-SESSION] Subscription ID not found, falling back to email lookup');
+          }
+        }
+        
+        // FALLBACK: Use email lookup (3 API calls)
+        if (!sub) {
+          const stripeCustomers = await stripe.customers.list({ email: customer.email, limit: 1 });
+          if (stripeCustomers.data.length > 0) {
+            const stripeCustomerId = stripeCustomers.data[0].id;
+            const subs = await stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active', limit: 1 });
+            if (subs.data.length > 0) {
+              sub = subs.data[0];
             }
+          }
+        }
+        
+        if (sub) {
+          const priceId = sub.items.data[0]?.price?.id;
+          let planId = 'free';
+          if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') {
+            planId = 'premium';
+          } else if (priceId) {
+            planId = 'enterprise';
+          }
 
-            const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : null;
-            const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null;
+          const startIso = sub.current_period_start ? new Date(sub.current_period_start * 1000).toISOString() : dbSubscription?.current_period_start;
+          const endIso = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : dbSubscription?.current_period_end;
 
-            // Only set subscription if we have valid dates from Stripe
-            if (startIso && endIso) {
-              finalSubscription = {
-                plan_id: planId,
-                status: sub.status || 'active',
-                current_period_start: startIso,
-                current_period_end: endIso,
-                cancel_at_period_end: sub.cancel_at_period_end || false,
-              };
-            }
+          // Set subscription if we have valid dates (from Stripe or DB)
+          if (startIso && endIso) {
+            finalSubscription = {
+              plan_id: planId,
+              status: sub.status || 'active',
+              current_period_start: startIso,
+              current_period_end: endIso,
+              cancel_at_period_end: sub.cancel_at_period_end || false,
+            };
           }
         }
       }
@@ -121,7 +140,7 @@ serve(async (req) => {
       // Fetch all relevant fields to compare
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id, plan_id, current_period_start, current_period_end, cancel_at_period_end, status')
+        .select('id, plan_id, current_period_start, current_period_end, cancel_at_period_end, status, stripe_subscription_id')
         .eq('customer_id', customer.id)
         .eq('status', 'active')
         .limit(1)
@@ -138,7 +157,8 @@ serve(async (req) => {
         existingSub.plan_id !== finalSubscription.plan_id ||
         dbStartMs !== stripeStartMs ||
         dbEndMs !== stripeEndMs ||
-        existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false);
+        existingSub.cancel_at_period_end !== (finalSubscription.cancel_at_period_end ?? false) ||
+        !existingSub.stripe_subscription_id;
 
       if (needsUpdate) {
         console.log('[AUTH-SESSION] 🔄 Subscription changed, syncing with Stripe', {
@@ -157,13 +177,14 @@ serve(async (req) => {
           plan_id: finalSubscription.plan_id,
           status: finalSubscription.status,
           cancel_at_period_end: finalSubscription.cancel_at_period_end ?? false,
+          stripe_subscription_id: dbSubscription?.stripe_subscription_id || null,
         } as any;
 
-        // Only include dates if Stripe provides them
-        if (stripeStartMs !== null) {
+        // Only include dates if we have them (from Stripe or DB)
+        if (finalSubscription.current_period_start) {
           payload.current_period_start = finalSubscription.current_period_start;
         }
-        if (stripeEndMs !== null) {
+        if (finalSubscription.current_period_end) {
           payload.current_period_end = finalSubscription.current_period_end;
         }
 
