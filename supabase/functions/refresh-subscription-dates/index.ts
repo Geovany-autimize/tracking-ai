@@ -24,17 +24,54 @@ serve(async (req) => {
   );
 
   try {
-    logStep("Starting refresh of subscription dates");
+    logStep("Starting refresh of subscription dates for authenticated user");
+
+    // Extract and validate session token
+    const sessionToken = req.headers.get("x-session-token") || req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!sessionToken) {
+      logStep("ERROR: No session token provided");
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    // Get customer_id from session
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("sessions")
+      .select("customer_id, expires_at")
+      .eq("token_jti", sessionToken)
+      .single();
+
+    if (sessionError || !sessionData) {
+      logStep("ERROR: Invalid session token", { error: sessionError?.message });
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    if (new Date(sessionData.expires_at) < new Date()) {
+      logStep("ERROR: Session expired");
+      return new Response(JSON.stringify({ error: "Session expired" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const customerId = sessionData.customer_id;
+    logStep("Authenticated user", { customer_id: customerId });
 
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Fetch all active subscriptions that have a stripe_subscription_id
+    // Fetch only this user's active subscriptions
     const { data: subs, error: subsError } = await supabase
       .from("subscriptions")
       .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end")
       .eq("status", "active")
+      .eq("customer_id", customerId)
       .not("stripe_subscription_id", "is", null);
 
     if (subsError) throw subsError;

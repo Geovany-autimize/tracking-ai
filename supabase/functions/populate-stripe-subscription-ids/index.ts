@@ -18,7 +18,7 @@ serve(async (req) => {
   }
 
   try {
-    logStep("Starting population of stripe_subscription_id");
+    logStep("Starting population of stripe_subscription_id for authenticated user");
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -26,15 +26,52 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Extract and validate session token
+    const sessionToken = req.headers.get("x-session-token") || req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!sessionToken) {
+      logStep("ERROR: No session token provided");
+      return new Response(JSON.stringify({ error: "Authentication required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    // Get customer_id from session
+    const { data: sessionData, error: sessionError } = await supabaseClient
+      .from("sessions")
+      .select("customer_id, expires_at")
+      .eq("token_jti", sessionToken)
+      .single();
+
+    if (sessionError || !sessionData) {
+      logStep("ERROR: Invalid session token", { error: sessionError?.message });
+      return new Response(JSON.stringify({ error: "Invalid session" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    if (new Date(sessionData.expires_at) < new Date()) {
+      logStep("ERROR: Session expired");
+      return new Response(JSON.stringify({ error: "Session expired" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    const customerId = sessionData.customer_id;
+    logStep("Authenticated user", { customer_id: customerId });
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Get all active subscriptions (with or without stripe_subscription_id)
+    // Get only this user's active subscriptions
     const { data: subscriptions, error: subError } = await supabaseClient
       .from("subscriptions")
       .select("id, customer_id, plan_id, current_period_start, current_period_end, stripe_subscription_id")
-      .eq("status", "active");
+      .eq("status", "active")
+      .eq("customer_id", customerId);
 
     if (subError) throw subError;
 
