@@ -22,10 +22,10 @@ export function useCredits() {
     setLoading(true);
     try {
       const [available, used, monthlyUsed, totalPurchased] = await Promise.all([
-        getAvailableCredits(customer.id),
+        getAvailableCredits(customer.id, plan?.id),
         getUsedCredits(customer.id),
         getMonthlyUsedCredits(customer.id),
-        getTotalPurchasedCredits(customer.id)
+        getTotalPurchasedCredits(customer.id, plan?.id)
       ]);
       setAvailableCredits(available);
       setUsedCredits(used);
