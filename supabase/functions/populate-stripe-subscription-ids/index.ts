@@ -30,12 +30,11 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Get all active subscriptions without stripe_subscription_id
+    // Get all active subscriptions (with or without stripe_subscription_id)
     const { data: subscriptions, error: subError } = await supabaseClient
       .from("subscriptions")
-      .select("id, customer_id, plan_id, current_period_start, current_period_end")
-      .eq("status", "active")
-      .is("stripe_subscription_id", null);
+      .select("id, customer_id, plan_id, current_period_start, current_period_end, stripe_subscription_id")
+      .eq("status", "active");
 
     if (subError) throw subError;
 
@@ -50,73 +49,102 @@ serve(async (req) => {
 
     for (const sub of subscriptions || []) {
       try {
-        // Get customer email
-        const { data: customer } = await supabaseClient
-          .from("customers")
-          .select("email")
-          .eq("id", sub.customer_id)
-          .single();
-
-        if (!customer?.email) {
-          results.skipped++;
-          logStep("No email for customer", { customerId: sub.customer_id });
-          continue;
-        }
-
-        // Find Stripe customer
-        const stripeCustomers = await stripe.customers.list({
-          email: customer.email,
-          limit: 1,
-        });
-
-        if (stripeCustomers.data.length === 0) {
-          results.skipped++;
-          logStep("No Stripe customer found", { email: customer.email });
-          continue;
-        }
-
-        // Find active subscription
-        const stripeSubs = await stripe.subscriptions.list({
-          customer: stripeCustomers.data[0].id,
-          status: "active",
-          limit: 10,
-        });
-
-        // Match by plan_id (price_id mapping)
         let matchedSub = null;
-        for (const stripeSub of stripeSubs.data) {
-          const priceId = stripeSub.items.data[0]?.price?.id;
-          let planId = 'free';
-          
-          if (priceId === 'price_1RAtW1HBZqKITr8oXfOTZ8tR') planId = 'premium';
-          else if (priceId === 'price_1RCG11HBZqKITr8oIwHvXqeI') planId = 'enterprise';
 
-          if (planId === sub.plan_id) {
-            matchedSub = stripeSub;
-            break;
+        // PRIORITY: If we already have stripe_subscription_id, use it directly (1 API call)
+        if (sub.stripe_subscription_id) {
+          try {
+            matchedSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+            logStep("Retrieved subscription by ID", { 
+              subscriptionId: matchedSub.id,
+              supabaseId: sub.id 
+            });
+          } catch (err) {
+            logStep("Subscription ID not found in Stripe, falling back to email lookup", {
+              subscriptionId: sub.stripe_subscription_id
+            });
           }
         }
 
+        // FALLBACK: Use email lookup if no stripe_subscription_id or not found (3 API calls)
         if (!matchedSub) {
-          results.skipped++;
-          logStep("No matching Stripe subscription", { 
-            planId: sub.plan_id, 
-            email: customer.email 
+          // Get customer email
+          const { data: customer } = await supabaseClient
+            .from("customers")
+            .select("email")
+            .eq("id", sub.customer_id)
+            .single();
+
+          if (!customer?.email) {
+            results.skipped++;
+            logStep("No email for customer", { customerId: sub.customer_id });
+            continue;
+          }
+
+          // Find Stripe customer
+          const stripeCustomers = await stripe.customers.list({
+            email: customer.email,
+            limit: 1,
           });
-          continue;
+
+          if (stripeCustomers.data.length === 0) {
+            results.skipped++;
+            logStep("No Stripe customer found", { email: customer.email });
+            continue;
+          }
+
+          // Find active subscription
+          const stripeSubs = await stripe.subscriptions.list({
+            customer: stripeCustomers.data[0].id,
+            status: "active",
+            limit: 10,
+          });
+
+          // Match by plan_id (price_id mapping)
+          for (const stripeSub of stripeSubs.data) {
+            const priceId = stripeSub.items.data[0]?.price?.id;
+            let planId = 'free';
+            
+            if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') planId = 'premium';
+            else if (priceId) planId = 'enterprise';
+
+            if (planId === sub.plan_id) {
+              matchedSub = stripeSub;
+              break;
+            }
+          }
+
+          if (!matchedSub) {
+            results.skipped++;
+            logStep("No matching Stripe subscription", { 
+              planId: sub.plan_id, 
+              email: customer.email 
+            });
+            continue;
+          }
         }
 
-        // Update with stripe_subscription_id and dates
+        // Build update payload with stripe_subscription_id and dates
         const updatePayload: any = {
           stripe_subscription_id: matchedSub.id,
         };
 
-        // Add dates if available from Stripe
+        // ALWAYS update dates from Stripe (timestamps are in seconds)
         if (matchedSub.current_period_start) {
           updatePayload.current_period_start = new Date(matchedSub.current_period_start * 1000).toISOString();
+          logStep("Updating start date", {
+            supabaseId: sub.id,
+            stripeTimestamp: matchedSub.current_period_start,
+            isoDate: updatePayload.current_period_start
+          });
         }
         if (matchedSub.current_period_end) {
           updatePayload.current_period_end = new Date(matchedSub.current_period_end * 1000).toISOString();
+          logStep("Updating end date", {
+            supabaseId: sub.id,
+            stripeTimestamp: matchedSub.current_period_end,
+            isoDate: updatePayload.current_period_end
+          });
         }
 
         const { error: updateError } = await supabaseClient
@@ -129,7 +157,8 @@ serve(async (req) => {
         results.updated++;
         logStep("Updated subscription", { 
           supabaseId: sub.id, 
-          stripeId: matchedSub.id 
+          stripeId: matchedSub.id,
+          updatedFields: Object.keys(updatePayload)
         });
 
       } catch (error) {
