@@ -240,7 +240,7 @@ export default function BillingPage() {
         </Alert>}
 
       {/* Alerta de uso de créditos */}
-      {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert className="flex items-center gap-4 bg-amber-500/10 border-amber-500/20">
+      {usagePercentage > 80 && plan?.id !== 'enterprise' && <Alert className="flex items-center gap-4 border-amber-500/20">
           <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="flex-1 min-w-0">
             <AlertTitle className="mb-1 text-amber-600 dark:text-amber-400">
