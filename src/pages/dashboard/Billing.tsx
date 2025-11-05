@@ -36,6 +36,7 @@ export default function BillingPage() {
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
   const [isPopulatingIds, setIsPopulatingIds] = useState(false);
+  const [isRefreshingDates, setIsRefreshingDates] = useState(false);
 
   // Verifica status da assinatura ao carregar a página
   useEffect(() => {
@@ -319,7 +320,47 @@ export default function BillingPage() {
     }
   };
 
-  return (
+  const handleRefreshStripeDates = async () => {
+    const confirmed = window.confirm(
+      'Iremos atualizar as datas de início e fim diretamente do Stripe para todas as assinaturas ativas. Deseja continuar?'
+    );
+    if (!confirmed) return;
+
+    setIsRefreshingDates(true);
+    const loadingToast = toast.loading('Atualizando datas de assinatura a partir do Stripe...');
+    try {
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        toast.error('Você precisa estar logado');
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('refresh-subscription-dates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (error) {
+        console.error('Error refreshing dates:', error);
+        toast.error('Erro ao atualizar datas', { description: error.message });
+        return;
+      }
+      const results = data?.results;
+      if (results) {
+        toast.success('Datas atualizadas!', {
+          description: `✅ ${results.updated} assinaturas atualizadas${results.errors.length ? `, ${results.errors.length} erros` : ''}`,
+          duration: 10000,
+        });
+        await checkSubscription();
+        await refreshCredits();
+      }
+    } catch (err) {
+      console.error('Error in handleRefreshStripeDates:', err);
+      toast.error('Erro ao processar atualização');
+    } finally {
+      toast.dismiss(loadingToast);
+      setIsRefreshingDates(false);
+    }
+  };
+ 
+   return (
     <div className="space-y-12 max-w-7xl mx-auto">
 
       {/* Cancelamento pendente */}
@@ -383,15 +424,25 @@ export default function BillingPage() {
                 <Database className={`w-4 h-4 ${isPopulatingIds ? 'animate-pulse' : ''}`} />
               </Button>
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSyncAllSubscriptions}
-                disabled={isSyncingAll}
-                className="text-muted-foreground hover:text-foreground"
-                title="Sincronizar todos os planos com o Stripe (Admin)"
-              >
-                <RefreshCw className={`w-4 h-4 ${isSyncingAll ? 'animate-pulse' : ''}`} />
-              </Button>
+                 variant="ghost"
+                 size="sm"
+                 onClick={handleRefreshStripeDates}
+                 disabled={isRefreshingDates}
+                 className="text-muted-foreground hover:text-foreground"
+                 title="Atualizar datas de assinatura a partir do Stripe"
+               >
+                 <CalendarDays className={`w-4 h-4 ${isRefreshingDates ? 'animate-pulse' : ''}`} />
+               </Button>
+               <Button
+                 variant="ghost"
+                 size="sm"
+                 onClick={handleSyncAllSubscriptions}
+                 disabled={isSyncingAll}
+                 className="text-muted-foreground hover:text-foreground"
+                 title="Sincronizar todos os planos com o Stripe (Admin)"
+               >
+                 <RefreshCw className={`w-4 h-4 ${isSyncingAll ? 'animate-pulse' : ''}`} />
+               </Button>
               {plan?.id !== 'free' && (
                 <>
                   <Button 

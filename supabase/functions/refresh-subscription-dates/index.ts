@@ -1,0 +1,120 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-session-token",
+};
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[REFRESH-DATES] ${step}${detailsStr}`);
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    { auth: { persistSession: false } }
+  );
+
+  try {
+    logStep("Starting refresh of subscription dates");
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+    // Fetch all active subscriptions that have a stripe_subscription_id
+    const { data: subs, error: subsError } = await supabase
+      .from("subscriptions")
+      .select("id, customer_id, plan_id, stripe_subscription_id")
+      .eq("status", "active")
+      .not("stripe_subscription_id", "is", null);
+
+    if (subsError) throw subsError;
+
+    logStep("Found subscriptions to refresh", { count: subs?.length || 0 });
+
+    const results = {
+      total: subs?.length || 0,
+      updated: 0,
+      skipped: 0,
+      errors: [] as any[],
+    };
+
+    for (const dbSub of subs || []) {
+      try {
+        if (!dbSub.stripe_subscription_id) {
+          results.skipped++;
+          continue;
+        }
+
+        const sub = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
+
+        // Compute ISO date strings if available
+        const startIso = sub.current_period_start
+          ? new Date(sub.current_period_start * 1000).toISOString()
+          : null;
+        const endIso = sub.current_period_end
+          ? new Date(sub.current_period_end * 1000).toISOString()
+          : null;
+
+        // Map price to plan_id
+        const priceId = sub.items.data[0]?.price?.id;
+        let planId = dbSub.plan_id || 'free';
+        if (priceId === 'price_1SMEgFFsSB8n8Az0aSBb70E7') planId = 'premium';
+        else if (priceId) planId = 'enterprise';
+
+        const payload: any = {
+          current_period_start: startIso,
+          current_period_end: endIso,
+          cancel_at_period_end: sub.cancel_at_period_end || false,
+          status: sub.status || 'active',
+          plan_id: planId,
+          stripe_subscription_id: sub.id,
+        };
+
+        const { error: updateError } = await supabase
+          .from("subscriptions")
+          .update(payload)
+          .eq("id", dbSub.id);
+        if (updateError) throw updateError;
+
+        results.updated++;
+        logStep("Updated dates for subscription", {
+          supabaseId: dbSub.id,
+          stripeId: sub.id,
+          startIso,
+          endIso,
+          cancelAtPeriodEnd: payload.cancel_at_period_end,
+          status: payload.status,
+          planId,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        results.errors.push({ id: dbSub.id, stripeId: dbSub.stripe_subscription_id, error: msg });
+        logStep("ERROR refreshing one subscription", { id: dbSub.id, error: msg });
+      }
+    }
+
+    logStep("Refresh completed", results);
+
+    return new Response(JSON.stringify({ success: true, results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logStep("ERROR in refresh-subscription-dates", { error: errorMessage });
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+});

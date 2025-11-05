@@ -162,6 +162,32 @@ serve(async (req) => {
       logStep("No active subscription found");
     }
 
+    // Persist Stripe dates in DB when available
+    try {
+      if (hasActiveSub) {
+        const updatePayload: any = {
+          current_period_start: subscriptionStart || null,
+          current_period_end: subscriptionEnd || null,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
+          status: 'active',
+          plan_id: planId,
+        };
+        const { error: upErr } = await supabaseClient
+          .from("subscriptions")
+          .update(updatePayload)
+          .eq("customer_id", sessionData.customer_id)
+          .eq("status", "active");
+        if (upErr) {
+          logStep("Failed to persist subscription dates", { error: upErr.message });
+        } else {
+          logStep("Persisted subscription dates to DB", { start: updatePayload.current_period_start, end: updatePayload.current_period_end });
+        }
+      }
+    } catch (e) {
+      logStep("Error while persisting subscription dates", { error: e instanceof Error ? e.message : String(e) });
+    }
+
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan_id: planId,
