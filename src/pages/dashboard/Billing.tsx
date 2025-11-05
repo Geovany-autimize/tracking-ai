@@ -472,12 +472,6 @@ export default function BillingPage() {
               )}
             </Button>
 
-            {!canBuyExtraCredits && (
-              <p className="text-xs text-center text-muted-foreground">
-                Disponível no plano Premium
-              </p>
-            )}
-
             {/* Additional Info */}
             {!subscription?.cancel_at_period_end && subscription?.current_period_end && (
               <p className="text-xs text-muted-foreground pt-2">
