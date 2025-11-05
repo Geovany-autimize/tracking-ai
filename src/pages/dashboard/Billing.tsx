@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Check, Zap, Crown, Building2, Sparkles, CalendarDays, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X, ChevronDown, Database } from 'lucide-react';
+import { Check, Zap, Crown, Building2, Sparkles, TrendingUp, HelpCircle, RefreshCw, AlertCircle, X, ChevronDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,10 +33,7 @@ export default function BillingPage() {
   } = useCredits();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
-  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
-  const [isPopulatingIds, setIsPopulatingIds] = useState(false);
-  const [isRefreshingDates, setIsRefreshingDates] = useState(false);
 
   // Verifica status da assinatura ao carregar a página
   useEffect(() => {
@@ -213,152 +210,47 @@ export default function BillingPage() {
 
   const handleRefreshSubscription = async () => {
     setIsCheckingSubscription(true);
+    const loadingToast = toast.loading('Atualizando assinatura...');
+    
     try {
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        toast.error('Você precisa estar logado');
+        return;
+      }
+
+      // 1. Populate Stripe IDs if needed (silent - won't error if already populated)
+      await supabase.functions.invoke('populate-stripe-subscription-ids', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // 2. Refresh subscription dates from Stripe
+      const { data: refreshData, error: refreshError } = await supabase.functions.invoke('refresh-subscription-dates', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (refreshError) {
+        console.error('Error refreshing dates:', refreshError);
+      } else if (refreshData?.results) {
+        console.log('Refresh results:', refreshData.results);
+      }
+
+      // 3. Check subscription status
       await checkSubscription();
-      toast.success('Status da assinatura atualizado');
+
+      // 4. Refresh credits
+      await refreshCredits();
+
+      toast.success('Assinatura atualizada com sucesso!');
     } catch (error) {
-      toast.error('Erro ao atualizar status da assinatura');
+      console.error('Error in handleRefreshSubscription:', error);
+      toast.error('Erro ao atualizar assinatura');
     } finally {
+      toast.dismiss(loadingToast);
       setIsCheckingSubscription(false);
     }
   };
 
-  const handleSyncAllSubscriptions = async () => {
-    const confirmed = window.confirm(
-      'ATENÇÃO: Esta operação irá sincronizar TODOS os planos de TODOS os usuários com o Stripe. Isso pode levar alguns minutos. Deseja continuar?'
-    );
-    
-    if (!confirmed) return;
-
-    setIsSyncingAll(true);
-    const loadingToast = toast.loading('Sincronizando todos os planos com o Stripe...');
-    
-    try {
-      const token = localStorage.getItem('session_token');
-      if (!token) {
-        toast.error('Você precisa estar logado');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('sync-all-subscriptions', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (error) {
-        console.error('Error syncing subscriptions:', error);
-        toast.error('Erro ao sincronizar planos', {
-          description: error.message
-        });
-        return;
-      }
-
-      const results = data?.results;
-      if (results) {
-        toast.success('Sincronização concluída!', {
-          description: `✅ ${results.updated} atualizados, ${results.created} criados, ${results.removed} removidos, ${results.skipped} ignorados${results.errors.length > 0 ? `, ${results.errors.length} erros` : ''}`,
-          duration: 10000,
-        });
-        
-        // Refresh current user's subscription
-        await checkSubscription();
-      }
-    } catch (error) {
-      console.error('Error in handleSyncAllSubscriptions:', error);
-      toast.error('Erro ao processar sincronização');
-    } finally {
-      toast.dismiss(loadingToast);
-      setIsSyncingAll(false);
-    }
-  };
-
-  const handlePopulateStripeIds = async () => {
-    const confirmed = window.confirm(
-      'Esta operação irá popular os IDs do Stripe para todas as assinaturas ativas. Deseja continuar?'
-    );
-    
-    if (!confirmed) return;
-
-    setIsPopulatingIds(true);
-    const loadingToast = toast.loading('Populando IDs do Stripe...');
-    
-    try {
-      const token = localStorage.getItem('session_token');
-      if (!token) {
-        toast.error('Você precisa estar logado');
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke('populate-stripe-subscription-ids', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (error) {
-        console.error('Error populating IDs:', error);
-        toast.error('Erro ao popular IDs', {
-          description: error.message
-        });
-        return;
-      }
-
-      const results = data?.results;
-      if (results) {
-        toast.success('Population concluída!', {
-          description: `✅ ${results.updated} atualizadas, ${results.skipped} ignoradas${results.errors.length > 0 ? `, ${results.errors.length} erros` : ''}`,
-          duration: 10000,
-        });
-      }
-    } catch (error) {
-      console.error('Error in handlePopulateStripeIds:', error);
-      toast.error('Erro ao processar population');
-    } finally {
-      toast.dismiss(loadingToast);
-      setIsPopulatingIds(false);
-    }
-  };
-
-  const handleRefreshStripeDates = async () => {
-    const confirmed = window.confirm(
-      'Iremos atualizar as datas de início e fim diretamente do Stripe para todas as assinaturas ativas. Deseja continuar?'
-    );
-    if (!confirmed) return;
-
-    setIsRefreshingDates(true);
-    const loadingToast = toast.loading('Atualizando datas de assinatura a partir do Stripe...');
-    try {
-      const token = localStorage.getItem('session_token');
-      if (!token) {
-        toast.error('Você precisa estar logado');
-        return;
-      }
-      const { data, error } = await supabase.functions.invoke('refresh-subscription-dates', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (error) {
-        console.error('Error refreshing dates:', error);
-        toast.error('Erro ao atualizar datas', { description: error.message });
-        return;
-      }
-      const results = data?.results;
-      if (results) {
-        toast.success('Datas atualizadas!', {
-          description: `✅ ${results.updated} assinaturas atualizadas${results.errors.length ? `, ${results.errors.length} erros` : ''}`,
-          duration: 10000,
-        });
-        await checkSubscription();
-        await refreshCredits();
-      }
-    } catch (err) {
-      console.error('Error in handleRefreshStripeDates:', err);
-      toast.error('Erro ao processar atualização');
-    } finally {
-      toast.dismiss(loadingToast);
-      setIsRefreshingDates(false);
-    }
-  };
  
    return (
     <div className="space-y-12 max-w-7xl mx-auto">
@@ -413,36 +305,6 @@ export default function BillingPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePopulateStripeIds}
-                disabled={isPopulatingIds}
-                className="text-muted-foreground hover:text-foreground"
-                title="Popular IDs do Stripe (executar uma vez)"
-              >
-                <Database className={`w-4 h-4 ${isPopulatingIds ? 'animate-pulse' : ''}`} />
-              </Button>
-              <Button
-                 variant="ghost"
-                 size="sm"
-                 onClick={handleRefreshStripeDates}
-                 disabled={isRefreshingDates}
-                 className="text-muted-foreground hover:text-foreground"
-                 title="Atualizar datas de assinatura a partir do Stripe"
-               >
-                 <CalendarDays className={`w-4 h-4 ${isRefreshingDates ? 'animate-pulse' : ''}`} />
-               </Button>
-               <Button
-                 variant="ghost"
-                 size="sm"
-                 onClick={handleSyncAllSubscriptions}
-                 disabled={isSyncingAll}
-                 className="text-muted-foreground hover:text-foreground"
-                 title="Sincronizar todos os planos com o Stripe (Admin)"
-               >
-                 <RefreshCw className={`w-4 h-4 ${isSyncingAll ? 'animate-pulse' : ''}`} />
-               </Button>
               {plan?.id !== 'free' && (
                 <>
                   <Button 
@@ -467,6 +329,7 @@ export default function BillingPage() {
                     size="sm"
                     onClick={handleRefreshSubscription}
                     disabled={isCheckingSubscription}
+                    title="Atualizar assinatura e créditos"
                   >
                     <RefreshCw className={`w-4 h-4 ${isCheckingSubscription ? 'animate-spin' : ''}`} />
                   </Button>

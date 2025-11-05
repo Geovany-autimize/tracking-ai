@@ -33,7 +33,7 @@ serve(async (req) => {
     // Fetch all active subscriptions that have a stripe_subscription_id
     const { data: subs, error: subsError } = await supabase
       .from("subscriptions")
-      .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end")
+      .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end")
       .eq("status", "active")
       .not("stripe_subscription_id", "is", null);
 
@@ -57,21 +57,49 @@ serve(async (req) => {
 
         const sub = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
 
-        // Log raw Stripe values
-        logStep("Raw Stripe values", {
-          stripeId: sub.id,
+        // Log full Stripe subscription structure for debugging
+        logStep("Full Stripe subscription object", {
+          id: sub.id,
+          status: sub.status,
           current_period_start: sub.current_period_start,
           current_period_end: sub.current_period_end,
           start_date: sub.start_date,
+          items_count: sub.items?.data?.length || 0,
+          cancel_at_period_end: sub.cancel_at_period_end,
         });
 
-        // Convert Unix timestamps to ISO strings with fallback
-        const startIso = sub.current_period_start
-          ? new Date(sub.current_period_start * 1000).toISOString()
-          : (sub.start_date ? new Date(sub.start_date * 1000).toISOString() : null);
-        const endIso = sub.current_period_end
-          ? new Date(sub.current_period_end * 1000).toISOString()
-          : null;
+        // Validate that we have the required timestamp fields
+        if (!sub.current_period_start || !sub.current_period_end) {
+          logStep("WARNING: Missing period timestamps from Stripe", {
+            stripeId: sub.id,
+            has_start: !!sub.current_period_start,
+            has_end: !!sub.current_period_end,
+            has_start_date: !!sub.start_date
+          });
+        }
+
+        // Convert Unix timestamps to ISO strings with validation and fallback
+        let startIso: string | null = null;
+        let endIso: string | null = null;
+
+        try {
+          if (sub.current_period_start && typeof sub.current_period_start === 'number') {
+            startIso = new Date(sub.current_period_start * 1000).toISOString();
+          } else if (sub.start_date && typeof sub.start_date === 'number') {
+            startIso = new Date(sub.start_date * 1000).toISOString();
+            logStep("Using start_date as fallback for current_period_start");
+          }
+
+          if (sub.current_period_end && typeof sub.current_period_end === 'number') {
+            endIso = new Date(sub.current_period_end * 1000).toISOString();
+          }
+        } catch (dateError) {
+          logStep("ERROR converting dates", {
+            error: dateError instanceof Error ? dateError.message : String(dateError),
+            raw_start: sub.current_period_start,
+            raw_end: sub.current_period_end
+          });
+        }
 
         logStep("Converted ISO dates", { startIso, endIso });
 
@@ -91,6 +119,24 @@ serve(async (req) => {
           dbStart: dbSub.current_period_start,
           dbEnd: dbSub.current_period_end,
         });
+
+        // Check if dates are actually different before updating
+        const datesChanged = 
+          startToSave !== dbSub.current_period_start || 
+          endToSave !== dbSub.current_period_end;
+        
+        const otherFieldsChanged =
+          (sub.cancel_at_period_end || false) !== (dbSub.cancel_at_period_end || false) ||
+          planId !== dbSub.plan_id;
+
+        if (!datesChanged && !otherFieldsChanged) {
+          logStep("Skipping update - no changes detected", {
+            supabaseId: dbSub.id,
+            stripeId: sub.id
+          });
+          results.skipped++;
+          continue;
+        }
 
         const payload: any = {
           current_period_start: startToSave,
@@ -116,6 +162,8 @@ serve(async (req) => {
           cancelAtPeriodEnd: payload.cancel_at_period_end,
           status: payload.status,
           planId,
+          datesChanged,
+          otherFieldsChanged
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
