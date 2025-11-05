@@ -69,7 +69,7 @@ serve(async (req) => {
     // Fetch only this user's active subscriptions
     const { data: subs, error: subsError } = await supabase
       .from("subscriptions")
-      .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end")
+      .select("id, customer_id, plan_id, stripe_subscription_id, current_period_start, current_period_end, cancel_at_period_end, status")
       .eq("status", "active")
       .eq("customer_id", customerId)
       .not("stripe_subscription_id", "is", null);

@@ -85,10 +85,10 @@ serve(async (req) => {
     let purchaseId: string | null = null;
 
     try {
-      // Resolve customer email for Stripe check
+      // Resolve customer email and created_at for Free plan check
       const { data: customerRow } = await supabaseAdmin
         .from('customers')
-        .select('email')
+        .select('email, created_at')
         .eq('id', sessionData.customer_id)
         .single();
 
@@ -180,6 +180,54 @@ serve(async (req) => {
               sourceType = 'monthly';
               subscriptionPeriodStart = subscription.current_period_start;
               subscriptionPeriodEnd = subscription.current_period_end;
+            }
+          }
+        } else {
+          // Free plan fallback - calculate period based on created_at
+          const { data: freePlanData } = await supabaseAdmin
+            .from('plans')
+            .select('monthly_credits')
+            .eq('id', 'free')
+            .single();
+
+          if (freePlanData && customerRow?.created_at) {
+            monthlyCredits = freePlanData.monthly_credits || 0;
+
+            if (monthlyCredits > 0) {
+              // Calculate Free plan period
+              const accountCreationDate = new Date(customerRow.created_at);
+              const today = new Date();
+              const dayOfMonth = accountCreationDate.getDate();
+              
+              const periodStart = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+              if (periodStart > today) {
+                periodStart.setMonth(periodStart.getMonth() - 1);
+              }
+              
+              const periodEnd = new Date(periodStart);
+              periodEnd.setMonth(periodEnd.getMonth() + 1);
+              
+              periodStartIso = periodStart.toISOString();
+              periodEndIso = periodEnd.toISOString();
+
+              // Count usage in current Free period
+              const { count } = await supabaseAdmin
+                .from('credit_usage')
+                .select('id', { count: 'exact', head: true })
+                .eq('customer_id', sessionData.customer_id)
+                .eq('source_type', 'monthly')
+                .gte('created_at', periodStartIso)
+                .lt('created_at', periodEndIso);
+
+              const usedThisPeriod = count || 0;
+              monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
+              logStep('Monthly credits (Free plan) check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
+
+              if (monthlyRemaining > 0) {
+                sourceType = 'monthly';
+                subscriptionPeriodStart = periodStartIso;
+                subscriptionPeriodEnd = periodEndIso;
+              }
             }
           }
         }
