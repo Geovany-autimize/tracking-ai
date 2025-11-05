@@ -83,7 +83,19 @@ serve(async (req) => {
     if (dbSub?.stripe_subscription_id) {
       try {
         subscription = await stripe.subscriptions.retrieve(dbSub.stripe_subscription_id);
-        logStep("Retrieved subscription by ID", { subscriptionId: subscription.id });
+        logStep("Retrieved subscription by ID", { 
+          subscriptionId: subscription.id,
+          status: subscription.status
+        });
+        
+        // If not active, treat as no subscription
+        if (subscription.status !== 'active') {
+          logStep("Subscription is not active in Stripe", { 
+            status: subscription.status,
+            will_mark_as_inactive: true 
+          });
+          subscription = null;
+        }
       } catch (err) {
         logStep("Subscription ID not found in Stripe, falling back to email lookup");
       }
@@ -125,13 +137,16 @@ serve(async (req) => {
     let cancelAtPeriodEnd = false;
     let stripeSubscriptionId = null;
     let stripeCanceledAt = null;
+    let stripeStatus = 'active';
     
     if (hasActiveSub && subscription) {
       cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
       stripeSubscriptionId = subscription.id;
+      stripeStatus = subscription.status || 'active';
       stripeCanceledAt = subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString().replace(/\.\d{3}Z$/, '+00:00') : null;
       logStep("Found active subscription", { 
         subscriptionId: subscription.id,
+        status: stripeStatus,
         cancelAtPeriodEnd,
         canceledAt: stripeCanceledAt
       });
@@ -170,6 +185,24 @@ serve(async (req) => {
       logStep("Determined plan", { planId, priceId });
     } else {
       logStep("No active subscription found");
+      
+      // Mark old subscription as canceled if exists
+      if (dbSub) {
+        logStep("Marking old subscription as canceled", { 
+          supabaseId: dbSub.id,
+          oldStripeId: dbSub.stripe_subscription_id 
+        });
+        
+        await supabaseClient
+          .from("subscriptions")
+          .update({
+            status: 'canceled',
+            canceled_at: new Date().toISOString()
+          })
+          .eq("id", dbSub.id);
+          
+        logStep("Old subscription marked as canceled");
+      }
     }
 
     // Persist Stripe dates in DB when available
@@ -187,7 +220,7 @@ serve(async (req) => {
             .insert({
               customer_id: sessionData.customer_id,
               plan_id: planId,
-              status: 'active',
+              status: stripeStatus,
               stripe_subscription_id: stripeSubscriptionId,
               current_period_start: subscriptionStart,
               current_period_end: subscriptionEnd,
@@ -220,7 +253,7 @@ serve(async (req) => {
             .insert({
               customer_id: sessionData.customer_id,
               plan_id: planId,
-              status: 'active',
+              status: stripeStatus,
               stripe_subscription_id: stripeSubscriptionId,
               current_period_start: subscriptionStart,
               current_period_end: subscriptionEnd,
@@ -240,7 +273,7 @@ serve(async (req) => {
           const updatePayload: any = {
             cancel_at_period_end: cancelAtPeriodEnd,
             stripe_subscription_id: stripeSubscriptionId || dbSub?.stripe_subscription_id || null,
-            status: 'active',
+            status: stripeStatus,
             plan_id: planId,
             canceled_at: stripeCanceledAt
           };

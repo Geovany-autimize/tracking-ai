@@ -160,7 +160,8 @@ serve(async (req) => {
         
         const otherFieldsChanged =
           (sub.cancel_at_period_end || false) !== (dbSub.cancel_at_period_end || false) ||
-          planId !== dbSub.plan_id;
+          planId !== dbSub.plan_id ||
+          sub.status !== dbSub.status;
 
         if (!datesChanged && !otherFieldsChanged) {
           logStep("Skipping update - no changes detected", {
@@ -175,7 +176,7 @@ serve(async (req) => {
           current_period_start: startToSave,
           current_period_end: endToSave,
           cancel_at_period_end: sub.cancel_at_period_end || false,
-          status: sub.status || 'active',
+          status: sub.status,
           plan_id: planId,
           stripe_subscription_id: sub.id,
         };
