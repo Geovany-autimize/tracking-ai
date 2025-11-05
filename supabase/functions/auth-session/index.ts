@@ -26,12 +26,12 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get session
-    const { data: session, error: sessionError } = await supabase
+    // Get session (tolerant to slight replication delays)
+    let { data: session, error: sessionError } = await supabase
       .from('sessions')
       .select('customer_id, expires_at')
       .eq('token_jti', sessionToken)
-      .single();
+      .maybeSingle();
 
     if (sessionError || !session) {
       return new Response(
