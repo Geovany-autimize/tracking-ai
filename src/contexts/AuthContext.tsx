@@ -8,6 +8,7 @@ interface Customer {
   whatsapp_e164?: string;
   avatar_url?: string;
   status: string;
+  created_at?: string;
 }
 
 interface Subscription {
@@ -31,6 +32,7 @@ interface AuthContextType {
   subscription: Subscription | null;
   plan: Plan | null;
   loading: boolean;
+  freePeriod: { periodStart: string; periodEnd: string } | null;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, whatsapp?: string, plan?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [freePeriod, setFreePeriod] = useState<{ periodStart: string; periodEnd: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const isSyncingRef = useRef(false);
 
@@ -76,6 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCustomer(data.customer);
       setSubscription(data.subscription);
       setPlan(data.plan);
+
+      // Se for Free, buscar período
+      if (data.plan?.id === 'free' && data.customer?.id) {
+        const { getFreePlanPeriod } = await import('@/lib/credits');
+        const period = await getFreePlanPeriod(data.customer.id);
+        setFreePeriod(period);
+      }
     } catch (error) {
       console.error('Error refreshing session:', error);
       clearSessionToken();
@@ -269,6 +279,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         customer,
         subscription,
         plan,
+        freePeriod,
         loading,
         login,
         signup,

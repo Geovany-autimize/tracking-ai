@@ -57,11 +57,13 @@ serve(async (req) => {
     // Check monthly subscription credits first (Stripe preferred, DB fallback)
     let monthlyCredits = 0;
     let monthlyRemaining = 0;
+    let subscription: any = null;
+    let customerPlan: any = null;
     try {
-      // Resolve customer email
+      // Resolve customer email and created_at
       const { data: customerRow } = await supabaseAdmin
         .from('customers')
-        .select('email')
+        .select('email, created_at')
         .eq('id', sessionData.customer_id)
         .single();
 
@@ -90,10 +92,11 @@ serve(async (req) => {
       if (planIdFromStripe && periodStartIso && periodEndIso) {
         const { data: plan } = await supabaseAdmin
           .from('plans')
-          .select('monthly_credits')
+          .select('monthly_credits, id')
           .eq('id', planIdFromStripe)
           .single();
         monthlyCredits = plan?.monthly_credits || 0;
+        customerPlan = plan;
 
         if (monthlyCredits > 0) {
           const { count } = await supabaseAdmin
@@ -127,6 +130,8 @@ serve(async (req) => {
                 tracking_code: trackingCode,
                 credits_consumed: 1,
                 source_type: 'monthly',
+                subscription_period_start: periodStartIso,
+                subscription_period_end: periodEndIso,
               });
             }
 
@@ -142,7 +147,7 @@ serve(async (req) => {
         }
       } else {
         // DB fallback
-        const { data: subscription } = await supabaseAdmin
+        const { data: dbSubscription } = await supabaseAdmin
           .from('subscriptions')
           .select('current_period_start, current_period_end, plan_id, status')
           .eq('customer_id', sessionData.customer_id)
@@ -151,13 +156,18 @@ serve(async (req) => {
           .limit(1)
           .single();
 
+        subscription = dbSubscription;
+
         if (subscription) {
           const { data: plan } = await supabaseAdmin
             .from('plans')
-            .select('monthly_credits')
+            .select('monthly_credits, id')
             .eq('id', subscription.plan_id)
             .single();
           monthlyCredits = plan?.monthly_credits || 0;
+          customerPlan = plan;
+          periodStartIso = subscription.current_period_start;
+          periodEndIso = subscription.current_period_end;
 
           if (monthlyCredits > 0) {
             const { count } = await supabaseAdmin
@@ -192,6 +202,8 @@ serve(async (req) => {
                   tracking_code: trackingCode,
                   credits_consumed: 1,
                   source_type: 'monthly',
+                  subscription_period_start: periodStartIso,
+                  subscription_period_end: periodEndIso,
                 });
               }
 
@@ -203,6 +215,85 @@ serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
               });
+            }
+          }
+        } else {
+          // Free plan fallback - calculate period based on created_at
+          const { data: freePlanData } = await supabaseAdmin
+            .from('plans')
+            .select('monthly_credits, id')
+            .eq('id', 'free')
+            .single();
+
+          if (freePlanData && customerRow?.created_at) {
+            customerPlan = freePlanData;
+            monthlyCredits = freePlanData.monthly_credits || 0;
+
+            if (monthlyCredits > 0) {
+              // Calculate Free plan period
+              const accountCreationDate = new Date(customerRow.created_at);
+              const today = new Date();
+              const dayOfMonth = accountCreationDate.getDate();
+              
+              const periodStart = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+              if (periodStart > today) {
+                periodStart.setMonth(periodStart.getMonth() - 1);
+              }
+              
+              const periodEnd = new Date(periodStart);
+              periodEnd.setMonth(periodEnd.getMonth() + 1);
+              
+              periodStartIso = periodStart.toISOString();
+              periodEndIso = periodEnd.toISOString();
+
+              // Count usage in current Free period
+              const { count } = await supabaseAdmin
+                .from('credit_usage')
+                .select('id', { count: 'exact', head: true })
+                .eq('customer_id', sessionData.customer_id)
+                .eq('source_type', 'monthly')
+                .gte('created_at', periodStartIso)
+                .lt('created_at', periodEndIso);
+
+              const usedThisPeriod = count || 0;
+              monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
+              logStep('Monthly credits (Free plan) check', { monthlyCredits, usedThisPeriod, monthlyRemaining });
+
+              if (monthlyRemaining > 0) {
+                // Also compute extra credits remaining for info
+                const { data: purchasesForInfo } = await supabaseAdmin
+                  .from('credit_purchases')
+                  .select('credits_amount, consumed_credits')
+                  .eq('customer_id', sessionData.customer_id)
+                  .eq('status', 'completed')
+                  .gt('expires_at', new Date().toISOString());
+
+                const extraRemaining = (purchasesForInfo || []).reduce(
+                  (sum, p) => sum + (p.credits_amount - p.consumed_credits),
+                  0
+                );
+
+                // Registrar na tabela de auditoria (non-blocking)
+                if (trackingCode) {
+                  void supabaseAdmin.from('credit_usage').insert({
+                    customer_id: sessionData.customer_id,
+                    tracking_code: trackingCode,
+                    credits_consumed: 1,
+                    source_type: 'monthly',
+                    subscription_period_start: periodStartIso,
+                    subscription_period_end: periodEndIso,
+                  });
+                }
+
+                return new Response(JSON.stringify({
+                  success: true,
+                  message: 'Crédito mensal consumido com sucesso',
+                  remaining_credits: (monthlyRemaining - 1) + extraRemaining
+                }), {
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  status: 200,
+                });
+              }
             }
           }
         }

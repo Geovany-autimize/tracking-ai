@@ -17,9 +17,12 @@ import { AutoRechargeCard } from '@/components/dialogs/AutoRechargeCard';
 import { Separator } from '@/components/ui/separator';
 import { useCredits } from '@/hooks/use-credits';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePlanRestrictions } from '@/hooks/use-plan-restrictions';
+import { cn } from '@/lib/utils';
 
 export default function BillingPage() {
   const { customer, plan, subscription, syncSubscriptionAndCredits } = useAuth();
+  const { canBuyExtraCredits, isFreePlan } = usePlanRestrictions();
   const { 
     totalCredits,
     totalPurchasedCredits,
@@ -387,6 +390,12 @@ export default function BillingPage() {
                       {Math.round(usagePercentage)}%
                     </p>
                   </div>
+                  
+                  {isFreePlan && customer?.created_at && (
+                    <div className="text-xs text-muted-foreground mt-2">
+                      <p>Seus créditos mensais renovam todo dia {new Date(customer.created_at).getDate()} do mês</p>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Background decoration */}
@@ -446,11 +455,15 @@ export default function BillingPage() {
             <Button 
               variant="outline" 
               onClick={() => setBuyCreditsOpen(true)}
-              className="w-full"
+              disabled={!canBuyExtraCredits}
+              className={cn(
+                "w-full",
+                !canBuyExtraCredits && "opacity-60"
+              )}
               size="lg"
             >
               <Zap className="w-4 h-4 mr-2" />
-              Comprar Créditos Extras
+              {canBuyExtraCredits ? 'Comprar Créditos Extras' : 'Requer Premium'}
             </Button>
 
             {/* Additional Info */}

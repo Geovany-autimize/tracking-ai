@@ -11,6 +11,8 @@ import { Zap, AlertCircle, Loader2, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlanRestrictions } from "@/hooks/use-plan-restrictions";
+import { PremiumFeatureBadge } from "@/components/ui/premium-feature-badge";
 
 interface BuyCreditsDialogProps {
   open: boolean;
@@ -19,6 +21,7 @@ interface BuyCreditsDialogProps {
 
 export function BuyCreditsDialog({ open, onOpenChange }: BuyCreditsDialogProps) {
   const { subscription } = useAuth();
+  const { canBuyExtraCredits } = usePlanRestrictions();
   const [credits, setCredits] = useState(500);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -102,11 +105,23 @@ export function BuyCreditsDialog({ open, onOpenChange }: BuyCreditsDialogProps) 
             Comprar Créditos Extras
           </DialogTitle>
           <DialogDescription>
-            Escolha a quantidade exata de créditos que você precisa
+            {canBuyExtraCredits 
+              ? 'Escolha a quantidade exata de créditos que você precisa'
+              : 'Recurso disponível apenas no plano Premium'
+            }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        {!canBuyExtraCredits ? (
+          <div className="py-4">
+            <PremiumFeatureBadge
+              title="Créditos Extras - Premium"
+              description="O plano Free inclui 5 créditos mensais. Para comprar créditos adicionais e escalar suas operações, faça upgrade para o plano Premium."
+              feature="extra_credits"
+            />
+          </div>
+        ) : (
+          <div className="space-y-6 py-4">
           {/* Input de quantidade */}
           <div className="space-y-3">
             <Label htmlFor="credits" className="text-base">
@@ -236,10 +251,11 @@ export function BuyCreditsDialog({ open, onOpenChange }: BuyCreditsDialogProps) 
             )}
           </Button>
 
-          <p className="text-xs text-center text-muted-foreground">
-            Pagamento seguro processado pelo Stripe
-          </p>
-        </div>
+            <p className="text-xs text-center text-muted-foreground">
+              Pagamento seguro processado pelo Stripe
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

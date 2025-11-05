@@ -11,6 +11,8 @@ import { useSearchParams } from 'react-router-dom';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { usePlanRestrictions } from '@/hooks/use-plan-restrictions';
+import { PremiumFeatureBadge } from '@/components/ui/premium-feature-badge';
 
 const STORAGE_KEY = 'trackingai:auto-recharge-expanded';
 
@@ -103,6 +105,7 @@ export const AutoRechargeCard = () => {
     confirmSetup,
   } = useAutoRecharge();
 
+  const { canUseAutoRecharge, isFreePlan } = usePlanRestrictions();
   const [searchParams, setSearchParams] = useSearchParams();
   const [minCredits, setMinCredits] = useState('100');
   const [rechargeAmount, setRechargeAmount] = useState('500');
@@ -261,14 +264,26 @@ export const AutoRechargeCard = () => {
   }
 
   return (
-    <Card
-      className={cn(
-        'border border-border/60 transition-all duration-300',
-        isEnabled
-          ? 'border-green-500/40 shadow-[0_24px_60px_rgba(34,197,94,0.16)] ring-2 ring-green-500/30'
-          : 'hover:border-border'
+    <>
+      {isFreePlan && (
+        <div className="mb-4">
+          <PremiumFeatureBadge
+            title="Recarga Automática - Premium"
+            description="Mantenha suas operações sempre ativas com recarga automática de créditos. Disponível no plano Premium."
+            feature="auto_recharge"
+          />
+        </div>
       )}
-    >
+
+      <Card
+        className={cn(
+          'border border-border/60 transition-all duration-300',
+          isFreePlan && 'opacity-60 pointer-events-none',
+          isEnabled
+            ? 'border-green-500/40 shadow-[0_24px_60px_rgba(34,197,94,0.16)] ring-2 ring-green-500/30'
+            : 'hover:border-border'
+        )}
+      >
       <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <CardTitle>Recarga Automática</CardTitle>
@@ -282,7 +297,7 @@ export const AutoRechargeCard = () => {
             id="auto-recharge-enabled"
             checked={isEnabled}
             onCheckedChange={handleToggleChange}
-            disabled={processing}
+            disabled={processing || isFreePlan}
             aria-label="Ativar recarga automática"
           />
         </div>
@@ -445,9 +460,10 @@ export const AutoRechargeCard = () => {
                 Salvar configurações
               </Button>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+        </CollapsibleContent>
+      </Collapsible>
+    </CardContent>
+  </Card>
+    </>
   );
 };

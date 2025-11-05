@@ -1,6 +1,47 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
+ * Calcula o período mensal atual para usuários Free
+ * Baseado na data de criação da conta (aniversário mensal)
+ */
+export async function getFreePlanPeriod(customerId: string): Promise<{
+  periodStart: string;
+  periodEnd: string;
+} | null> {
+  const { data: customer } = await supabase
+    .from('customers')
+    .select('created_at')
+    .eq('id', customerId)
+    .single();
+
+  if (!customer?.created_at) return null;
+
+  const accountCreationDate = new Date(customer.created_at);
+  const today = new Date();
+  
+  // Calcular o "aniversário mensal" mais recente
+  const dayOfMonth = accountCreationDate.getDate();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  // Início do período atual (último aniversário mensal)
+  const periodStart = new Date(currentYear, currentMonth, dayOfMonth);
+  if (periodStart > today) {
+    // Se o aniversário ainda não chegou este mês, usar o mês anterior
+    periodStart.setMonth(periodStart.getMonth() - 1);
+  }
+  
+  // Fim do período (próximo aniversário mensal)
+  const periodEnd = new Date(periodStart);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+  
+  return {
+    periodStart: periodStart.toISOString(),
+    periodEnd: periodEnd.toISOString()
+  };
+}
+
+/**
  * Calcula créditos disponíveis para um cliente
  * Usa credit_usage como fonte única da verdade
  */
@@ -45,7 +86,7 @@ export async function getAvailableCredits(customerId: string, fallbackPlanId?: s
   }
 
   // Se não encontrou subscription ativa mas tem fallbackPlanId (ex: plano Free), usar os créditos do plano
-  if (!foundActiveSubscription && fallbackPlanId) {
+  if (!foundActiveSubscription && fallbackPlanId === 'free') {
     try {
       const { data: plan } = await supabase
         .from('plans')
@@ -54,14 +95,23 @@ export async function getAvailableCredits(customerId: string, fallbackPlanId?: s
         .single();
       const monthlyCredits = plan?.monthly_credits || 0;
       
-      // Para plano Free sem subscription, contar todos os créditos usados como "monthly"
-      const { count } = await supabase
-        .from('credit_usage')
-        .select('id', { count: 'exact', head: true })
-        .eq('customer_id', customerId)
-        .eq('source_type', 'monthly');
-      const usedTotal = count || 0;
-      monthlyRemaining = Math.max(0, monthlyCredits - usedTotal);
+      // Obter período Free baseado em created_at
+      const freePeriod = await getFreePlanPeriod(customerId);
+      
+      if (freePeriod) {
+        // Contar créditos usados NO PERÍODO ATUAL
+        const { count } = await supabase
+          .from('credit_usage')
+          .select('id', { count: 'exact', head: true })
+          .eq('customer_id', customerId)
+          .eq('source_type', 'monthly')
+          .gte('created_at', freePeriod.periodStart)
+          .lt('created_at', freePeriod.periodEnd);
+        const usedThisPeriod = count || 0;
+        monthlyRemaining = Math.max(0, monthlyCredits - usedThisPeriod);
+      } else {
+        monthlyRemaining = 0;
+      }
     } catch (e) {
       console.error('Error fetching fallback plan credits:', e);
     }
@@ -121,13 +171,19 @@ export async function getMonthlyUsedCredits(customerId: string): Promise<number>
         .lt('subscription_period_end', subscription.current_period_end);
       return count || 0;
     } else {
-      // Fallback: Para usuários sem subscription ativa (ex: Free), contar todos os créditos usados
-      const { count } = await supabase
-        .from('credit_usage')
-        .select('id', { count: 'exact', head: true })
-        .eq('customer_id', customerId)
-        .eq('source_type', 'monthly');
-      return count || 0;
+      // Fallback: Para usuários sem subscription ativa (ex: Free), usar período baseado em created_at
+      const freePeriod = await getFreePlanPeriod(customerId);
+      if (freePeriod) {
+        const { count } = await supabase
+          .from('credit_usage')
+          .select('id', { count: 'exact', head: true })
+          .eq('customer_id', customerId)
+          .eq('source_type', 'monthly')
+          .gte('created_at', freePeriod.periodStart)
+          .lt('created_at', freePeriod.periodEnd);
+        return count || 0;
+      }
+      return 0;
     }
   } catch (e) {
     console.error('Error computing monthly used credits:', e);
@@ -184,22 +240,43 @@ export async function getUsedCredits(customerId: string): Promise<number> {
 
       return (monthlyUsed || 0) + extraUsed;
     } else {
-      // Fallback: Para usuários sem subscription ativa (ex: Free), contar todos os créditos usados
-      // Contar créditos mensais
-      const { count: monthlyUsed } = await supabase
-        .from('credit_usage')
-        .select('id', { count: 'exact', head: true })
-        .eq('customer_id', customerId)
-        .eq('source_type', 'monthly');
+      // Fallback: Para usuários sem subscription ativa (ex: Free), usar período baseado em created_at
+      const freePeriod = await getFreePlanPeriod(customerId);
+      
+      if (freePeriod) {
+        // Contar créditos mensais do período atual
+        const { count: monthlyUsed } = await supabase
+          .from('credit_usage')
+          .select('id', { count: 'exact', head: true })
+          .eq('customer_id', customerId)
+          .eq('source_type', 'monthly')
+          .gte('created_at', freePeriod.periodStart)
+          .lt('created_at', freePeriod.periodEnd);
 
-      // Contar créditos extras
-      const { count: purchaseUsed } = await supabase
-        .from('credit_usage')
-        .select('id', { count: 'exact', head: true })
-        .eq('customer_id', customerId)
-        .eq('source_type', 'purchase');
+        // Contar créditos extras (não expirados)
+        const { data: purchases } = await supabase
+          .from("credit_purchases")
+          .select("id")
+          .eq("customer_id", customerId)
+          .eq("status", "completed")
+          .gt("expires_at", new Date().toISOString());
 
-      return (monthlyUsed || 0) + (purchaseUsed || 0);
+        let extraUsed = 0;
+        if (purchases && purchases.length > 0) {
+          const purchaseIds = purchases.map(p => p.id);
+          const { count: purchaseUsed } = await supabase
+            .from('credit_usage')
+            .select('id', { count: 'exact', head: true })
+            .eq('customer_id', customerId)
+            .eq('source_type', 'purchase')
+            .in('purchase_id', purchaseIds);
+          extraUsed = purchaseUsed || 0;
+        }
+
+        return (monthlyUsed || 0) + extraUsed;
+      }
+      
+      return 0;
     }
   } catch (e) {
     console.error('Error computing used credits:', e);
