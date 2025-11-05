@@ -26,17 +26,10 @@ interface Plan {
   features: any;
 }
 
-interface Usage {
-  used_credits: number;
-  period_ym: string;
-  extra_credits?: number;
-}
-
 interface AuthContextType {
   customer: Customer | null;
   subscription: Subscription | null;
   plan: Plan | null;
-  usage: Usage | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string, whatsapp?: string, plan?: string) => Promise<void>;
@@ -51,7 +44,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [usage, setUsage] = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
 
   const getSessionToken = () => localStorage.getItem('session_token');
@@ -64,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCustomer(null);
       setSubscription(null);
       setPlan(null);
-      setUsage(null);
       setLoading(false);
       return;
     }
@@ -77,21 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setCustomer(null);
         setSubscription(null);
         setPlan(null);
-        setUsage(null);
         return;
       }
 
       setCustomer(data.customer);
       setSubscription(data.subscription);
       setPlan(data.plan);
-      setUsage(data.usage);
     } catch (error) {
       console.error('Error refreshing session:', error);
       clearSessionToken();
       setCustomer(null);
       setSubscription(null);
       setPlan(null);
-      setUsage(null);
     } finally {
       setLoading(false);
     }
@@ -203,7 +191,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCustomer(null);
     setSubscription(null);
     setPlan(null);
-    setUsage(null);
   };
 
   return (
@@ -212,7 +199,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         customer,
         subscription,
         plan,
-        usage,
         loading,
         login,
         signup,

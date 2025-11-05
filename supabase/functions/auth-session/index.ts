@@ -151,44 +151,6 @@ serve(async (req) => {
       plan = planData;
     }
 
-
-    // Calculate used credits
-    // Prefer monthly usage (shipments in current period) when subscription exists
-    let usedCredits = 0;
-    if (finalSubscription) {
-      const { count } = await supabase
-        .from('shipments')
-        .select('id', { count: 'exact', head: true })
-        .eq('customer_id', customer.id)
-        .gte('created_at', finalSubscription.current_period_start)
-        .lt('created_at', finalSubscription.current_period_end);
-      usedCredits = count || 0;
-    } else {
-      // Fallback to sum of consumed extra credits
-      const { data: creditPurchases } = await supabase
-        .from('credit_purchases')
-        .select('consumed_credits')
-        .eq('customer_id', customer.id);
-      usedCredits =
-        creditPurchases?.reduce(
-          (sum, purchase) => sum + purchase.consumed_credits,
-          0
-        ) || 0;
-    }
-
-    // Get available extra credits
-    const { data: extraCredits } = await supabase
-      .from("credit_purchases")
-      .select("credits_amount, consumed_credits")
-      .eq("customer_id", customer.id)
-      .eq("status", "completed")
-      .gt("expires_at", new Date().toISOString());
-
-    const totalExtraCredits = extraCredits?.reduce(
-      (sum, purchase) => sum + (purchase.credits_amount - purchase.consumed_credits), 
-      0
-    ) || 0;
-
     return new Response(
       JSON.stringify({
         customer: {
@@ -207,10 +169,6 @@ serve(async (req) => {
           cancel_at_period_end: finalSubscription.cancel_at_period_end,
         } : null,
         plan: plan,
-        usage: {
-          used_credits: usedCredits,
-          extra_credits: totalExtraCredits,
-        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

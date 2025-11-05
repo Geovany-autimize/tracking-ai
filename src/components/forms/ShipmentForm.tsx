@@ -13,9 +13,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import QuickCustomerForm from './QuickCustomerForm';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
-import { getAvailableCredits } from '@/lib/credits';
 import { useHighlights } from '@/contexts/HighlightsContext';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useCredits } from '@/hooks/use-credits';
 
 interface ShipmentFormProps {
   open: boolean;
@@ -32,6 +32,7 @@ type Customer = {
 export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) {
   const { customer, refreshSession } = useAuth();
   const { addNew } = useHighlights();
+  const { totalCredits, refresh: refreshCredits } = useCredits();
   const [trackingCode, setTrackingCode] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<string>('');
   const [customerSearch, setCustomerSearch] = useState('');
@@ -40,20 +41,12 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [quickFormOpen, setQuickFormOpen] = useState(false);
-  const [availableCredits, setAvailableCredits] = useState<number | null>(null);
 
   useEffect(() => {
     if (open && customer?.id) {
       loadCustomers();
-      checkCredits();
     }
   }, [open, customer?.id]);
-
-  const checkCredits = async () => {
-    if (!customer?.id) return;
-    const credits = await getAvailableCredits(customer.id);
-    setAvailableCredits(credits);
-  };
 
   const loadCustomers = async () => {
     if (!customer?.id) return;
@@ -187,7 +180,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
 
       // Atualizar créditos na UI e mostrar feedback
       await refreshSession();
-      await checkCredits(); // Atualizar contador
+      await refreshCredits(); // Atualizar contador de créditos
       
       const remainingCredits = result.remaining_credits ?? 0;
       toast({
@@ -239,7 +232,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* Alerta de créditos insuficientes */}
-          {availableCredits !== null && availableCredits === 0 && (
+          {totalCredits !== null && totalCredits === 0 && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
@@ -248,10 +241,10 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
             </Alert>
           )}
 
-          {availableCredits !== null && availableCredits > 0 && (
+          {totalCredits !== null && totalCredits > 0 && (
             <Alert>
               <AlertDescription className="text-sm text-muted-foreground">
-                Você tem {availableCredits} crédito{availableCredits !== 1 ? 's' : ''} disponível{availableCredits !== 1 ? 'eis' : ''}
+                Você tem {totalCredits} crédito{totalCredits !== 1 ? 's' : ''} disponível{totalCredits !== 1 ? 'eis' : ''}
               </AlertDescription>
             </Alert>
           )}
@@ -370,7 +363,7 @@ export default function ShipmentForm({ open, onOpenChange }: ShipmentFormProps) 
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="default" disabled={isLoading || (availableCredits !== null && availableCredits === 0)}>
+            <Button type="submit" variant="default" disabled={isLoading || (totalCredits !== null && totalCredits === 0)}>
               {isLoading ? 'Salvando...' : 'Adicionar Rastreio'}
             </Button>
           </DialogFooter>

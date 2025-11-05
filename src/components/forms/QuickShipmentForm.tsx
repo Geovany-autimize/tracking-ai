@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { sendToTrackingAPI, parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 import { useHighlights } from '@/contexts/HighlightsContext';
+import { useCredits } from '@/hooks/use-credits';
 
 interface QuickShipmentFormProps {
   open: boolean;
@@ -26,6 +27,7 @@ export default function QuickShipmentForm({
 }: QuickShipmentFormProps) {
   const { customer, refreshSession } = useAuth();
   const { addNew } = useHighlights();
+  const { refresh: refreshCredits } = useCredits();
   const [trackingCode, setTrackingCode] = useState('');
   const [autoTracking, setAutoTracking] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -118,6 +120,7 @@ export default function QuickShipmentForm({
 
         // Atualizar créditos na UI e mostrar feedback
         await refreshSession();
+        await refreshCredits(); // Atualizar contador de créditos
         
         const remainingCredits = result.remaining_credits ?? 0;
         toast({

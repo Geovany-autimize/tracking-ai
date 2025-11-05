@@ -15,9 +15,20 @@ import { ptBR } from 'date-fns/locale';
 import { BuyCreditsDialog } from '@/components/dialogs/BuyCreditsDialog';
 import { AutoRechargeCard } from '@/components/dialogs/AutoRechargeCard';
 import { Separator } from '@/components/ui/separator';
+import { useCredits } from '@/hooks/use-credits';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BillingPage() {
-  const { customer, plan, usage, subscription, checkSubscription } = useAuth();
+  const { customer, plan, subscription, checkSubscription } = useAuth();
+  const { 
+    totalCredits, 
+    monthlyCredits, 
+    monthlyUsed, 
+    monthlyRemaining,
+    extraCredits,
+    loading: creditsLoading,
+    refresh: refreshCredits 
+  } = useCredits();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState(false);
   const [buyCreditsOpen, setBuyCreditsOpen] = useState(false);
@@ -30,13 +41,9 @@ export default function BillingPage() {
     checkStatus();
   }, []);
 
-  const totalCredits = plan?.monthly_credits || 0;
-  const extraCredits = usage?.extra_credits || 0;
-  const usedCredits = usage?.used_credits || 0;
-  const availableCredits = totalCredits + extraCredits - usedCredits;
-  const remainingCredits = Math.max(0, availableCredits);
-  const usagePercentage = (totalCredits + extraCredits) > 0 
-    ? (usedCredits / (totalCredits + extraCredits)) * 100 
+  const remainingCredits = totalCredits || 0;
+  const usagePercentage = monthlyCredits > 0 
+    ? (monthlyUsed / monthlyCredits) * 100 
     : 0;
 
   const getNextRenewalDate = () => {
@@ -260,7 +267,7 @@ export default function BillingPage() {
                 {plan?.name || 'Free'}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                {totalCredits === 0 ? 'Créditos ilimitados' : `${totalCredits} créditos/mês`}
+                {monthlyCredits === 0 ? 'Créditos ilimitados' : `${monthlyCredits} créditos/mês`}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -315,41 +322,55 @@ export default function BillingPage() {
           {/* Credits Section - Hero Style */}
           <div className="space-y-6">
             {/* Hero Credit Display */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-8">
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <Zap className="w-5 h-5 text-primary" />
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                    Créditos Disponíveis
-                  </h4>
-                </div>
-                <div className="flex items-baseline gap-3 mb-4">
-                  <span className="text-6xl font-bold bg-gradient-to-br from-primary to-primary/60 bg-clip-text text-transparent">
-                    {remainingCredits.toLocaleString('pt-BR')}
-                  </span>
-                  {extraCredits > 0 && (
-                    <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
-                      +{extraCredits} extras
-                    </Badge>
-                  )}
-                </div>
-                
-                <Progress value={usagePercentage} className="h-2 mb-3" />
-                
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    {usedCredits.toLocaleString('pt-BR')} de {(totalCredits + extraCredits).toLocaleString('pt-BR')} usados
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {Math.round(usagePercentage)}%
-                  </p>
+            {creditsLoading ? (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-8">
+                <div className="space-y-4">
+                  <Skeleton className="h-6 w-48" />
+                  <Skeleton className="h-20 w-32" />
+                  <Skeleton className="h-2 w-full" />
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
                 </div>
               </div>
-              
-              {/* Background decoration */}
-              <div className="absolute -right-12 -top-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
-              <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
-            </div>
+            ) : (
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-background border border-primary/20 p-8">
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-5 h-5 text-primary" />
+                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                      Créditos Disponíveis
+                    </h4>
+                  </div>
+                  <div className="flex items-baseline gap-3 mb-4">
+                    <span className="text-6xl font-bold bg-gradient-to-br from-primary to-primary/60 bg-clip-text text-transparent">
+                      {remainingCredits.toLocaleString('pt-BR')}
+                    </span>
+                    {extraCredits > 0 && (
+                      <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
+                        +{extraCredits} extras
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <Progress value={usagePercentage} className="h-2 mb-3" />
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {monthlyUsed.toLocaleString('pt-BR')} de {monthlyCredits.toLocaleString('pt-BR')} usados
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {Math.round(usagePercentage)}%
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Background decoration */}
+                <div className="absolute -right-12 -top-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+                <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+              </div>
+            )}
 
             {/* Collapsible Details */}
             <Collapsible className="space-y-2">
@@ -364,7 +385,7 @@ export default function BillingPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Créditos mensais do plano:</span>
-                    <span className="font-semibold">{totalCredits.toLocaleString('pt-BR')}</span>
+                    <span className="font-semibold">{monthlyCredits.toLocaleString('pt-BR')}</span>
                   </div>
                   
                   {extraCredits > 0 && (
@@ -380,12 +401,12 @@ export default function BillingPage() {
                   
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total disponível:</span>
-                    <span className="font-semibold">{(totalCredits + extraCredits).toLocaleString('pt-BR')}</span>
+                    <span className="font-semibold">{(monthlyRemaining + extraCredits).toLocaleString('pt-BR')}</span>
                   </div>
                   
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Já utilizados:</span>
-                    <span className="font-semibold text-destructive">-{usedCredits.toLocaleString('pt-BR')}</span>
+                    <span className="font-semibold text-destructive">-{monthlyUsed.toLocaleString('pt-BR')}</span>
                   </div>
                   
                   <Separator className="my-2" />
