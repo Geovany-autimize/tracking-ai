@@ -48,8 +48,10 @@ export default function BillingPage() {
   }, []);
 
   const remainingCredits = totalCredits || 0;
-  const usagePercentage = totalPurchasedCredits > 0 
-    ? ((totalUsed || 0) / totalPurchasedCredits) * 100 
+  // Calculate usage percentage based on total credits (monthly + extra)
+  const totalAvailableInPeriod = monthlyCredits + extraCredits;
+  const usagePercentage = totalAvailableInPeriod > 0 
+    ? ((totalUsed || 0) / totalAvailableInPeriod) * 100 
     : 0;
 
   const getNextRenewalDate = () => {
@@ -337,11 +339,30 @@ export default function BillingPage() {
                 {plan?.id === 'free' ? 'R$ 0,00' : plan?.id === 'premium' ? 'R$ 249,00' : 'Sob consulta'} 
                 <span className="text-sm font-normal text-muted-foreground ml-2">cobrado mensalmente</span>
               </p>
-              {plan?.id !== 'free' && (
+              {plan?.id !== 'free' ? (
                 <p className="text-sm text-muted-foreground mt-1">
                   Próxima fatura em {getNextRenewalDate()}
                 </p>
-              )}
+              ) : customer?.created_at && (() => {
+                const accountCreationDate = new Date(customer.created_at);
+                const today = new Date();
+                const dayOfMonth = accountCreationDate.getDate();
+                
+                const nextReset = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+                if (nextReset <= today) {
+                  nextReset.setMonth(nextReset.getMonth() + 1);
+                }
+                
+                return (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Próxima renovação em {nextReset.toLocaleDateString('pt-BR', { 
+                      day: '2-digit', 
+                      month: 'long', 
+                      year: 'numeric' 
+                    })}
+                  </p>
+                );
+              })()}
             </div>
           </div>
 
@@ -384,7 +405,7 @@ export default function BillingPage() {
                   
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      {(totalUsed || 0).toLocaleString('pt-BR')} de {totalPurchasedCredits.toLocaleString('pt-BR')} usados
+                      {(totalUsed || 0).toLocaleString('pt-BR')} de {totalAvailableInPeriod.toLocaleString('pt-BR')} usados
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {Math.round(usagePercentage)}%
