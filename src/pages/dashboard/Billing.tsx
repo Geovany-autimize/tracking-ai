@@ -391,11 +391,33 @@ export default function BillingPage() {
                     </p>
                   </div>
                   
-                  {isFreePlan && customer?.created_at && (
-                    <div className="text-xs text-muted-foreground mt-2">
-                      <p>Seus créditos mensais renovam todo dia {new Date(customer.created_at).getDate()} do mês</p>
-                    </div>
-                  )}
+                  {isFreePlan && customer?.created_at && (() => {
+                    const accountCreationDate = new Date(customer.created_at);
+                    const today = new Date();
+                    const dayOfMonth = accountCreationDate.getDate();
+                    
+                    const nextReset = new Date(today.getFullYear(), today.getMonth(), dayOfMonth);
+                    if (nextReset <= today) {
+                      nextReset.setMonth(nextReset.getMonth() + 1);
+                    }
+                    
+                    return (
+                      <Alert className="mt-4 border-primary/20 bg-primary/5">
+                        <RefreshCw className="h-4 w-4" />
+                        <AlertTitle className="text-sm">Período de créditos</AlertTitle>
+                        <AlertDescription className="text-xs">
+                          Seus {monthlyCredits} créditos mensais renovam em{' '}
+                          <span className="font-semibold">
+                            {nextReset.toLocaleDateString('pt-BR', { 
+                              day: '2-digit', 
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </span>
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })()}
                 </div>
                 
                 {/* Background decoration */}
