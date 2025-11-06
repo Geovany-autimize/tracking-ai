@@ -15,15 +15,25 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
     return processTemplate(message, exampleVars);
   }, [message]);
 
+  // Safe text rendering - formats are handled via CSS classes
   const formatWhatsAppText = (text: string) => {
-    let formatted = text;
-    // Bold: **text** or *text*
-    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    formatted = formatted.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
-    // Italic: __text__ or _text_
-    formatted = formatted.replace(/__([^_]+)__/g, '<em>$1</em>');
-    formatted = formatted.replace(/_([^_]+)_/g, '<em>$1</em>');
-    return formatted;
+    return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|__[^_]+__|_[^_]+_)/g).map((part, index) => {
+      // Bold: **text** or *text*
+      if (part.match(/^\*\*([^*]+)\*\*$/)) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.match(/^\*([^*]+)\*$/)) {
+        return <strong key={index}>{part.slice(1, -1)}</strong>;
+      }
+      // Italic: __text__ or _text_
+      if (part.match(/^__([^_]+)__$/)) {
+        return <em key={index}>{part.slice(2, -2)}</em>;
+      }
+      if (part.match(/^_([^_]+)_$/)) {
+        return <em key={index}>{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
   };
 
   return (
@@ -46,10 +56,9 @@ export function WhatsAppPreview({ message }: WhatsAppPreviewProps) {
         {previewMessage ? (
           <div className="flex justify-end">
             <div className="relative bg-[#d9fdd3] rounded-lg px-3 py-2 max-w-[85%] shadow-sm">
-              <div 
-                className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[1.4]"
-                dangerouslySetInnerHTML={{ __html: formatWhatsAppText(previewMessage) }}
-              />
+              <div className="text-[14.2px] text-[#111b21] whitespace-pre-wrap break-words leading-[1.4]">
+                {formatWhatsAppText(previewMessage)}
+              </div>
               <div className="flex items-center justify-end gap-1 mt-1">
                 <span className="text-[11px] text-[#667781]">
                   {format(new Date(), 'HH:mm')}
