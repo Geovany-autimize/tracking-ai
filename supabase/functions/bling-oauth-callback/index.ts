@@ -21,14 +21,14 @@ serve(async (req) => {
 
     if (error) {
       console.error('[BLING-OAUTH-CALLBACK] OAuth error:', error);
-      // Redirecionar para página de settings com erro
+      // Redirecionar para página de integração Bling com erro
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
       const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
       const baseUrl = `https://${projectId}.lovableproject.com`;
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': `${baseUrl}/dashboard/settings?bling_error=${encodeURIComponent(error)}`
+          'Location': `${baseUrl}/dashboard/settings/integrations/bling?error=${encodeURIComponent(error)}`
         }
       });
     }
@@ -41,7 +41,7 @@ serve(async (req) => {
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': `${baseUrl}/dashboard/settings?bling_error=invalid_params`
+          'Location': `${baseUrl}/dashboard/settings/integrations/bling?error=invalid_params`
         }
       });
     }
@@ -79,7 +79,7 @@ serve(async (req) => {
       return new Response(null, {
         status: 302,
         headers: {
-          'Location': `${baseUrl}/dashboard/settings?bling_error=token_exchange_failed`
+          'Location': `${baseUrl}/dashboard/settings/integrations/bling?error=token_exchange_failed`
         }
       });
     }
@@ -158,7 +158,7 @@ serve(async (req) => {
     return new Response(null, {
       status: 302,
       headers: {
-        'Location': `${baseUrl}/dashboard/settings?bling_error=unknown_error`
+        'Location': `${baseUrl}/dashboard/settings/integrations/bling?error=unknown_error`
       }
     });
   }

@@ -29,7 +29,7 @@ export default function BlingIntegration() {
   // Mostrar mensagens de sucesso/erro do OAuth
   useEffect(() => {
     const success = searchParams.get('success');
-    const error = searchParams.get('bling_error');
+    const error = searchParams.get('error');
 
     if (success === 'true') {
       toast.success('Integração com Bling conectada com sucesso!');
@@ -39,7 +39,7 @@ export default function BlingIntegration() {
         token_exchange_failed: 'Falha ao trocar código por token',
         unknown_error: 'Erro desconhecido ao conectar',
       };
-      toast.error(errorMessages[error] || 'Erro ao conectar com Bling');
+      toast.error(errorMessages[error] || `Erro ao conectar com Bling: ${error}`);
     }
   }, [searchParams]);
 
