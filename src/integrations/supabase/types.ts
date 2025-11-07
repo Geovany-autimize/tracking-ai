@@ -58,6 +58,98 @@ export type Database = {
           },
         ]
       }
+      bling_integrations: {
+        Row: {
+          access_token: string
+          bling_user_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          last_sync_at: string | null
+          refresh_token: string
+          status: string
+          token_expires_at: string
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          bling_user_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_sync_at?: string | null
+          refresh_token: string
+          status?: string
+          token_expires_at: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          bling_user_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_sync_at?: string | null
+          refresh_token?: string
+          status?: string
+          token_expires_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bling_sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          customer_id: string
+          error_message: string | null
+          id: string
+          integration_id: string
+          orders_failed: number | null
+          orders_imported: number | null
+          orders_updated: number | null
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          customer_id: string
+          error_message?: string | null
+          id?: string
+          integration_id: string
+          orders_failed?: number | null
+          orders_imported?: number | null
+          orders_updated?: number | null
+          started_at?: string
+          status: string
+          sync_type: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          error_message?: string | null
+          id?: string
+          integration_id?: string
+          orders_failed?: number | null
+          orders_imported?: number | null
+          orders_updated?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bling_sync_logs_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "bling_integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       couriers: {
         Row: {
           country_code: string | null

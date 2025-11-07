@@ -71,3 +71,12 @@ verify_jwt = false
 
 [functions.refresh-subscription-dates]
 verify_jwt = false
+
+[functions.bling-oauth-start]
+verify_jwt = false
+
+[functions.bling-oauth-callback]
+verify_jwt = false
+
+[functions.bling-sync-orders]
+verify_jwt = false

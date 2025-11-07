@@ -23,6 +23,7 @@ import BillingPage from "./pages/dashboard/Billing";
 import BillingSuccess from "./pages/dashboard/billing/Success";
 import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
+import BlingIntegration from "./pages/dashboard/settings/integrations/Bling";
 import { HighlightsProvider } from "@/contexts/HighlightsContext";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="billing/credits-success" element={<CreditsSuccess />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="settings/integrations/whatsapp" element={<WhatsAppSettings />} />
+              <Route path="settings/integrations/bling" element={<BlingIntegration />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
