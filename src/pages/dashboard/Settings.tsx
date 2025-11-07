@@ -45,6 +45,7 @@ export default function SettingsPage() {
               description={whatsappDescription}
               status={whatsappStatus}
               href="/dashboard/settings/integrations/whatsapp"
+              layout="horizontal"
             />
           </CardContent>
         </Card>
