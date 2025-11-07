@@ -90,9 +90,9 @@ export default function IntegrationCard({
         className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
         aria-label={`Configurar ${title}`}
       >
-        <Link to={href}>
+        <Link to={href} className="flex items-center gap-2">
           <Settings className="h-4 w-4" />
-          <span className="hidden sm:inline">Configurar</span>
+          <span>Configurar</span>
         </Link>
       </Button>
     </div>
