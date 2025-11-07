@@ -37,7 +37,7 @@ export default function IntegrationCard({
   
   return (
     <div className={cn(
-      'group relative flex items-center gap-4 rounded-xl border bg-card/50 p-4 transition-all duration-300',
+      'group relative flex items-start gap-4 rounded-xl border bg-card/50 p-4 transition-all duration-300',
       'hover:bg-card hover:shadow-lg hover:scale-[1.01] hover:border-primary/30',
       'animate-fade-in',
       className
@@ -64,37 +64,42 @@ export default function IntegrationCard({
         )}
       </div>
       
-      {/* Conteúdo no meio */}
-      <div className="flex-1 min-w-0 space-y-1">
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Conteúdo à direita */}
+      <div className="flex-1 min-w-0 space-y-2">
+        {/* Linha 1: Título + Botão */}
+        <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold transition-colors duration-300 group-hover:text-primary">
             {title}
           </h3>
-          <Badge variant={s.variant} className="text-xs shadow-sm whitespace-nowrap">
+          
+          <Button 
+            asChild 
+            variant="outline" 
+            size="sm" 
+            className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
+            aria-label={`Configurar ${title}`}
+          >
+            <Link to={href} className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configurar</span>
+            </Link>
+          </Button>
+        </div>
+        
+        {/* Linha 2: Badge de Status */}
+        <div>
+          <Badge variant={s.variant} className="text-xs shadow-sm">
             {s.label}
           </Badge>
         </div>
         
+        {/* Linha 3: Descrição */}
         {description && (
           <p className="text-xs text-muted-foreground line-clamp-2">
             {description}
           </p>
         )}
       </div>
-      
-      {/* Botão à direita */}
-      <Button 
-        asChild 
-        variant="outline" 
-        size="sm" 
-        className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
-        aria-label={`Configurar ${title}`}
-      >
-        <Link to={href} className="flex items-center gap-2">
-          <Settings className="h-4 w-4" />
-          <span className="hidden md:inline">Configurar</span>
-        </Link>
-      </Button>
     </div>
   );
 }
