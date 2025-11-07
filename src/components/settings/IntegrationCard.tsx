@@ -42,15 +42,8 @@ export default function IntegrationCard({
       'animate-fade-in',
       className
     )}>
-      {/* Badge de status - canto superior direito */}
-      <div className="absolute top-3 right-3">
-        <Badge variant={s.variant} className="text-xs shadow-sm">
-          {s.label}
-        </Badge>
-      </div>
-      
       {/* Logo - maior e centralizada */}
-      <div className="mb-4 mt-2">
+      <div className="mb-4">
         {brand ? (
           <div className="scale-125 transition-transform duration-300 group-hover:scale-[1.35]">
             <BrandLogo brand={brand} />
@@ -72,12 +65,20 @@ export default function IntegrationCard({
       </div>
       
       {/* Conteúdo - centralizado */}
-      <div className="flex-1 text-center mb-4 w-full">
-        <h3 className="text-sm font-semibold mb-2 transition-colors duration-300 group-hover:text-primary">
+      <div className="flex-1 text-center mb-3 w-full space-y-2">
+        <h3 className="text-sm font-semibold transition-colors duration-300 group-hover:text-primary">
           {title}
         </h3>
+        
+        {/* Badge de status - abaixo do título */}
+        <div className="flex justify-center">
+          <Badge variant={s.variant} className="text-xs shadow-sm">
+            {s.label}
+          </Badge>
+        </div>
+        
         {description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 px-2">
+          <p className="text-xs text-muted-foreground line-clamp-2 px-2 pt-1">
             {description}
           </p>
         )}
