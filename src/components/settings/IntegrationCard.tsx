@@ -87,12 +87,12 @@ export default function IntegrationCard({
         asChild 
         variant="outline" 
         size="sm" 
-        className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5 whitespace-nowrap" 
+        className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
         aria-label={`Configurar ${title}`}
       >
         <Link to={href} className="flex items-center gap-2">
           <Settings className="h-4 w-4" />
-          <span>Configurar</span>
+          <span className="hidden md:inline">Configurar</span>
         </Link>
       </Button>
     </div>
