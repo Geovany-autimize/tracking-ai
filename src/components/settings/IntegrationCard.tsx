@@ -37,19 +37,19 @@ export default function IntegrationCard({
   
   return (
     <div className={cn(
-      'group relative flex flex-col items-center rounded-xl border bg-card/50 p-6 transition-all duration-300',
-      'hover:bg-card hover:shadow-lg hover:scale-[1.02] hover:border-primary/30',
+      'group relative flex items-center gap-4 rounded-xl border bg-card/50 p-4 transition-all duration-300',
+      'hover:bg-card hover:shadow-lg hover:scale-[1.01] hover:border-primary/30',
       'animate-fade-in',
       className
     )}>
-      {/* Logo - maior e centralizada */}
-      <div className="mb-4">
+      {/* Logo à esquerda */}
+      <div className="shrink-0">
         {brand ? (
-          <div className="scale-125 transition-transform duration-300 group-hover:scale-[1.35]">
+          <div className="transition-transform duration-300 group-hover:scale-110">
             <BrandLogo brand={brand} />
           </div>
         ) : (
-          <div className="h-16 w-16 rounded-xl bg-white ring-1 ring-border/40 flex items-center justify-center p-3 shrink-0 transition-all duration-300 group-hover:ring-2 group-hover:ring-primary/30 group-hover:shadow-md">
+          <div className="h-12 w-12 rounded-xl bg-white ring-1 ring-border/40 flex items-center justify-center p-2.5 transition-all duration-300 group-hover:ring-2 group-hover:ring-primary/30 group-hover:shadow-md">
             {logoUrl ? (
               <img
                 src={logoUrl}
@@ -58,43 +58,41 @@ export default function IntegrationCard({
                 loading="lazy"
               />
             ) : (
-              icon ?? <span className="text-lg">⚙️</span>
+              icon ?? <span className="text-base">⚙️</span>
             )}
           </div>
         )}
       </div>
       
-      {/* Conteúdo - centralizado */}
-      <div className="flex-1 text-center mb-3 w-full space-y-2">
-        <h3 className="text-sm font-semibold transition-colors duration-300 group-hover:text-primary">
-          {title}
-        </h3>
-        
-        {/* Badge de status - abaixo do título */}
-        <div className="flex justify-center">
-          <Badge variant={s.variant} className="text-xs shadow-sm">
+      {/* Conteúdo no meio */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-sm font-semibold transition-colors duration-300 group-hover:text-primary truncate">
+            {title}
+          </h3>
+          <Badge variant={s.variant} className="text-xs shadow-sm shrink-0">
             {s.label}
           </Badge>
         </div>
         
         {description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 px-2 pt-1">
+          <p className="text-xs text-muted-foreground line-clamp-1">
             {description}
           </p>
         )}
       </div>
       
-      {/* Botão de ação - full width no rodapé */}
+      {/* Botão à direita */}
       <Button 
         asChild 
         variant="outline" 
         size="sm" 
-        className="w-full gap-2 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
+        className="gap-2 shrink-0 transition-all duration-300 group-hover:border-primary/50 group-hover:bg-primary/5" 
         aria-label={`Configurar ${title}`}
       >
         <Link to={href}>
           <Settings className="h-4 w-4" />
-          Configurar
+          <span className="hidden sm:inline">Configurar</span>
         </Link>
       </Button>
     </div>
