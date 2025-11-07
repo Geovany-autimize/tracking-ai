@@ -53,20 +53,20 @@ serve(async (req) => {
     // Trocar code por access token
     const clientId = Deno.env.get('BLING_CLIENT_ID')!;
     const clientSecret = Deno.env.get('BLING_CLIENT_SECRET')!;
-    const redirectUri = `${Deno.env.get('SUPABASE_URL')}/functions/v1/bling-oauth-callback`;
+    
+    // Criar Basic Auth header com base64
+    const credentials = btoa(`${clientId}:${clientSecret}`);
 
-    const tokenResponse = await fetch('https://www.bling.com.br/Api/v3/oauth/token', {
+    const tokenResponse = await fetch('https://api.bling.com.br/Api/v3/oauth/token', {
       method: 'POST',
       headers: {
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
       }),
     });
 

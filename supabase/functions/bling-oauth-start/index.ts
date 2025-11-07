@@ -65,10 +65,9 @@ serve(async (req) => {
     const state = `${customerId}:${crypto.randomUUID()}`;
 
     // Construir URL de autorização do Bling
-    const authUrl = new URL('https://www.bling.com.br/Api/v3/oauth/authorize');
+    const authUrl = new URL('https://bling.com.br/Api/v3/oauth/authorize');
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
-    authUrl.searchParams.set('redirect_uri', redirectUri);
     authUrl.searchParams.set('state', state);
 
     console.log('[BLING-OAUTH-START] Redirecting to Bling OAuth:', authUrl.toString());
