@@ -43,7 +43,7 @@ export default function IntegrationCard({
       className
     )}>
       {/* Logo à esquerda */}
-      <div className="shrink-0 pt-1">
+      <div className="shrink-0">
         {brand ? (
           <div className="transition-transform duration-300 group-hover:scale-110">
             <BrandLogo brand={brand} />
@@ -64,27 +64,32 @@ export default function IntegrationCard({
         )}
       </div>
       
-      {/* Conteúdo à direita - estrutura vertical */}
-      <div className="flex-1 min-w-0 space-y-3">
-        {/* Linha 1: Título + Status */}
-        <div className="flex items-center gap-2 flex-wrap">
+      {/* Área principal: Conteúdo + Botão */}
+      <div className="flex-1 flex items-start justify-between gap-4 min-w-0">
+        {/* Conteúdo empilhado (título, status, legenda) */}
+        <div className="flex-1 space-y-2 min-w-0">
+          {/* Título */}
           <h3 className="text-sm font-semibold transition-colors duration-300 group-hover:text-primary">
             {title}
           </h3>
-          <Badge variant={s.variant} className="text-xs shadow-sm">
-            {s.label}
-          </Badge>
+          
+          {/* Status */}
+          <div>
+            <Badge variant={s.variant} className="text-xs shadow-sm">
+              {s.label}
+            </Badge>
+          </div>
+          
+          {/* Legenda/Descrição */}
+          {description && (
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {description}
+            </p>
+          )}
         </div>
         
-        {/* Linha 2: Descrição/Legenda */}
-        {description && (
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            {description}
-          </p>
-        )}
-        
-        {/* Linha 3: Botão */}
-        <div>
+        {/* Botão à direita */}
+        <div className="shrink-0">
           <Button 
             asChild 
             variant="outline" 
@@ -94,7 +99,7 @@ export default function IntegrationCard({
           >
             <Link to={href} className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              <span>Configurar</span>
+              <span className="hidden md:inline">Configurar</span>
             </Link>
           </Button>
         </div>
