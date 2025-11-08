@@ -1,12 +1,16 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import IntegrationCard from '@/components/settings/IntegrationCard';
 import { useWhatsApp } from '@/hooks/use-whatsapp';
+import { useBlingIntegration } from '@/hooks/use-bling-integration';
 import PageHeader from '@/components/app/PageHeader';
 import { formatE164WithCountry } from '@/lib/phone';
 
 export default function SettingsPage() {
   const { status, instanceData } = useWhatsApp();
   const whatsappStatus = status === 'connected' ? 'ativo' : 'nao-configurado';
+
+  const { isConnected: blingConnected, isLoadingIntegration: blingLoading } = useBlingIntegration();
+  const blingStatus = blingLoading ? 'nao-configurado' : (blingConnected ? 'ativo' : 'nao-configurado');
 
   const whatsappDescription = (() => {
     if (status === 'connected' && instanceData?.ownerJid) {
@@ -64,7 +68,7 @@ export default function SettingsPage() {
                   brand="bling"
                   title="Bling"
                   description="Sincronize pedidos e notas fiscais"
-                  status="nao-configurado"
+                  status={blingStatus}
                   href="/dashboard/settings/integrations/bling"
                 />
                 <IntegrationCard

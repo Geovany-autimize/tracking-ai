@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock } from 'l
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Button as NeonButton } from '@/components/ui/neon-button';
 import { Badge } from '@/components/ui/badge';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useBlingIntegration } from '@/hooks/use-bling-integration';
@@ -148,10 +149,14 @@ export default function BlingIntegration() {
                 Conecte sua conta Bling para importar pedidos automaticamente. Os pedidos com código de rastreio serão sincronizados como envios no Tracking AI.
               </p>
 
-              <Button onClick={startOAuth} className="gap-2">
-                <BrandLogo brand="bling" className="h-4 w-4" />
+              <NeonButton 
+                onClick={startOAuth} 
+                variant="solid" 
+                size="lg"
+                className="mt-2"
+              >
                 Conectar com Bling
-              </Button>
+              </NeonButton>
             </>
           )}
         </CardContent>

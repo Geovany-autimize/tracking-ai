@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Remove trailing slash do baseUrl para evitar // nas URLs
+const normalizeBaseUrl = (url: string) => url.replace(/\/$/, '');
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -22,7 +25,7 @@ serve(async (req) => {
     if (error) {
       console.error('[BLING-OAUTH-CALLBACK] OAuth error:', error);
       // Redirecionar para página de integração Bling com erro
-      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
+      const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
       return new Response(null, {
         status: 302,
         headers: {
@@ -33,7 +36,7 @@ serve(async (req) => {
 
     if (!code || !state) {
       console.error('[BLING-OAUTH-CALLBACK] Missing code or state');
-      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
+      const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
       return new Response(null, {
         status: 302,
         headers: {
@@ -69,7 +72,7 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('[BLING-OAUTH-CALLBACK] Token exchange error:', errorText);
-      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
+      const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
       return new Response(null, {
         status: 302,
         headers: {
@@ -136,7 +139,7 @@ serve(async (req) => {
     }
 
     // Redirecionar para página de settings com sucesso
-    const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
+    const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
     return new Response(null, {
       status: 302,
       headers: {
@@ -145,7 +148,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('[BLING-OAUTH-CALLBACK] Unexpected error:', error);
-    const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
+    const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
     return new Response(null, {
       status: 302,
       headers: {
