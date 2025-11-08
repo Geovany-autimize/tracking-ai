@@ -74,13 +74,36 @@ export function useBlingIntegration() {
       if (error) throw error;
       if (!data?.authUrl) throw new Error('URL de autorização não recebida');
       
-      // Redirecionar imediatamente para a URL do Bling
-      window.location.href = data.authUrl;
+      // Abrir em nova guia
+      window.open(data.authUrl, '_blank');
       
-      return data;
+      // Iniciar polling para detectar quando conectar
+      return new Promise<void>((resolve) => {
+        const pollInterval = setInterval(async () => {
+          // Verificar se já existe integração ativa
+          const { data: integration } = await supabase
+            .from('bling_integrations')
+            .select('*')
+            .eq('status', 'active')
+            .maybeSingle();
+          
+          if (integration) {
+            clearInterval(pollInterval);
+            resolve();
+          }
+        }, 2000); // Verificar a cada 2 segundos
+        
+        // Timeout após 5 minutos
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          resolve();
+        }, 300000);
+      });
     },
     onSuccess: () => {
-      // Redirecionamento já aconteceu no mutationFn
+      // Invalidar queries para atualizar UI
+      queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
+      toast.success('Integração com Bling conectada com sucesso!');
     },
     onError: (error) => {
       console.error('OAuth start error:', error);
@@ -135,6 +158,7 @@ export function useBlingIntegration() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
+      queryClient.invalidateQueries({ queryKey: ['bling-sync-logs'] });
       toast.success('Integração desconectada com sucesso');
     },
     onError: (error) => {

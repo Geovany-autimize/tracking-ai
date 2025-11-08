@@ -1,5 +1,4 @@
-import { useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import PageHeader from '@/components/app/PageHeader';
@@ -13,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function BlingIntegration() {
-  const [searchParams] = useSearchParams();
   const {
     integration,
     syncLogs,
@@ -26,23 +24,6 @@ export default function BlingIntegration() {
     isSyncing,
     isDisconnecting,
   } = useBlingIntegration();
-
-  // Mostrar mensagens de sucesso/erro do OAuth
-  useEffect(() => {
-    const success = searchParams.get('success');
-    const error = searchParams.get('error');
-
-    if (success === 'true') {
-      toast.success('Integração com Bling conectada com sucesso!');
-    } else if (error) {
-      const errorMessages: Record<string, string> = {
-        invalid_params: 'Parâmetros inválidos na autenticação',
-        token_exchange_failed: 'Falha ao trocar código por token',
-        unknown_error: 'Erro desconhecido ao conectar',
-      };
-      toast.error(errorMessages[error] || `Erro ao conectar com Bling: ${error}`);
-    }
-  }, [searchParams]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR');
