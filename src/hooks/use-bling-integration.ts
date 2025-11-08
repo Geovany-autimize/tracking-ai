@@ -65,6 +65,10 @@ export function useBlingIntegration() {
     mutationFn: async () => {
       const token = localStorage.getItem('session_token');
       
+      // Timestamp de quando iniciou o OAuth
+      const oauthStartTime = new Date().toISOString();
+      console.log('[OAUTH-START] Starting OAuth at:', oauthStartTime);
+      
       const { data, error } = await supabase.functions.invoke('bling-oauth-start', {
         headers: {
           'x-session-token': token || '',
@@ -74,20 +78,22 @@ export function useBlingIntegration() {
       if (error) throw error;
       if (!data?.authUrl) throw new Error('URL de autorização não recebida');
       
-      // Abrir em nova guia
+      console.log('[OAUTH-START] Opening auth URL:', data.authUrl);
       window.open(data.authUrl, '_blank');
       
       // Iniciar polling para detectar quando conectar
       return new Promise<void>((resolve) => {
         const pollInterval = setInterval(async () => {
-          // Verificar se já existe integração ativa
+          // Verificar se já existe integração ativa criada após o início do OAuth
           const { data: integration } = await supabase
             .from('bling_integrations')
             .select('*')
             .eq('status', 'active')
+            .gt('created_at', oauthStartTime)
             .maybeSingle();
           
           if (integration) {
+            console.log('[POLLING] New integration detected:', integration.id);
             clearInterval(pollInterval);
             resolve();
           }
@@ -95,6 +101,7 @@ export function useBlingIntegration() {
         
         // Timeout após 5 minutos
         setTimeout(() => {
+          console.log('[POLLING] Timeout reached');
           clearInterval(pollInterval);
           resolve();
         }, 300000);
@@ -149,16 +156,34 @@ export function useBlingIntegration() {
     mutationFn: async () => {
       if (!integration) throw new Error('No integration found');
 
-      const { error } = await supabase
+      console.log('[DISCONNECT] Attempting to delete integration:', integration.id);
+      
+      // Tentar deletar primeiro
+      const { error: deleteError } = await supabase
         .from('bling_integrations')
         .delete()
         .eq('id', integration.id);
 
-      if (error) throw error;
+      if (deleteError) {
+        console.error('[DISCONNECT] Delete failed, marking as inactive:', deleteError);
+        
+        // Se DELETE falhar, marcar como inactive e limpar tokens
+        const { error: updateError } = await supabase
+          .from('bling_integrations')
+          .update({
+            status: 'inactive',
+            access_token: '',
+            refresh_token: '',
+          })
+          .eq('id', integration.id);
+        
+        if (updateError) throw updateError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
       queryClient.invalidateQueries({ queryKey: ['bling-sync-logs'] });
+      queryClient.resetQueries({ queryKey: ['bling-integration'] });
       toast.success('Integração desconectada com sucesso');
     },
     onError: (error) => {

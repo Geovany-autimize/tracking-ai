@@ -49,6 +49,19 @@ serve(async (req) => {
     const customerId = session.customer_id;
     console.log('[BLING-OAUTH-START] Customer authenticated:', customerId);
 
+    // Marcar todas as integrações antigas como inactive
+    const { error: cleanupError } = await supabase
+      .from('bling_integrations')
+      .update({ status: 'inactive' })
+      .eq('customer_id', customerId)
+      .eq('status', 'active');
+
+    if (cleanupError) {
+      console.error('[BLING-OAUTH-START] Error cleaning up old integrations:', cleanupError);
+    } else {
+      console.log('[BLING-OAUTH-START] Old integrations marked as inactive');
+    }
+
     // Obter credenciais do Bling
     const clientId = Deno.env.get('BLING_CLIENT_ID');
     const redirectUri = `${supabaseUrl}/functions/v1/bling-oauth-callback`;
