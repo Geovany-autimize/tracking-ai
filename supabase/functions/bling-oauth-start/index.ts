@@ -69,6 +69,7 @@ serve(async (req) => {
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', clientId);
     authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('prompt', 'consent'); // Força tela de autorização sempre
 
     console.log('[BLING-OAUTH-START] Redirecting to Bling OAuth:', authUrl.toString());
 
