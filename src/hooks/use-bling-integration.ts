@@ -29,14 +29,16 @@ export interface SyncLog {
 export function useBlingIntegration() {
   const queryClient = useQueryClient();
 
-  // Buscar integração ativa
+  // Buscar integração ativa ou com erro
   const { data: integration, isLoading: isLoadingIntegration } = useQuery({
     queryKey: ['bling-integration'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bling_integrations')
         .select('*')
-        .eq('status', 'active')
+        .in('status', ['active', 'error'])
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
@@ -151,6 +153,32 @@ export function useBlingIntegration() {
     },
   });
 
+  // Validar token
+  const validateTokenMutation = useMutation({
+    mutationFn: async () => {
+      const token = localStorage.getItem('session_token');
+      
+      const { data, error } = await supabase.functions.invoke('bling-validate-token', {
+        headers: {
+          'x-session-token': token || '',
+        },
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (!data.valid && data.needsReconnect) {
+        // Token foi revogado - invalidar cache para atualizar UI
+        queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
+        toast.error('A autorização do Bling foi revogada. Por favor, reconecte.');
+      }
+    },
+    onError: (error) => {
+      console.error('Token validation error:', error);
+    },
+  });
+
   // Desconectar integração
   const disconnectMutation = useMutation({
     mutationFn: async () => {
@@ -197,11 +225,14 @@ export function useBlingIntegration() {
     syncLogs,
     isLoadingIntegration,
     isLoadingLogs,
-    isConnected: !!integration,
+    isConnected: !!integration && integration.status === 'active',
+    hasError: integration?.status === 'error',
     startOAuth: () => startOAuthMutation.mutate(),
     syncOrders: () => syncOrdersMutation.mutate(),
     disconnect: () => disconnectMutation.mutate(),
+    validateToken: () => validateTokenMutation.mutate(),
     isSyncing: syncOrdersMutation.isPending,
     isDisconnecting: disconnectMutation.isPending,
+    isValidating: validateTokenMutation.isPending,
   };
 }

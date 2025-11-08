@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,12 +19,22 @@ export default function BlingIntegration() {
     isLoadingIntegration,
     isLoadingLogs,
     isConnected,
+    hasError,
     startOAuth,
     syncOrders,
     disconnect,
+    validateToken,
     isSyncing,
     isDisconnecting,
+    isValidating,
   } = useBlingIntegration();
+
+  // Validar token ao montar o componente
+  useEffect(() => {
+    if (integration && integration.status === 'active') {
+      validateToken();
+    }
+  }, [integration?.id]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('pt-BR');
@@ -54,8 +65,8 @@ export default function BlingIntegration() {
           {isLoadingIntegration ? (
             <Skeleton className="h-6 w-20" />
           ) : (
-            <Badge variant={isConnected ? 'default' : 'outline'}>
-              {isConnected ? 'Conectado' : 'Não configurado'}
+            <Badge variant={hasError ? 'destructive' : isConnected ? 'default' : 'outline'}>
+              {hasError ? 'Erro de Autorização' : isConnected ? 'Conectado' : 'Não configurado'}
             </Badge>
           )}
         </CardHeader>
@@ -65,11 +76,67 @@ export default function BlingIntegration() {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-3/4" />
             </div>
+          ) : hasError && integration ? (
+            <>
+              <div className="space-y-3 rounded-lg bg-destructive/10 border border-destructive/30 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-destructive">
+                      Autorização Revogada
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      A autorização do Bling foi revogada ou expirou. Por favor, reconecte para continuar sincronizando pedidos.
+                    </p>
+                  </div>
+                </div>
+                {integration.last_sync_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Última sincronização bem-sucedida: {formatDate(integration.last_sync_at)}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <NeonButton 
+                  onClick={startOAuth} 
+                  variant="solid" 
+                  size="lg"
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Reconectar com Bling
+                </NeonButton>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" disabled={isDisconnecting} className="gap-2">
+                      <Unplug className="h-4 w-4" />
+                      Remover Integração
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remover Integração?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Isso irá remover completamente a integração com o Bling. Você poderá reconectar a qualquer momento.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={disconnect}>
+                        Remover
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </>
           ) : isConnected && integration ? (
             <>
               <div className="space-y-2 rounded-lg bg-muted/50 p-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Status:</strong> Integração ativa
+                  <strong>Status:</strong> Integração ativa {isValidating && '(validando...)'}
                 </p>
                 {integration.last_sync_at && (
                   <p className="text-sm text-muted-foreground">

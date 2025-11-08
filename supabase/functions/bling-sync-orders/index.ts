@@ -97,6 +97,38 @@ serve(async (req) => {
         },
       });
 
+      // Detectar token revogado (401)
+      if (ordersResponse.status === 401) {
+        console.error('[BLING-SYNC-ORDERS] Token revoked or invalid (401)');
+        
+        // Marcar integração como erro
+        await supabase
+          .from('bling_integrations')
+          .update({ status: 'error' })
+          .eq('id', integration.id);
+        
+        // Atualizar log com erro específico
+        if (syncLog) {
+          await supabase
+            .from('bling_sync_logs')
+            .update({
+              status: 'error',
+              error_message: 'Token de autorização revogado ou inválido. Por favor, reconecte a integração.',
+              completed_at: new Date().toISOString(),
+            })
+            .eq('id', syncLog.id);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: 'Token revogado', 
+            details: 'A autorização foi revogada. Por favor, reconecte a integração com o Bling.',
+            needsReconnect: true
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (!ordersResponse.ok) {
         throw new Error(`Bling API error: ${ordersResponse.status}`);
       }
