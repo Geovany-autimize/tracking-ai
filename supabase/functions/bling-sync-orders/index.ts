@@ -14,40 +14,45 @@ serve(async (req) => {
   try {
     console.log('[BLING-SYNC-ORDERS] Starting order sync');
 
-    // Obter Customer ID do token de sessão customizado
-    const token = req.headers.get('x-session-token') || req.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      console.error('[BLING-SYNC-ORDERS] No auth token provided');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Tentar obter customer_id de diferentes fontes
+    let customerId: string | null = null;
+
+    // Opção 1: Via header direto (usado pelo callback)
+    const directCustomerId = req.headers.get('x-customer-id');
+    if (directCustomerId) {
+      customerId = directCustomerId;
+      console.log('[BLING-SYNC-ORDERS] Customer ID from header:', customerId);
+    }
+
+    // Opção 2: Via sessão (usado pelo frontend)
+    if (!customerId) {
+      const token = req.headers.get('x-session-token') || req.headers.get('authorization')?.replace('Bearer ', '');
+      if (token) {
+        const { data: session } = await supabase
+          .from('sessions')
+          .select('customer_id')
+          .eq('token_jti', token)
+          .gt('expires_at', new Date().toISOString())
+          .single();
+        
+        customerId = session?.customer_id || null;
+        if (customerId) {
+          console.log('[BLING-SYNC-ORDERS] Customer ID from session:', customerId);
+        }
+      }
+    }
+
+    if (!customerId) {
+      console.error('[BLING-SYNC-ORDERS] No customer_id found');
       return new Response(
         JSON.stringify({ error: 'Não autorizado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Criar cliente Supabase
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Buscar customer_id da sessão
-    const { data: session, error: sessionError } = await supabase
-      .from('sessions')
-      .select('customer_id')
-      .eq('token_jti', token)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-
-    if (sessionError || !session) {
-      console.error('[BLING-SYNC-ORDERS] Invalid session:', sessionError);
-      return new Response(
-        JSON.stringify({ error: 'Sessão inválida' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const customerId = session.customer_id;
-    console.log('[BLING-SYNC-ORDERS] Customer authenticated:', customerId);
 
     // Buscar integração ativa do Bling
     const { data: integration, error: integrationError } = await supabase

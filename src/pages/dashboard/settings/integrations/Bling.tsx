@@ -5,7 +5,7 @@ import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTri
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Button as NeonButton } from '@/components/ui/neon-button';
+
 import { Badge } from '@/components/ui/badge';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 import { useBlingIntegration } from '@/hooks/use-bling-integration';
@@ -57,7 +57,7 @@ export default function BlingIntegration() {
       {/* Card de Status da Conexão */}
       <Card>
         <CardHeader className="flex flex-row items-center gap-4">
-          <BrandLogo brand="bling" />
+          <BrandLogo brand="bling" eager={true} />
           <div className="flex-1">
             <CardTitle>Bling ERP</CardTitle>
             <CardDescription>Sistema de gestão empresarial</CardDescription>
@@ -98,15 +98,14 @@ export default function BlingIntegration() {
               </div>
 
               <div className="flex gap-2">
-                <NeonButton 
-                  onClick={startOAuth} 
-                  variant="solid" 
-                  size="lg"
-                  className="gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reconectar com Bling
-                </NeonButton>
+              <Button 
+                onClick={startOAuth} 
+                disabled={false}
+                className="gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reconectar com Bling
+              </Button>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -197,14 +196,13 @@ export default function BlingIntegration() {
                 Conecte sua conta Bling para importar pedidos automaticamente. Os pedidos com código de rastreio serão sincronizados como envios no Tracking AI.
               </p>
 
-              <NeonButton 
-                onClick={startOAuth} 
-                variant="solid" 
-                size="lg"
-                className="mt-2"
+              <Button 
+                onClick={startOAuth}
+                disabled={false}
+                className="gap-2"
               >
                 Conectar com Bling
-              </NeonButton>
+              </Button>
             </>
           )}
         </CardContent>

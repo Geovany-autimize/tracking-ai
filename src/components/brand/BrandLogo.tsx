@@ -16,6 +16,7 @@ type BrandLogoProps = {
   brand: BrandKey;
   size?: number;
   className?: string;
+  eager?: boolean;
 };
 
 type BrandConfig = {
@@ -110,7 +111,7 @@ const brandConfig: Record<BrandKey, BrandConfig> = {
   },
 };
 
-export function BrandLogo({ brand, size = 48, className }: BrandLogoProps) {
+export function BrandLogo({ brand, size = 48, className, eager = false }: BrandLogoProps) {
   const config = brandConfig[brand];
 
   const imageCandidates = useMemo(() => {
@@ -147,7 +148,7 @@ export function BrandLogo({ brand, size = 48, className }: BrandLogoProps) {
           src={imageCandidates[index]}
           alt={config.imageAlt ?? `${brand} logo`}
           className="h-full w-full object-contain"
-          loading="lazy"
+          loading={eager ? "eager" : "lazy"}
           onError={handleError}
         />
       )}

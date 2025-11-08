@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
 export interface BlingIntegration {
   id: string;
@@ -112,7 +113,11 @@ export function useBlingIntegration() {
     onSuccess: () => {
       // Invalidar queries para atualizar UI
       queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
-      toast.success('Integração com Bling conectada com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['bling-sync-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+      toast.success('Integração conectada! Sincronizando pedidos automaticamente...', {
+        duration: 4000
+      });
     },
     onError: (error) => {
       console.error('OAuth start error:', error);
@@ -220,13 +225,28 @@ export function useBlingIntegration() {
     },
   });
 
+  const hasError = integration?.status === 'error';
+  const isConnected = !!integration && integration.status === 'active';
+
+  // Auto-sync periódico a cada 30 minutos
+  useEffect(() => {
+    if (!isConnected || !integration) return;
+    
+    const interval = setInterval(() => {
+      console.log('[AUTO-SYNC] Triggering automatic sync');
+      syncOrdersMutation.mutate();
+    }, 30 * 60 * 1000); // 30 minutos
+    
+    return () => clearInterval(interval);
+  }, [isConnected, integration?.id]);
+
   return {
     integration,
     syncLogs,
     isLoadingIntegration,
     isLoadingLogs,
-    isConnected: !!integration && integration.status === 'active',
-    hasError: integration?.status === 'error',
+    isConnected,
+    hasError,
     startOAuth: () => startOAuthMutation.mutate(),
     syncOrders: () => syncOrdersMutation.mutate(),
     disconnect: () => disconnectMutation.mutate(),

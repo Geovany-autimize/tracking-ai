@@ -138,6 +138,24 @@ serve(async (req) => {
       }
     }
 
+    // Iniciar sincronização automática em background
+    console.log('[BLING-OAUTH-CALLBACK] Triggering automatic sync');
+    try {
+      const syncResponse = await supabase.functions.invoke('bling-sync-orders', {
+        headers: {
+          'x-customer-id': customerId,
+        },
+      });
+      
+      if (syncResponse.error) {
+        console.error('[BLING-OAUTH-CALLBACK] Auto-sync failed:', syncResponse.error);
+      } else {
+        console.log('[BLING-OAUTH-CALLBACK] Auto-sync triggered successfully');
+      }
+    } catch (syncError) {
+      console.error('[BLING-OAUTH-CALLBACK] Auto-sync error:', syncError);
+    }
+
     // Redirecionar para página de settings com sucesso
     const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
     return new Response(null, {
