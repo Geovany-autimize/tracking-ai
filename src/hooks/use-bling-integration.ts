@@ -65,19 +65,22 @@ export function useBlingIntegration() {
     mutationFn: async () => {
       const token = localStorage.getItem('session_token');
       
-      const response = await supabase.functions.invoke('bling-oauth-start', {
+      const { data, error } = await supabase.functions.invoke('bling-oauth-start', {
         headers: {
           'x-session-token': token || '',
         },
       });
 
-      if (response.error) throw response.error;
-      return response.data;
+      if (error) throw error;
+      if (!data?.authUrl) throw new Error('URL de autorização não recebida');
+      
+      // Redirecionar imediatamente para a URL do Bling
+      window.location.href = data.authUrl;
+      
+      return data;
     },
-    onSuccess: (data) => {
-      if (data?.authUrl) {
-        window.location.href = data.authUrl;
-      }
+    onSuccess: () => {
+      // Redirecionamento já aconteceu no mutationFn
     },
     onError: (error) => {
       console.error('OAuth start error:', error);
