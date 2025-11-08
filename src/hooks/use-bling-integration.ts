@@ -128,7 +128,7 @@ export function useBlingIntegration() {
 
       const { error } = await supabase
         .from('bling_integrations')
-        .update({ status: 'inactive' })
+        .delete()
         .eq('id', integration.id);
 
       if (error) throw error;

@@ -22,9 +22,7 @@ serve(async (req) => {
     if (error) {
       console.error('[BLING-OAUTH-CALLBACK] OAuth error:', error);
       // Redirecionar para página de integração Bling com erro
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-      const baseUrl = `https://${projectId}.lovableproject.com`;
+      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
       return new Response(null, {
         status: 302,
         headers: {
@@ -35,9 +33,7 @@ serve(async (req) => {
 
     if (!code || !state) {
       console.error('[BLING-OAUTH-CALLBACK] Missing code or state');
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-      const baseUrl = `https://${projectId}.lovableproject.com`;
+      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
       return new Response(null, {
         status: 302,
         headers: {
@@ -73,9 +69,7 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
       console.error('[BLING-OAUTH-CALLBACK] Token exchange error:', errorText);
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-      const baseUrl = `https://${projectId}.lovableproject.com`;
+      const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
       return new Response(null, {
         status: 302,
         headers: {
@@ -142,8 +136,7 @@ serve(async (req) => {
     }
 
     // Redirecionar para página de settings com sucesso
-    const projectId = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-    const baseUrl = `https://${projectId}.lovableproject.com`;
+    const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
     return new Response(null, {
       status: 302,
       headers: {
@@ -152,9 +145,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('[BLING-OAUTH-CALLBACK] Unexpected error:', error);
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const projectIdErr = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1];
-    const baseUrl = `https://${projectIdErr}.lovableproject.com`;
+    const baseUrl = Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com';
     return new Response(null, {
       status: 302,
       headers: {
