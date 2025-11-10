@@ -1,7 +1,7 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Package, ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 export default function BlingIntegration() {
+  const navigate = useNavigate();
   const {
     integration,
     syncLogs,
@@ -149,6 +150,15 @@ export default function BlingIntegration() {
 
               <div className="flex gap-2">
                 <Button
+                  onClick={() => navigate('/dashboard/settings/integrations/bling/orders')}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Package className="h-4 w-4" />
+                  Gerenciar Pedidos
+                </Button>
+
+                <Button
                   onClick={syncOrders}
                   disabled={isSyncing}
                   className="gap-2"
@@ -161,7 +171,7 @@ export default function BlingIntegration() {
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4" />
-                      Sincronizar Pedidos
+                      Sincronizar Todos
                     </>
                   )}
                 </Button>
