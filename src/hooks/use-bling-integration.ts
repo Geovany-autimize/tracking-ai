@@ -7,6 +7,7 @@ export interface BlingIntegration {
   id: string;
   customer_id: string;
   status: 'active' | 'inactive' | 'error';
+  token_expires_at: string;
   last_sync_at: string | null;
   created_at: string;
   updated_at: string;
@@ -228,17 +229,65 @@ export function useBlingIntegration() {
   const hasError = integration?.status === 'error';
   const isConnected = !!integration && integration.status === 'active';
 
-  // Auto-sync periódico a cada 30 minutos
+  // Auto-sync and token refresh periodically if connected
   useEffect(() => {
     if (!isConnected || !integration) return;
     
-    const interval = setInterval(() => {
-      console.log('[AUTO-SYNC] Triggering automatic sync');
-      syncOrdersMutation.mutate();
-    }, 30 * 60 * 1000); // 30 minutos
+    console.log('[BLING-INTEGRATION] Setting up auto-sync and token monitoring');
     
-    return () => clearInterval(interval);
-  }, [isConnected, integration?.id]);
+    // Check if token needs refresh (expires in less than 1 hour)
+    const checkTokenExpiration = () => {
+      if (!integration.token_expires_at) return false;
+      
+      const expiresAt = new Date(integration.token_expires_at);
+      const now = new Date();
+      const oneHour = 60 * 60 * 1000;
+      
+      return (expiresAt.getTime() - now.getTime()) < oneHour;
+    };
+    
+    // Function to refresh token
+    const refreshToken = async () => {
+      try {
+        console.log('[BLING-INTEGRATION] Token expiring soon, refreshing...');
+        const { error } = await supabase.functions.invoke('bling-refresh-token');
+        
+        if (error) {
+          console.error('[BLING-INTEGRATION] Token refresh failed:', error);
+          toast.error('Erro ao renovar token do Bling');
+        } else {
+          console.log('[BLING-INTEGRATION] Token refreshed successfully');
+          queryClient.invalidateQueries({ queryKey: ['bling-integration'] });
+          toast.success('Token do Bling renovado automaticamente');
+        }
+      } catch (error) {
+        console.error('[BLING-INTEGRATION] Error refreshing token:', error);
+      }
+    };
+    
+    // Check token expiration every 15 minutes
+    const tokenCheckInterval = setInterval(() => {
+      if (checkTokenExpiration()) {
+        refreshToken();
+      }
+    }, 15 * 60 * 1000); // 15 minutes
+    
+    // Sync orders every 30 minutes
+    const syncInterval = setInterval(() => {
+      console.log('[BLING-INTEGRATION] Triggering automatic sync');
+      syncOrdersMutation.mutate();
+    }, 30 * 60 * 1000); // 30 minutes
+    
+    // Check token immediately on mount
+    if (checkTokenExpiration()) {
+      refreshToken();
+    }
+    
+    return () => {
+      clearInterval(tokenCheckInterval);
+      clearInterval(syncInterval);
+    };
+  }, [isConnected, integration?.id, integration?.token_expires_at]);
 
   return {
     integration,

@@ -18,6 +18,15 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Helper function to check if token needs refresh
+    const needsTokenRefresh = (expiresAt: string): boolean => {
+      const expirationDate = new Date(expiresAt);
+      const now = new Date();
+      // Refresh if token expires in less than 30 minutes
+      const thirtyMinutes = 30 * 60 * 1000;
+      return (expirationDate.getTime() - now.getTime()) < thirtyMinutes;
+    };
+
     // Tentar obter customer_id de diferentes fontes
     let customerId: string | null = null;
 
@@ -68,6 +77,58 @@ serve(async (req) => {
         JSON.stringify({ error: 'Integração não encontrada' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    console.log('[BLING-SYNC-ORDERS] Found integration:', integration.id);
+
+    // Check if token needs refresh
+    if (needsTokenRefresh(integration.token_expires_at)) {
+      console.log('[BLING-SYNC-ORDERS] Token expired or expiring soon, refreshing...');
+      
+      try {
+        const refreshResponse = await supabase.functions.invoke('bling-refresh-token', {
+          headers: {
+            'x-customer-id': customerId,
+          },
+        });
+
+        if (refreshResponse.error) {
+          console.error('[BLING-SYNC-ORDERS] Token refresh failed:', refreshResponse.error);
+          
+          // If refresh failed due to invalid refresh token, return error
+          if (refreshResponse.data?.needsReconnect) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Token expirado. Reconexão necessária.',
+                needsReconnect: true 
+              }),
+              { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          
+          throw new Error('Token refresh failed');
+        }
+
+        console.log('[BLING-SYNC-ORDERS] Token refreshed successfully');
+        
+        // Fetch updated integration with new token
+        const { data: updatedIntegration } = await supabase
+          .from('bling_integrations')
+          .select('*')
+          .eq('id', integration.id)
+          .single();
+        
+        if (updatedIntegration) {
+          integration.access_token = updatedIntegration.access_token;
+          integration.token_expires_at = updatedIntegration.token_expires_at;
+        }
+      } catch (refreshError) {
+        console.error('[BLING-SYNC-ORDERS] Error during token refresh:', refreshError);
+        return new Response(
+          JSON.stringify({ error: 'Erro ao renovar token' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Criar log de sincronização

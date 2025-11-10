@@ -77,22 +77,66 @@ serve(async (req) => {
     });
 
     if (validationResponse.status === 401) {
-      console.error('[BLING-VALIDATE-TOKEN] Token is invalid (401)');
+      // Token is invalid or expired, try to refresh
+      console.log('[BLING-VALIDATE-TOKEN] Token is invalid (401), attempting automatic refresh');
       
-      // Token inválido - marcar como erro
-      await supabase
-        .from('bling_integrations')
-        .update({ status: 'error' })
-        .eq('id', integration.id);
+      try {
+        const refreshResponse = await supabase.functions.invoke('bling-refresh-token', {
+          headers: {
+            'x-customer-id': session.customer_id,
+          },
+        });
 
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: 'Token revogado',
-          needsReconnect: true 
-        }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+        if (refreshResponse.error || refreshResponse.data?.needsReconnect) {
+          console.log('[BLING-VALIDATE-TOKEN] Token refresh failed, marking as error');
+          
+          await supabase
+            .from('bling_integrations')
+            .update({ 
+              status: 'error',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', integration.id);
+
+          return new Response(
+            JSON.stringify({ 
+              valid: false, 
+              error: 'Token expirado. Reconexão necessária.',
+              needsReconnect: true
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('[BLING-VALIDATE-TOKEN] Token refreshed successfully');
+        return new Response(
+          JSON.stringify({ 
+            valid: true,
+            refreshed: true,
+            message: 'Token renovado automaticamente'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (refreshError) {
+        console.error('[BLING-VALIDATE-TOKEN] Error during token refresh:', refreshError);
+        
+        await supabase
+          .from('bling_integrations')
+          .update({ 
+            status: 'error',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', integration.id);
+
+        return new Response(
+          JSON.stringify({ 
+            valid: false, 
+            error: 'Token revogado',
+            needsReconnect: true
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     console.log('[BLING-VALIDATE-TOKEN] Token is valid');
