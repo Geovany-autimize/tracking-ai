@@ -1,35 +1,60 @@
 import { Mail, MapPin, ExternalLink } from "lucide-react";
-
 const footerLinks = {
-  produto: [
-    { label: "Funcionalidades", href: "#features" },
-    { label: "Integrações", href: "#integrations" },
-    { label: "Preços", href: "#pricing" },
-    { label: "Casos de uso", href: "#testimonials" },
-  ],
-  recursos: [
-    { label: "Documentação", href: "#" },
-    { label: "API", href: "#" },
-    { label: "Webhooks", href: "#" },
-    { label: "Status", href: "#" },
-  ],
-  empresa: [
-    { label: "Sobre", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Carreiras", href: "#" },
-    { label: "Contato", href: "#" },
-  ],
-  legal: [
-    { label: "Termos de uso", href: "#" },
-    { label: "Política de privacidade", href: "#" },
-    { label: "LGPD", href: "#" },
-    { label: "Segurança", href: "#" },
-  ],
+  produto: [{
+    label: "Funcionalidades",
+    href: "#features"
+  }, {
+    label: "Integrações",
+    href: "#integrations"
+  }, {
+    label: "Preços",
+    href: "#pricing"
+  }, {
+    label: "Casos de uso",
+    href: "#testimonials"
+  }],
+  recursos: [{
+    label: "Documentação",
+    href: "#"
+  }, {
+    label: "API",
+    href: "#"
+  }, {
+    label: "Webhooks",
+    href: "#"
+  }, {
+    label: "Status",
+    href: "#"
+  }],
+  empresa: [{
+    label: "Sobre",
+    href: "#"
+  }, {
+    label: "Blog",
+    href: "#"
+  }, {
+    label: "Carreiras",
+    href: "#"
+  }, {
+    label: "Contato",
+    href: "#"
+  }],
+  legal: [{
+    label: "Termos de uso",
+    href: "#"
+  }, {
+    label: "Política de privacidade",
+    href: "#"
+  }, {
+    label: "LGPD",
+    href: "#"
+  }, {
+    label: "Segurança",
+    href: "#"
+  }]
 };
-
 export const Footer = () => {
-  return (
-    <footer className="bg-gradient-to-b from-background to-muted/20 border-t border-border/50 pt-16 pb-8 px-4">
+  return <footer className="bg-gradient-to-b from-background to-muted/20 border-t border-border/50 pt-16 pb-8 px-4">
       <div className="container max-w-7xl mx-auto">
         {/* Main footer content */}
         <div className="grid md:grid-cols-2 lg:grid-cols-6 gap-8 mb-12">
@@ -50,15 +75,13 @@ export const Footer = () => {
                 <div>
                   <p className="font-semibold text-foreground">Autimize</p>
                   <p>CNPJ: 40.204.528/0001-05</p>
-                  <p>Rua Exemplo, 123 - São Paulo, SP</p>
+                  <p>Av. 85, 2054, Setor Marista, Goiânia/GO, 74160-010</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-primary" />
-                <a href="mailto:contato@autimize.com.br" className="hover:text-primary transition-colors">
-                  contato@autimize.com.br
-                </a>
+                <a href="mailto:contato@autimize.com.br" className="hover:text-primary transition-colors">contato@tracking-ai.com.br</a>
               </div>
             </div>
           </div>
@@ -67,53 +90,45 @@ export const Footer = () => {
           <div>
             <h4 className="font-semibold mb-4">Produto</h4>
             <ul className="space-y-3">
-              {footerLinks.produto.map((link, idx) => (
-                <li key={idx}>
+              {footerLinks.produto.map((link, idx) => <li key={idx}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4">Recursos</h4>
             <ul className="space-y-3">
-              {footerLinks.recursos.map((link, idx) => (
-                <li key={idx}>
+              {footerLinks.recursos.map((link, idx) => <li key={idx}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1">
                     {link.label}
                     <ExternalLink className="w-3 h-3" />
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4">Empresa</h4>
             <ul className="space-y-3">
-              {footerLinks.empresa.map((link, idx) => (
-                <li key={idx}>
+              {footerLinks.empresa.map((link, idx) => <li key={idx}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-3">
-              {footerLinks.legal.map((link, idx) => (
-                <li key={idx}>
+              {footerLinks.legal.map((link, idx) => <li key={idx}>
                   <a href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors">
                     {link.label}
                   </a>
-                </li>
-              ))}
+                </li>)}
             </ul>
           </div>
         </div>
@@ -138,6 +153,5 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-    </footer>
-  );
+    </footer>;
 };
