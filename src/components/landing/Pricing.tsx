@@ -23,7 +23,7 @@ const plans = [
     price: "249",
     description: "Para operações em crescimento",
     features: [
-      "1.500 créditos/mês",
+      "150 créditos/mês",
       "3 usuários",
       "Regras e jornadas personalizadas",
       "Métricas e relatórios",
@@ -164,7 +164,7 @@ export const Pricing = () => {
             <p className="text-sm text-muted-foreground text-center">
               <strong className="text-foreground">Como funcionam os créditos:</strong> Cada rastreio criado consome 1 crédito. 
               No plano Free você tem 5 créditos/mês que resetam no primeiro dia de cada mês. 
-              No Premium, 1.500 créditos/mês. Se exceder, será necessário fazer upgrade para continuar rastreando.
+              No Premium, 150 créditos/mês. Se exceder, você pode comprar créditos extras para continuar rastreando.
             </p>
           </div>
         </div>
