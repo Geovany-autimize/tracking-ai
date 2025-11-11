@@ -14,7 +14,7 @@ export default function BlingOrders() {
   const navigate = useNavigate();
   const { orders, isLoading, refetch, importOrders, isImporting } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('nao-entregues');
 
   const handleSelectAll = () => {
     if (selectedOrders.size === availableOrders.length) {
@@ -44,12 +44,17 @@ export default function BlingOrders() {
   const allAvailableOrders = orders.filter(o => !o.isTracked);
   const allTrackedOrders = orders.filter(o => o.isTracked);
   
-  // CORREÇÃO 1: Apply status filter
+  // Apply status filter with special case for "não entregues"
   const availableOrders = statusFilter === 'all' 
     ? allAvailableOrders 
+    : statusFilter === 'nao-entregues'
+    ? allAvailableOrders.filter(o => !o.situacao?.nome?.includes('Atendido'))
     : allAvailableOrders.filter(o => o.situacao?.nome === statusFilter);
+    
   const trackedOrders = statusFilter === 'all'
     ? allTrackedOrders
+    : statusFilter === 'nao-entregues'
+    ? allTrackedOrders.filter(o => !o.situacao?.nome?.includes('Atendido'))
     : allTrackedOrders.filter(o => o.situacao?.nome === statusFilter);
   
   // Get unique status values for filter
@@ -60,6 +65,9 @@ export default function BlingOrders() {
     acc[status] = orders.filter(o => o.situacao?.nome === status).length;
     return acc;
   }, {} as Record<string, number>);
+  
+  // Count not delivered orders
+  const notDeliveredCount = orders.filter(o => !o.situacao?.nome?.includes('Atendido')).length;
 
   // Group by order for better visualization
   const groupByOrder = (volumes: typeof orders) => {
@@ -81,11 +89,18 @@ export default function BlingOrders() {
         description="Selecione os volumes que deseja rastrear"
       />
 
-      {/* CORREÇÃO 1: Status Filter */}
+      {/* Status Filter */}
       {!isLoading && orders.length > 0 && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant={statusFilter === 'nao-entregues' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('nao-entregues')}
+              >
+                Não Entregues ({notDeliveredCount})
+              </Button>
               <Button
                 variant={statusFilter === 'all' ? 'default' : 'outline'}
                 size="sm"
