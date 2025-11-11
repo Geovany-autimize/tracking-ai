@@ -3,7 +3,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export interface BlingOrder {
-  id: string;
+  id: string; // Composite: orderId-volumeId
+  orderId: string; // Original order ID
+  volumeId: string; // Volume/label ID
+  volumeNumero: number; // Volume number (1, 2, 3...)
+  totalVolumes: number; // Total volumes in order
   numero: string;
   data: string;
   valor: number;
@@ -25,7 +29,7 @@ export interface BlingOrder {
       nome: string;
     };
   };
-  codigoRastreamento?: string;
+  codigoRastreamento: string;
   isTracked: boolean;
   fullData: any;
 }

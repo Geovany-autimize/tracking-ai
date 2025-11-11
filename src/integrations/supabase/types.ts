@@ -725,6 +725,8 @@ export type Database = {
       shipments: {
         Row: {
           auto_tracking: boolean
+          bling_order_id: string | null
+          bling_volume_id: string | null
           created_at: string | null
           customer_id: string
           id: string
@@ -732,13 +734,17 @@ export type Database = {
           shipment_customer_id: string | null
           shipment_data: Json | null
           status: string | null
+          total_volumes: number | null
           tracker_id: string | null
           tracking_code: string
           tracking_events: Json | null
           updated_at: string | null
+          volume_numero: number | null
         }
         Insert: {
           auto_tracking?: boolean
+          bling_order_id?: string | null
+          bling_volume_id?: string | null
           created_at?: string | null
           customer_id: string
           id?: string
@@ -746,13 +752,17 @@ export type Database = {
           shipment_customer_id?: string | null
           shipment_data?: Json | null
           status?: string | null
+          total_volumes?: number | null
           tracker_id?: string | null
           tracking_code: string
           tracking_events?: Json | null
           updated_at?: string | null
+          volume_numero?: number | null
         }
         Update: {
           auto_tracking?: boolean
+          bling_order_id?: string | null
+          bling_volume_id?: string | null
           created_at?: string | null
           customer_id?: string
           id?: string
@@ -760,10 +770,12 @@ export type Database = {
           shipment_customer_id?: string | null
           shipment_data?: Json | null
           status?: string | null
+          total_volumes?: number | null
           tracker_id?: string | null
           tracking_code?: string
           tracking_events?: Json | null
           updated_at?: string | null
+          volume_numero?: number | null
         }
         Relationships: [
           {

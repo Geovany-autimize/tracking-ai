@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBlingOrders } from '@/hooks/use-bling-orders';
-import { Package, CheckCircle2, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Package, CheckCircle2, RefreshCw, ArrowLeft, Package2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/utils';
 
@@ -39,15 +39,28 @@ export default function BlingOrders() {
     setSelectedOrders(new Set());
   };
 
-  // Only show orders with tracking codes that aren't already tracked
-  const availableOrders = orders.filter(o => o.codigoRastreamento && !o.isTracked);
+  // Separate available and tracked volumes
+  const availableOrders = orders.filter(o => !o.isTracked);
   const trackedOrders = orders.filter(o => o.isTracked);
+
+  // Group by order for better visualization
+  const groupByOrder = (volumes: typeof orders) => {
+    const grouped = new Map<string, typeof orders>();
+    volumes.forEach(volume => {
+      const existing = grouped.get(volume.orderId) || [];
+      grouped.set(volume.orderId, [...existing, volume]);
+    });
+    return grouped;
+  };
+
+  const availableGrouped = groupByOrder(availableOrders);
+  const trackedGrouped = groupByOrder(trackedOrders);
 
   return (
     <div className="space-y-6">
       <PageHeader 
         title="Pedidos do Bling" 
-        description="Selecione os pedidos que deseja rastrear"
+        description="Selecione os volumes que deseja rastrear"
       />
 
       {/* Actions Bar */}
@@ -83,14 +96,14 @@ export default function BlingOrders() {
         </div>
       </div>
 
-      {/* Available Orders */}
+      {/* Available Volumes */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Pedidos Disponíveis</CardTitle>
+              <CardTitle>Volumes Disponíveis</CardTitle>
               <CardDescription>
-                Pedidos com código de rastreamento que ainda não estão sendo rastreados
+                {availableOrders.length} {availableOrders.length === 1 ? 'volume' : 'volumes'} de {availableGrouped.size} {availableGrouped.size === 1 ? 'pedido' : 'pedidos'}
               </CardDescription>
             </div>
             {availableOrders.length > 0 && (
@@ -114,93 +127,133 @@ export default function BlingOrders() {
           ) : availableOrders.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhum pedido disponível para rastreamento</p>
+              <p>Nenhum volume disponível para rastreamento</p>
               <p className="text-sm mt-1">
-                Apenas pedidos com código de rastreamento aparecem aqui
+                Apenas volumes com código de rastreamento aparecem aqui
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {availableOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-start gap-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => handleToggleOrder(order.id)}
-                >
-                  <Checkbox
-                    checked={selectedOrders.has(order.id)}
-                    onCheckedChange={() => handleToggleOrder(order.id)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">Pedido #{order.numero}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {order.contato?.nome}
-                        </p>
+            <div className="space-y-4">
+              {Array.from(availableGrouped.entries()).map(([orderId, volumes]) => {
+                const firstVolume = volumes[0];
+                const isMultiVolume = volumes.length > 1;
+
+                return (
+                  <div key={orderId} className="border rounded-lg overflow-hidden">
+                    {/* Order Header */}
+                    <div className="bg-muted/30 px-4 py-2 flex items-center justify-between border-b">
+                      <div className="flex items-center gap-2">
+                        <Package2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Pedido #{firstVolume.numero}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {firstVolume.contato?.nome}
+                        </span>
                       </div>
-                      <Badge variant="secondary">
-                        {order.situacao?.nome}
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="secondary">{firstVolume.situacao?.nome}</Badge>
+                        <span className="text-sm font-medium">{formatCurrency(firstVolume.valor)}</span>
+                      </div>
                     </div>
-                    
-                    <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>📦 {order.codigoRastreamento}</span>
-                      <span>💰 {formatCurrency(order.valor)}</span>
-                      <span>📅 {new Date(order.data).toLocaleDateString('pt-BR')}</span>
+
+                    {/* Volumes */}
+                    <div className="divide-y">
+                      {volumes.map((volume) => (
+                        <div
+                          key={volume.id}
+                          className="flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
+                          onClick={() => handleToggleOrder(volume.id)}
+                        >
+                          <Checkbox
+                            checked={selectedOrders.has(volume.id)}
+                            onCheckedChange={() => handleToggleOrder(volume.id)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {isMultiVolume && (
+                                <Badge variant="outline" className="text-xs">
+                                  Volume {volume.volumeNumero}/{volume.totalVolumes}
+                                </Badge>
+                              )}
+                              <span className="text-sm font-mono text-muted-foreground">
+                                📦 {volume.codigoRastreamento}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Criado em {new Date(volume.data).toLocaleDateString('pt-BR')}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Already Tracked Orders */}
+      {/* Already Tracked Volumes */}
       {trackedOrders.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Pedidos Já Rastreados
+              Volumes Já Rastreados
             </CardTitle>
             <CardDescription>
-              Estes pedidos já estão sendo monitorados no sistema
+              {trackedOrders.length} {trackedOrders.length === 1 ? 'volume' : 'volumes'} de {trackedGrouped.size} {trackedGrouped.size === 1 ? 'pedido' : 'pedidos'}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {trackedOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="flex items-start gap-3 p-4 border rounded-lg bg-muted/50"
-                >
-                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">Pedido #{order.numero}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {order.contato?.nome}
-                        </p>
+            <div className="space-y-4">
+              {Array.from(trackedGrouped.entries()).map(([orderId, volumes]) => {
+                const firstVolume = volumes[0];
+                const isMultiVolume = volumes.length > 1;
+
+                return (
+                  <div key={orderId} className="border rounded-lg overflow-hidden bg-muted/30">
+                    {/* Order Header */}
+                    <div className="px-4 py-2 flex items-center justify-between border-b bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Package2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Pedido #{firstVolume.numero}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {firstVolume.contato?.nome}
+                        </span>
                       </div>
-                      <Badge variant="outline">
-                        Rastreado
-                      </Badge>
+                      <Badge variant="outline">Rastreado</Badge>
                     </div>
-                    
-                    <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>📦 {order.codigoRastreamento}</span>
-                      <span>💰 {formatCurrency(order.valor)}</span>
-                      <span>📅 {new Date(order.data).toLocaleDateString('pt-BR')}</span>
+
+                    {/* Volumes */}
+                    <div className="divide-y">
+                      {volumes.map((volume) => (
+                        <div
+                          key={volume.id}
+                          className="flex items-start gap-3 p-4"
+                        >
+                          <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              {isMultiVolume && (
+                                <Badge variant="outline" className="text-xs">
+                                  Volume {volume.volumeNumero}/{volume.totalVolumes}
+                                </Badge>
+                              )}
+                              <span className="text-sm font-mono text-muted-foreground">
+                                📦 {volume.codigoRastreamento}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[BLING-IMPORT-SELECTED] Starting import of selected orders');
+    console.log('[BLING-IMPORT-SELECTED] Starting import of selected volumes');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -43,18 +43,18 @@ serve(async (req) => {
 
     const customerId = session.customer_id;
 
-    // Parse request body
+    // Parse request body - now receiving volumeIds (composite: orderId-volumeId)
     const body = await req.json();
-    const { orderIds } = body;
+    const { orderIds: volumeIds } = body; // Keep name for backward compatibility
 
-    if (!Array.isArray(orderIds) || orderIds.length === 0) {
+    if (!Array.isArray(volumeIds) || volumeIds.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Nenhum pedido selecionado' }),
+        JSON.stringify({ error: 'Nenhum volume selecionado' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[BLING-IMPORT-SELECTED] Importing ${orderIds.length} orders`);
+    console.log(`[BLING-IMPORT-SELECTED] Importing ${volumeIds.length} volumes`);
 
     // Get active Bling integration
     const { data: integration } = await supabase
@@ -71,15 +71,19 @@ serve(async (req) => {
       );
     }
 
-    let ordersImported = 0;
-    let ordersFailed = 0;
+    let volumesImported = 0;
+    let volumesFailed = 0;
     const errors: string[] = [];
 
-    // Fetch each order details from Bling and import
-    for (const orderId of orderIds) {
+    // Process each volume
+    for (const volumeId of volumeIds) {
       try {
-        console.log(`[BLING-IMPORT-SELECTED] Fetching order ${orderId} details`);
+        // Parse composite ID
+        const [orderId, blingVolumeId] = volumeId.split('-');
         
+        console.log(`[BLING-IMPORT-SELECTED] Processing volume ${blingVolumeId} from order ${orderId}`);
+        
+        // Fetch order details
         const orderResponse = await fetch(
           `https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`,
           {
@@ -97,20 +101,57 @@ serve(async (req) => {
         const orderData = await orderResponse.json();
         const order = orderData.data;
 
-        // Extract tracking code from multiple possible locations
-        const trackingCode = 
-          order.transporte?.codigoRastreamento ||
-          order.transporte?.volumes?.[0]?.codigoRastreamento ||
-          order.transporte?.etiqueta?.codigoRastreamento ||
-          null;
+        // Find the specific volume
+        const volumes = order.transporte?.volumes || [];
+        const volumeIndex = volumes.findIndex((v: any) => v.id.toString() === blingVolumeId);
+        
+        if (volumeIndex === -1) {
+          throw new Error(`Volume ${blingVolumeId} not found in order ${orderId}`);
+        }
 
-        console.log(`[DEBUG] Order ${order.numero} tracking code: ${trackingCode || 'NOT FOUND'}`);
+        const volume = volumes[volumeIndex];
 
-        // Check if order has tracking code
+        // Fetch logistics object for tracking code
+        let trackingCode = null;
+        try {
+          const logisticsResponse = await fetch(
+            `https://api.bling.com.br/Api/v3/logisticas/objetos/${blingVolumeId}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${integration.access_token}`,
+                'Accept': 'application/json',
+              },
+            }
+          );
+
+          if (logisticsResponse.ok) {
+            const logisticsData = await logisticsResponse.json();
+            trackingCode = logisticsData.data?.rastreamento?.codigo || null;
+          }
+        } catch (e) {
+          console.error(`[BLING-IMPORT-SELECTED] Error fetching logistics for volume ${blingVolumeId}:`, e);
+        }
+
         if (!trackingCode) {
-          console.log(`[BLING-IMPORT-SELECTED] Order ${order.numero} has no tracking code, skipping`);
-          ordersFailed++;
-          errors.push(`Pedido ${order.numero} não tem código de rastreamento`);
+          console.log(`[BLING-IMPORT-SELECTED] Volume ${blingVolumeId} has no tracking code, skipping`);
+          volumesFailed++;
+          errors.push(`Volume ${volumeIndex + 1} do pedido ${order.numero} não tem código de rastreamento`);
+          continue;
+        }
+
+        // Check if already exists
+        const { data: existingShipment } = await supabase
+          .from('shipments')
+          .select('id')
+          .eq('customer_id', customerId)
+          .eq('bling_order_id', orderId)
+          .eq('bling_volume_id', blingVolumeId)
+          .single();
+
+        if (existingShipment) {
+          console.log(`[BLING-IMPORT-SELECTED] Volume ${volumeIndex + 1} of order ${order.numero} already tracked`);
+          volumesFailed++;
+          errors.push(`Volume ${volumeIndex + 1} do pedido ${order.numero} já está sendo rastreado`);
           continue;
         }
 
@@ -134,21 +175,6 @@ serve(async (req) => {
           console.log(`[BLING-IMPORT-SELECTED] NFe not available for order ${orderId}`);
         }
 
-        // Check if already exists
-        const { data: existingShipment } = await supabase
-          .from('shipments')
-          .select('id')
-          .eq('customer_id', customerId)
-          .eq('tracking_code', trackingCode)
-          .single();
-
-        if (existingShipment) {
-          console.log(`[BLING-IMPORT-SELECTED] Order ${order.numero} already tracked`);
-          ordersFailed++;
-          errors.push(`Pedido ${order.numero} já está sendo rastreado`);
-          continue;
-        }
-
         // Create shipment_customer if needed
         let shipmentCustomerId = null;
         if (order.contato) {
@@ -169,12 +195,12 @@ serve(async (req) => {
           }
         }
 
-        // Save enriched order details
+        // Save enriched order details (once per order, not per volume)
         const { error: orderDetailsError } = await supabase
           .from('bling_order_details')
           .upsert({
             customer_id: customerId,
-            bling_order_id: order.id.toString(),
+            bling_order_id: orderId,
             order_number: order.numero,
             order_date: order.data,
             total_value: order.valor,
@@ -199,7 +225,7 @@ serve(async (req) => {
           console.error(`[BLING-IMPORT-SELECTED] Error saving order details:`, orderDetailsError);
         }
 
-        // Create shipment
+        // Create shipment with volume information
         const { error: insertError } = await supabase
           .from('shipments')
           .insert({
@@ -208,32 +234,39 @@ serve(async (req) => {
             shipment_customer_id: shipmentCustomerId,
             auto_tracking: true,
             status: 'pending',
+            bling_order_id: orderId,
+            bling_volume_id: blingVolumeId,
+            volume_numero: volumeIndex + 1,
+            total_volumes: volumes.length,
             shipment_data: order,
           });
 
         if (insertError) {
-          console.error(`[BLING-IMPORT-SELECTED] Error creating shipment for order ${order.numero}:`, insertError);
-          ordersFailed++;
-          errors.push(`Erro ao criar rastreamento para pedido ${order.numero}`);
+          console.error(`[BLING-IMPORT-SELECTED] Error creating shipment:`, insertError);
+          volumesFailed++;
+          errors.push(`Erro ao criar rastreamento para volume ${volumeIndex + 1} do pedido ${order.numero}`);
         } else {
-          ordersImported++;
-          console.log(`[BLING-IMPORT-SELECTED] Successfully imported order ${order.numero} with enriched data`);
+          volumesImported++;
+          console.log(`[BLING-IMPORT-SELECTED] Successfully imported volume ${volumeIndex + 1} of order ${order.numero}`);
         }
 
-      } catch (orderError) {
-        console.error(`[BLING-IMPORT-SELECTED] Error processing order ${orderId}:`, orderError);
-        ordersFailed++;
-        errors.push(`Erro ao processar pedido ${orderId}`);
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 150));
+
+      } catch (volumeError) {
+        console.error(`[BLING-IMPORT-SELECTED] Error processing volume ${volumeId}:`, volumeError);
+        volumesFailed++;
+        errors.push(`Erro ao processar volume ${volumeId}`);
       }
     }
 
-    console.log(`[BLING-IMPORT-SELECTED] Import completed: ${ordersImported} imported, ${ordersFailed} failed`);
+    console.log(`[BLING-IMPORT-SELECTED] Import completed: ${volumesImported} imported, ${volumesFailed} failed`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        imported: ordersImported,
-        failed: ordersFailed,
+        imported: volumesImported,
+        failed: volumesFailed,
         errors,
       }),
       { 
@@ -245,7 +278,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('[BLING-IMPORT-SELECTED] Error:', error);
     return new Response(
-      JSON.stringify({ error: 'Erro ao importar pedidos selecionados' }),
+      JSON.stringify({ error: 'Erro ao importar volumes selecionados' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

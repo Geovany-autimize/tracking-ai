@@ -117,14 +117,34 @@ serve(async (req) => {
     const ordersData = await ordersResponse.json();
     console.log(`[BLING-FETCH-ORDERS] Fetched ${ordersData.data?.length || 0} orders`);
     
-    // Enrich each order with full details
-    const enrichedOrders = await Promise.all(
-      (ordersData.data || []).map(async (order: any) => {
+    // Process each order and extract volumes
+    const allVolumes: any[] = [];
+    
+    for (const order of (ordersData.data || [])) {
+      try {
+        // Fetch full order details
+        console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
+        const detailsResponse = await fetch(
+          `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${integration.access_token}`,
+              'Accept': 'application/json',
+            },
+          }
+        );
+
+        let fullDetails = order;
+        if (detailsResponse.ok) {
+          const detailsData = await detailsResponse.json();
+          fullDetails = detailsData.data || order;
+        }
+
+        // Fetch NFe if available
+        let nfeData = null;
         try {
-          // Fetch full order details
-          console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
-          const detailsResponse = await fetch(
-            `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
+          const nfeResponse = await fetch(
+            `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
             {
               headers: {
                 'Authorization': `Bearer ${integration.access_token}`,
@@ -132,111 +152,111 @@ serve(async (req) => {
               },
             }
           );
-
-          let fullDetails = order;
-          if (detailsResponse.ok) {
-            const detailsData = await detailsResponse.json();
-            fullDetails = detailsData.data || order;
+          if (nfeResponse.ok) {
+            const nfeJson = await nfeResponse.json();
+            nfeData = nfeJson.data?.[0] || null;
           }
+        } catch (e) {
+          console.log(`[BLING-FETCH-ORDERS] NFe not available for order ${order.id}`);
+        }
 
-          // Debug: Log transport structure
-          if (fullDetails.transporte) {
-            console.log(`[DEBUG] Order ${order.id} transport structure:`, JSON.stringify({
-              temCodigoRastreamentoDireto: !!fullDetails.transporte.codigoRastreamento,
-              temVolumes: !!fullDetails.transporte.volumes,
-              quantidadeVolumes: fullDetails.transporte.volumes?.length || 0,
-              primeiroVume: fullDetails.transporte.volumes?.[0] || null
-            }, null, 2));
-          }
+        // Process volumes
+        const volumes = fullDetails.transporte?.volumes || [];
+        
+        if (volumes.length === 0) {
+          console.log(`[BLING-FETCH-ORDERS] Order ${fullDetails.numero} has no volumes, skipping`);
+          continue;
+        }
 
-          // Fetch NFe if available
-          let nfeData = null;
+        console.log(`[BLING-FETCH-ORDERS] Order ${fullDetails.numero} has ${volumes.length} volume(s)`);
+
+        // Process each volume
+        for (let i = 0; i < volumes.length; i++) {
+          const volume = volumes[i];
+          
+          // Fetch logistics object for this volume
+          let trackingCode = null;
           try {
-            const nfeResponse = await fetch(
-              `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
-              {
-                headers: {
-                  'Authorization': `Bearer ${integration.access_token}`,
-                  'Accept': 'application/json',
-                },
+            if (volume.id) {
+              const logisticsResponse = await fetch(
+                `https://api.bling.com.br/Api/v3/logisticas/objetos/${volume.id}`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${integration.access_token}`,
+                    'Accept': 'application/json',
+                  },
+                }
+              );
+
+              if (logisticsResponse.ok) {
+                const logisticsData = await logisticsResponse.json();
+                trackingCode = logisticsData.data?.rastreamento?.codigo || null;
+                console.log(`[BLING-FETCH-ORDERS] Volume ${volume.id} tracking: ${trackingCode || 'NOT FOUND'}`);
               }
-            );
-            if (nfeResponse.ok) {
-              const nfeJson = await nfeResponse.json();
-              nfeData = nfeJson.data?.[0] || null;
             }
           } catch (e) {
-            console.log(`[BLING-FETCH-ORDERS] NFe not available for order ${order.id}`);
+            console.log(`[BLING-FETCH-ORDERS] Could not fetch logistics for volume ${volume.id}`);
           }
 
-          return {
-            id: fullDetails.id,
-            numero: fullDetails.numero,
-            data: fullDetails.data,
-            valor: fullDetails.valor,
-            situacao: fullDetails.situacao,
-            contato: fullDetails.contato,
-            transporte: fullDetails.transporte,
-            itens: fullDetails.itens || [],
-            endereco: fullDetails.contato?.endereco || null,
-            notaFiscal: nfeData,
-            codigoRastreamento: fullDetails.transporte?.codigoRastreamento ||
-                                fullDetails.transporte?.volumes?.[0]?.codigoRastreamento ||
-                                fullDetails.transporte?.etiqueta?.codigoRastreamento ||
-                                null,
-            isTracked: false, // Will be checked below
-            fullData: fullDetails,
-          };
-        } catch (error) {
-          console.error(`[BLING-FETCH-ORDERS] Error enriching order ${order.id}:`, error);
-          // Return basic order data on error
-          return {
-            id: order.id,
-            numero: order.numero,
-            data: order.data,
-            valor: order.valor,
-            situacao: order.situacao,
-            contato: order.contato,
-            transporte: order.transporte,
-            codigoRastreamento: order.transporte?.codigoRastreamento ||
-                                order.transporte?.volumes?.[0]?.codigoRastreamento ||
-                                null,
-            isTracked: false,
-            fullData: order,
-          };
-        }
-      })
-    );
+          // Only add volume if it has a tracking code
+          if (trackingCode) {
+            allVolumes.push({
+              id: `${fullDetails.id}-${volume.id}`, // Composite ID
+              orderId: fullDetails.id.toString(),
+              volumeId: volume.id.toString(),
+              volumeNumero: i + 1,
+              totalVolumes: volumes.length,
+              numero: fullDetails.numero,
+              data: fullDetails.data,
+              valor: fullDetails.valor,
+              situacao: fullDetails.situacao,
+              contato: fullDetails.contato,
+              transporte: fullDetails.transporte,
+              itens: fullDetails.itens || [],
+              endereco: fullDetails.contato?.endereco || null,
+              notaFiscal: nfeData,
+              codigoRastreamento: trackingCode,
+              isTracked: false, // Will be checked below
+              fullData: fullDetails,
+            });
+          }
 
-    // Get existing shipments to mark which orders are already tracked
+          // Rate limiting: small delay between API calls
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
+
+      } catch (error) {
+        console.error(`[BLING-FETCH-ORDERS] Error processing order ${order.id}:`, error);
+      }
+    }
+
+    // Get existing shipments to mark which volumes are already tracked
+    const trackingCodes = allVolumes.map(v => v.codigoRastreamento);
     const { data: existingShipments } = await supabase
       .from('shipments')
-      .select('tracking_code')
-      .eq('customer_id', customerId);
+      .select('tracking_code, bling_order_id, bling_volume_id')
+      .eq('customer_id', customerId)
+      .in('tracking_code', trackingCodes);
 
-    const trackedCodes = new Set(existingShipments?.map(s => s.tracking_code) || []);
+    // Create a set of tracked volume IDs
+    const trackedVolumeIds = new Set(
+      existingShipments?.map(s => `${s.bling_order_id}-${s.bling_volume_id}`) || []
+    );
 
-    // Mark which orders are tracked
-    enrichedOrders.forEach((order: any) => {
-      order.isTracked = order.codigoRastreamento 
-        ? trackedCodes.has(order.codigoRastreamento)
-        : false;
+    // Mark which volumes are tracked
+    allVolumes.forEach((volume: any) => {
+      const volumeKey = `${volume.orderId}-${volume.volumeId}`;
+      volume.isTracked = trackedVolumeIds.has(volumeKey);
     });
 
-    // Log statistics
-    const withTracking = enrichedOrders.filter((o: any) => o.codigoRastreamento).length;
-    const withoutTracking = enrichedOrders.length - withTracking;
-    console.log(`[BLING-FETCH-ORDERS] Successfully enriched ${enrichedOrders.length} orders`);
-    console.log(`[BLING-FETCH-ORDERS] Tracking codes found: ${withTracking}/${enrichedOrders.length}`);
-    if (withoutTracking > 0) {
-      console.log(`[BLING-FETCH-ORDERS] ${withoutTracking} orders without tracking code`);
-    }
+    console.log(`[BLING-FETCH-ORDERS] Successfully processed ${allVolumes.length} volumes from ${ordersData.data?.length || 0} orders`);
+    console.log(`[BLING-FETCH-ORDERS] Tracked: ${allVolumes.filter(v => v.isTracked).length}, Available: ${allVolumes.filter(v => !v.isTracked).length}`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        orders: enrichedOrders,
-        total: enrichedOrders.length,
+        orders: allVolumes, // Now returning volumes, not orders
+        total: allVolumes.length,
         page,
         limit,
       }),
