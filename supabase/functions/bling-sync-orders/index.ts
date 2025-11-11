@@ -156,7 +156,7 @@ serve(async (req) => {
     try {
       // Buscar pedidos do Bling
       console.log('[BLING-SYNC-ORDERS] Fetching orders from Bling API');
-      const ordersResponse = await fetch('https://www.bling.com.br/Api/v3/pedidos/vendas?pagina=1&limite=100', {
+      const ordersResponse = await fetch('https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=1&limite=100', {
         headers: {
           'Authorization': `Bearer ${integration.access_token}`,
           'Accept': 'application/json',

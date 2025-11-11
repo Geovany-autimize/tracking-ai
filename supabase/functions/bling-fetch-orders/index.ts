@@ -85,7 +85,7 @@ serve(async (req) => {
     // Fetch orders from Bling
     console.log(`[BLING-FETCH-ORDERS] Fetching page ${page} with limit ${limit}`);
     const ordersResponse = await fetch(
-      `https://www.bling.com.br/Api/v3/pedidos/vendas?pagina=${page}&limite=${limit}`,
+      `https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=${page}&limite=${limit}`,
       {
         headers: {
           'Authorization': `Bearer ${integration.access_token}`,
@@ -124,7 +124,7 @@ serve(async (req) => {
           // Fetch full order details
           console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
           const detailsResponse = await fetch(
-            `https://www.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
+            `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
             {
               headers: {
                 'Authorization': `Bearer ${integration.access_token}`,
@@ -153,7 +153,7 @@ serve(async (req) => {
           let nfeData = null;
           try {
             const nfeResponse = await fetch(
-              `https://www.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
+              `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
               {
                 headers: {
                   'Authorization': `Bearer ${integration.access_token}`,

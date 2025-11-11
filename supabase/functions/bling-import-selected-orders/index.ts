@@ -81,7 +81,7 @@ serve(async (req) => {
         console.log(`[BLING-IMPORT-SELECTED] Fetching order ${orderId} details`);
         
         const orderResponse = await fetch(
-          `https://www.bling.com.br/Api/v3/pedidos/vendas/${orderId}`,
+          `https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}`,
           {
             headers: {
               'Authorization': `Bearer ${integration.access_token}`,
@@ -118,7 +118,7 @@ serve(async (req) => {
         let nfeData = null;
         try {
           const nfeResponse = await fetch(
-            `https://www.bling.com.br/Api/v3/pedidos/vendas/${orderId}/notas-fiscais`,
+            `https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}/notas-fiscais`,
             {
               headers: {
                 'Authorization': `Bearer ${integration.access_token}`,

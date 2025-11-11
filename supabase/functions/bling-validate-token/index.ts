@@ -69,7 +69,7 @@ serve(async (req) => {
 
     // Fazer uma chamada leve ao Bling para validar token
     console.log('[BLING-VALIDATE-TOKEN] Testing token with Bling API');
-    const validationResponse = await fetch('https://www.bling.com.br/Api/v3/situacoes/modulos', {
+    const validationResponse = await fetch('https://api.bling.com.br/Api/v3/situacoes/modulos', {
       headers: {
         'Authorization': `Bearer ${integration.access_token}`,
         'Accept': 'application/json',
