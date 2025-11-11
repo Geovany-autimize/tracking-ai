@@ -46,7 +46,11 @@ export default function BlingOrders() {
   const allAvailableOrders = orders.filter(o => {
     if (o.isTracked) return false;
     const statusName = o.situacao?.nome || '';
-    return !excludedStatuses.some(excluded => statusName.includes(excluded));
+    const statusId = o.situacao?.id;
+    
+    // Filter by name OR by ID (15 = Atendido/Entregue)
+    return !excludedStatuses.some(excluded => statusName.includes(excluded)) 
+           && statusId !== 15;
   });
   const allTrackedOrders = orders.filter(o => o.isTracked);
   

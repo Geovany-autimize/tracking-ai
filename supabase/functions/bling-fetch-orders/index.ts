@@ -7,8 +7,23 @@ const corsHeaders = {
 };
 
 // Rate limiting helper - wait between API calls
-const DELAY_BETWEEN_REQUESTS = 400; // 400ms between requests to respect rate limits
+const DELAY_BETWEEN_REQUESTS = 500; // 500ms between requests to respect rate limits
 const MAX_RETRIES = 3;
+
+// Map Bling status IDs to readable names
+function mapBlingStatus(situacao: any): string {
+  const statusMap: Record<number, string> = {
+    6: 'Em aberto',
+    9: 'Em andamento', 
+    12: 'Em produção',
+    15: 'Atendido', // Entregue
+    18: 'Cancelado',
+    24: 'Verificado',
+  };
+  
+  const statusId = situacao?.id || situacao?.valor;
+  return statusMap[statusId] || 'Desconhecido';
+}
 
 async function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -173,6 +188,32 @@ serve(async (req) => {
           fullDetails = detailsData.data || order;
         }
 
+        // Fetch contact email if contact exists
+        let contactEmail = fullDetails.contato?.email || null;
+
+        if (!contactEmail && fullDetails.contato?.id) {
+          try {
+            await sleep(DELAY_BETWEEN_REQUESTS);
+            const contactResponse = await fetchWithRetry(
+              `https://api.bling.com.br/Api/v3/contatos/${fullDetails.contato.id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${integration.access_token}`,
+                  'Accept': 'application/json',
+                },
+              }
+            );
+            
+            if (contactResponse.ok) {
+              const contactData = await contactResponse.json();
+              contactEmail = contactData.data?.email || null;
+              console.log(`[BLING-FETCH-ORDERS] Found contact email: ${contactEmail || 'NOT FOUND'}`);
+            }
+          } catch (e) {
+            console.log(`[BLING-FETCH-ORDERS] Could not fetch contact email`);
+          }
+        }
+
         // Fetch NFe if available
         let nfeData = null;
         try {
@@ -248,8 +289,14 @@ serve(async (req) => {
               numero: fullDetails.numero,
               data: fullDetails.data,
               valor: fullDetails.valor,
-              situacao: fullDetails.situacao,
-              contato: fullDetails.contato,
+              situacao: {
+                ...fullDetails.situacao,
+                nome: mapBlingStatus(fullDetails.situacao)
+              },
+              contato: {
+                ...fullDetails.contato,
+                email: contactEmail,
+              },
               transporte: fullDetails.transporte,
               itens: fullDetails.itens || [],
               endereco: fullDetails.contato?.endereco || null,

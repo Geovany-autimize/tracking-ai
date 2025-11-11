@@ -139,6 +139,33 @@ serve(async (req) => {
           continue;
         }
 
+        // Fetch contact email if contact exists
+        let contactEmail = order.contato?.email || null;
+
+        if (!contactEmail && order.contato?.id) {
+          console.log(`[BLING-IMPORT-SELECTED] Fetching contact details for ${order.contato.id}`);
+          try {
+            await new Promise(resolve => setTimeout(resolve, 200)); // Rate limiting
+            const contactResponse = await fetch(
+              `https://api.bling.com.br/Api/v3/contatos/${order.contato.id}`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${integration.access_token}`,
+                  'Accept': 'application/json',
+                },
+              }
+            );
+            
+            if (contactResponse.ok) {
+              const contactData = await contactResponse.json();
+              contactEmail = contactData.data?.email || null;
+              console.log(`[BLING-IMPORT-SELECTED] Found contact email: ${contactEmail || 'NOT FOUND'}`);
+            }
+          } catch (e) {
+            console.log(`[BLING-IMPORT-SELECTED] Could not fetch contact details:`, e);
+          }
+        }
+
         // Check if already exists
         const { data: existingShipment } = await supabase
           .from('shipments')
@@ -175,17 +202,17 @@ serve(async (req) => {
           console.log(`[BLING-IMPORT-SELECTED] NFe not available for order ${orderId}`);
         }
 
-        // Create shipment_customer if needed (CORREÇÃO 3)
+        // Create shipment_customer if needed
         let shipmentCustomerId = null;
-        if (order.contato && order.contato.email) {
-          console.log(`[BLING-IMPORT-SELECTED] Creating customer: ${order.contato.email}`);
+        if (order.contato && contactEmail) {
+          console.log(`[BLING-IMPORT-SELECTED] Creating customer: ${contactEmail}`);
           
           // Check if customer already exists by email
           const { data: existingCustomer } = await supabase
             .from('shipment_customers')
             .select('id')
             .eq('customer_id', customerId)
-            .eq('email', order.contato.email)
+            .eq('email', contactEmail)
             .single();
             
           if (existingCustomer) {
@@ -198,7 +225,7 @@ serve(async (req) => {
                 customer_id: customerId,
                 first_name: order.contato.nome?.split(' ')[0] || 'Cliente',
                 last_name: order.contato.nome?.split(' ').slice(1).join(' ') || 'Bling',
-                email: order.contato.email,
+                email: contactEmail,
                 phone: order.contato.celular || order.contato.telefone || '',
               })
               .select('id')
