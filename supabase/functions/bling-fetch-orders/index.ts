@@ -139,6 +139,16 @@ serve(async (req) => {
             fullDetails = detailsData.data || order;
           }
 
+          // Debug: Log transport structure
+          if (fullDetails.transporte) {
+            console.log(`[DEBUG] Order ${order.id} transport structure:`, JSON.stringify({
+              temCodigoRastreamentoDireto: !!fullDetails.transporte.codigoRastreamento,
+              temVolumes: !!fullDetails.transporte.volumes,
+              quantidadeVolumes: fullDetails.transporte.volumes?.length || 0,
+              primeiroVume: fullDetails.transporte.volumes?.[0] || null
+            }, null, 2));
+          }
+
           // Fetch NFe if available
           let nfeData = null;
           try {
@@ -170,10 +180,11 @@ serve(async (req) => {
             itens: fullDetails.itens || [],
             endereco: fullDetails.contato?.endereco || null,
             notaFiscal: nfeData,
-            codigoRastreamento: fullDetails.transporte?.codigoRastreamento,
-            isTracked: fullDetails.transporte?.codigoRastreamento 
-              ? false // Will be checked below
-              : false,
+            codigoRastreamento: fullDetails.transporte?.codigoRastreamento ||
+                                fullDetails.transporte?.volumes?.[0]?.codigoRastreamento ||
+                                fullDetails.transporte?.etiqueta?.codigoRastreamento ||
+                                null,
+            isTracked: false, // Will be checked below
             fullData: fullDetails,
           };
         } catch (error) {
@@ -187,7 +198,9 @@ serve(async (req) => {
             situacao: order.situacao,
             contato: order.contato,
             transporte: order.transporte,
-            codigoRastreamento: order.transporte?.codigoRastreamento,
+            codigoRastreamento: order.transporte?.codigoRastreamento ||
+                                order.transporte?.volumes?.[0]?.codigoRastreamento ||
+                                null,
             isTracked: false,
             fullData: order,
           };
@@ -210,7 +223,14 @@ serve(async (req) => {
         : false;
     });
 
+    // Log statistics
+    const withTracking = enrichedOrders.filter((o: any) => o.codigoRastreamento).length;
+    const withoutTracking = enrichedOrders.length - withTracking;
     console.log(`[BLING-FETCH-ORDERS] Successfully enriched ${enrichedOrders.length} orders`);
+    console.log(`[BLING-FETCH-ORDERS] Tracking codes found: ${withTracking}/${enrichedOrders.length}`);
+    if (withoutTracking > 0) {
+      console.log(`[BLING-FETCH-ORDERS] ${withoutTracking} orders without tracking code`);
+    }
 
     return new Response(
       JSON.stringify({

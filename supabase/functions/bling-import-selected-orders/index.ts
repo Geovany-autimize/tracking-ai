@@ -97,15 +97,22 @@ serve(async (req) => {
         const orderData = await orderResponse.json();
         const order = orderData.data;
 
+        // Extract tracking code from multiple possible locations
+        const trackingCode = 
+          order.transporte?.codigoRastreamento ||
+          order.transporte?.volumes?.[0]?.codigoRastreamento ||
+          order.transporte?.etiqueta?.codigoRastreamento ||
+          null;
+
+        console.log(`[DEBUG] Order ${order.numero} tracking code: ${trackingCode || 'NOT FOUND'}`);
+
         // Check if order has tracking code
-        if (!order.transporte?.codigoRastreamento) {
+        if (!trackingCode) {
           console.log(`[BLING-IMPORT-SELECTED] Order ${order.numero} has no tracking code, skipping`);
           ordersFailed++;
           errors.push(`Pedido ${order.numero} não tem código de rastreamento`);
           continue;
         }
-
-        const trackingCode = order.transporte.codigoRastreamento;
 
         // Fetch NFe if available
         let nfeData = null;
