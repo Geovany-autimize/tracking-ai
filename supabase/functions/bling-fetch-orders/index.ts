@@ -174,10 +174,12 @@ serve(async (req) => {
         for (let i = 0; i < volumes.length; i++) {
           const volume = volumes[i];
           
-          // Fetch logistics object for this volume
-          let trackingCode = null;
-          try {
-            if (volume.id) {
+          // Try to get tracking code from volume directly first
+          let trackingCode = volume.codigoRastreamento || null;
+          
+          // If not found, try fetching from logistics API
+          if (!trackingCode && volume.id) {
+            try {
               const logisticsResponse = await fetch(
                 `https://api.bling.com.br/Api/v3/logisticas/objetos/${volume.id}`,
                 {
@@ -191,12 +193,17 @@ serve(async (req) => {
               if (logisticsResponse.ok) {
                 const logisticsData = await logisticsResponse.json();
                 trackingCode = logisticsData.data?.rastreamento?.codigo || null;
-                console.log(`[BLING-FETCH-ORDERS] Volume ${volume.id} tracking: ${trackingCode || 'NOT FOUND'}`);
               }
+              
+              // Rate limiting for API calls
+              await new Promise(resolve => setTimeout(resolve, 150));
+            } catch (e) {
+              console.log(`[BLING-FETCH-ORDERS] Could not fetch logistics for volume ${volume.id}`);
             }
-          } catch (e) {
-            console.log(`[BLING-FETCH-ORDERS] Could not fetch logistics for volume ${volume.id}`);
           }
+          
+          console.log(`[BLING-FETCH-ORDERS] Volume ${volume.id} tracking: ${trackingCode || 'NOT FOUND'}`);
+          console.log(`[BLING-FETCH-ORDERS] Volume data:`, JSON.stringify(volume, null, 2));
 
           // Only add volume if it has a tracking code
           if (trackingCode) {
@@ -219,10 +226,9 @@ serve(async (req) => {
               isTracked: false, // Will be checked below
               fullData: fullDetails,
             });
+          } else {
+            console.log(`[BLING-FETCH-ORDERS] ⚠️ Volume ${volume.id} has NO tracking code`);
           }
-
-          // Rate limiting: small delay between API calls
-          await new Promise(resolve => setTimeout(resolve, 150));
         }
 
       } catch (error) {

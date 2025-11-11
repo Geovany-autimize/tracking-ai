@@ -149,8 +149,11 @@ Deno.serve(async (req) => {
         for (let volumeIndex = 0; volumeIndex < order.transporte.volumes.length; volumeIndex++) {
           const volume = order.transporte.volumes[volumeIndex];
           
-          // Fetch detailed logistics info
-          if (volume.id) {
+          // Try to get tracking code from volume directly first
+          let trackingCode = volume.codigoRastreamento || null;
+          
+          // If not found, fetch detailed logistics info
+          if (!trackingCode && volume.id) {
             await new Promise(resolve => setTimeout(resolve, 150)); // Rate limiting
             
             const logisticsUrl = `https://www.bling.com.br/Api/v3/logisticas/objetos/${volume.id}`;
@@ -163,9 +166,11 @@ Deno.serve(async (req) => {
 
             if (logisticsResponse.ok) {
               const logisticsData = await logisticsResponse.json();
-              const trackingCode = logisticsData.data?.rastreamento?.codigo;
+              trackingCode = logisticsData.data?.rastreamento?.codigo || null;
+            }
+          }
 
-              if (trackingCode === shipment.tracking_code) {
+          if (trackingCode === shipment.tracking_code) {
                 console.log(`✅ Found match! Order: ${order.id}, Volume: ${volume.id}`);
                 
                 // Fetch full order details
@@ -227,10 +232,8 @@ Deno.serve(async (req) => {
                   }
                 }
 
-                found = true;
-                break;
-              }
-            }
+            found = true;
+            break;
           }
         }
 
