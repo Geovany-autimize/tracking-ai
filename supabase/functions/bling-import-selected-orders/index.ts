@@ -175,24 +175,44 @@ serve(async (req) => {
           console.log(`[BLING-IMPORT-SELECTED] NFe not available for order ${orderId}`);
         }
 
-        // Create shipment_customer if needed
+        // Create shipment_customer if needed (CORREÇÃO 3)
         let shipmentCustomerId = null;
-        if (order.contato) {
-          const { data: newCustomer, error: customerError } = await supabase
+        if (order.contato && order.contato.email) {
+          console.log(`[BLING-IMPORT-SELECTED] Creating customer: ${order.contato.email}`);
+          
+          // Check if customer already exists by email
+          const { data: existingCustomer } = await supabase
             .from('shipment_customers')
-            .insert({
-              customer_id: customerId,
-              first_name: order.contato.nome?.split(' ')[0] || '',
-              last_name: order.contato.nome?.split(' ').slice(1).join(' ') || '',
-              email: order.contato.email || '',
-              phone: order.contato.celular || order.contato.telefone || '',
-            })
             .select('id')
+            .eq('customer_id', customerId)
+            .eq('email', order.contato.email)
             .single();
+            
+          if (existingCustomer) {
+            shipmentCustomerId = existingCustomer.id;
+            console.log(`[BLING-IMPORT-SELECTED] Using existing customer: ${existingCustomer.id}`);
+          } else {
+            const { data: newCustomer, error: customerError } = await supabase
+              .from('shipment_customers')
+              .insert({
+                customer_id: customerId,
+                first_name: order.contato.nome?.split(' ')[0] || 'Cliente',
+                last_name: order.contato.nome?.split(' ').slice(1).join(' ') || 'Bling',
+                email: order.contato.email,
+                phone: order.contato.celular || order.contato.telefone || '',
+              })
+              .select('id')
+              .single();
 
-          if (!customerError && newCustomer) {
-            shipmentCustomerId = newCustomer.id;
+            if (customerError) {
+              console.error(`[BLING-IMPORT-SELECTED] ❌ Error creating customer:`, customerError);
+            } else if (newCustomer) {
+              shipmentCustomerId = newCustomer.id;
+              console.log(`[BLING-IMPORT-SELECTED] ✅ Created new customer: ${newCustomer.id}`);
+            }
           }
+        } else {
+          console.log(`[BLING-IMPORT-SELECTED] ⚠️ No contact email for order ${order.numero}, skipping customer creation`);
         }
 
         // Save enriched order details (once per order, not per volume)
@@ -226,7 +246,7 @@ serve(async (req) => {
         }
 
         // Create shipment with volume information
-        const { error: insertError } = await supabase
+        const { data: newShipment, error: insertError } = await supabase
           .from('shipments')
           .insert({
             customer_id: customerId,
@@ -239,7 +259,9 @@ serve(async (req) => {
             volume_numero: volumeIndex + 1,
             total_volumes: volumes.length,
             shipment_data: order,
-          });
+          })
+          .select('id')
+          .single();
 
         if (insertError) {
           console.error(`[BLING-IMPORT-SELECTED] Error creating shipment:`, insertError);
@@ -247,7 +269,65 @@ serve(async (req) => {
           errors.push(`Erro ao criar rastreamento para volume ${volumeIndex + 1} do pedido ${order.numero}`);
         } else {
           volumesImported++;
-          console.log(`[BLING-IMPORT-SELECTED] Successfully imported volume ${volumeIndex + 1} of order ${order.numero}`);
+          console.log(`[BLING-IMPORT-SELECTED] ✅ Successfully imported volume ${volumeIndex + 1} of order ${order.numero}`);
+          
+          // CORREÇÃO 2: Fetch tracking history after creating shipment
+          if (newShipment && trackingCode) {
+            console.log(`[BLING-IMPORT-SELECTED] Fetching tracking history for ${trackingCode}`);
+            
+            try {
+              const ship24ApiKey = Deno.env.get('SHIP24_API_KEY');
+              if (!ship24ApiKey) {
+                console.log(`[BLING-IMPORT-SELECTED] ⚠️ SHIP24_API_KEY not configured, skipping tracking fetch`);
+              } else {
+                const trackingResponse = await fetch('https://api.ship24.com/public/v1/trackers/track', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${ship24ApiKey}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    trackingNumber: trackingCode,
+                  }),
+                });
+
+                if (trackingResponse.ok) {
+                  const trackingData = await trackingResponse.json();
+                  const tracking = trackingData.data?.trackings?.[0];
+                  
+                  if (tracking) {
+                    // Map status milestone
+                    const statusMap: Record<string, string> = {
+                      'delivered': 'delivered',
+                      'in_transit': 'in_transit',
+                      'out_for_delivery': 'out_for_delivery',
+                      'exception': 'exception',
+                      'info_received': 'pending',
+                    };
+                    
+                    const mappedStatus = statusMap[tracking.shipment?.statusMilestone] || 'pending';
+                    
+                    await supabase
+                      .from('shipments')
+                      .update({
+                        tracker_id: tracking.tracker?.trackerId,
+                        tracking_events: tracking.events || [],
+                        shipment_data: tracking.shipment,
+                        status: mappedStatus,
+                        last_update: new Date().toISOString()
+                      })
+                      .eq('id', newShipment.id);
+                      
+                    console.log(`[BLING-IMPORT-SELECTED] ✅ Tracking history updated for ${trackingCode}`);
+                  }
+                } else {
+                  console.log(`[BLING-IMPORT-SELECTED] ⚠️ Ship24 API returned ${trackingResponse.status} for ${trackingCode}`);
+                }
+              }
+            } catch (trackingError) {
+              console.error(`[BLING-IMPORT-SELECTED] ⚠️ Failed to fetch tracking for ${trackingCode}:`, trackingError);
+            }
+          }
         }
 
         // Rate limiting

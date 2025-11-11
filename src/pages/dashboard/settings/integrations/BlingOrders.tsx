@@ -14,6 +14,7 @@ export default function BlingOrders() {
   const navigate = useNavigate();
   const { orders, isLoading, refetch, importOrders, isImporting } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<string>('all');
 
   const handleSelectAll = () => {
     if (selectedOrders.size === availableOrders.length) {
@@ -40,8 +41,25 @@ export default function BlingOrders() {
   };
 
   // Separate available and tracked volumes
-  const availableOrders = orders.filter(o => !o.isTracked);
-  const trackedOrders = orders.filter(o => o.isTracked);
+  const allAvailableOrders = orders.filter(o => !o.isTracked);
+  const allTrackedOrders = orders.filter(o => o.isTracked);
+  
+  // CORREÇÃO 1: Apply status filter
+  const availableOrders = statusFilter === 'all' 
+    ? allAvailableOrders 
+    : allAvailableOrders.filter(o => o.situacao?.nome === statusFilter);
+  const trackedOrders = statusFilter === 'all'
+    ? allTrackedOrders
+    : allTrackedOrders.filter(o => o.situacao?.nome === statusFilter);
+  
+  // Get unique status values for filter
+  const allStatuses = Array.from(new Set(orders.map(o => o.situacao?.nome).filter(Boolean)));
+  
+  // Count by status
+  const statusCounts = allStatuses.reduce((acc, status) => {
+    acc[status] = orders.filter(o => o.situacao?.nome === status).length;
+    return acc;
+  }, {} as Record<string, number>);
 
   // Group by order for better visualization
   const groupByOrder = (volumes: typeof orders) => {
@@ -62,6 +80,33 @@ export default function BlingOrders() {
         title="Pedidos do Bling" 
         description="Selecione os volumes que deseja rastrear"
       />
+
+      {/* CORREÇÃO 1: Status Filter */}
+      {!isLoading && orders.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+              >
+                Todos ({orders.length})
+              </Button>
+              {allStatuses.map(status => (
+                <Button
+                  key={status}
+                  variant={statusFilter === status ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter(status)}
+                >
+                  {status} ({statusCounts[status]})
+                </Button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions Bar */}
       <div className="flex items-center justify-between gap-4">
@@ -150,7 +195,22 @@ export default function BlingOrders() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant="secondary">{firstVolume.situacao?.nome}</Badge>
+                        {/* CORREÇÃO 1 & 4: Status badge + volume indicator */}
+                        {isMultiVolume && (
+                          <Badge variant="outline" className="gap-1">
+                            <Package2 className="h-3 w-3" />
+                            {volumes.length} {volumes.length === 1 ? 'volume' : 'volumes'}
+                          </Badge>
+                        )}
+                        <Badge 
+                          variant={
+                            firstVolume.situacao?.nome?.includes('Atendido') ? 'default' :
+                            firstVolume.situacao?.nome?.includes('andamento') ? 'secondary' :
+                            'outline'
+                          }
+                        >
+                          {firstVolume.situacao?.nome}
+                        </Badge>
                         <span className="text-sm font-medium">{formatCurrency(firstVolume.valor)}</span>
                       </div>
                     </div>
@@ -224,7 +284,25 @@ export default function BlingOrders() {
                           {firstVolume.contato?.nome}
                         </span>
                       </div>
-                      <Badge variant="outline">Rastreado</Badge>
+                      <div className="flex items-center gap-2">
+                        {/* CORREÇÃO 4: Volume indicator for tracked orders */}
+                        {isMultiVolume && (
+                          <Badge variant="outline" className="gap-1">
+                            <Package2 className="h-3 w-3" />
+                            {volumes.length}/{firstVolume.totalVolumes} importados
+                          </Badge>
+                        )}
+                        <Badge 
+                          variant={
+                            firstVolume.situacao?.nome?.includes('Atendido') ? 'default' :
+                            firstVolume.situacao?.nome?.includes('andamento') ? 'secondary' :
+                            'outline'
+                          }
+                        >
+                          {firstVolume.situacao?.nome}
+                        </Badge>
+                        <Badge variant="outline">Rastreado</Badge>
+                      </div>
                     </div>
 
                     {/* Volumes */}
