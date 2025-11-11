@@ -6,6 +6,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
+// Rate limiting helper
+const DELAY_BETWEEN_REQUESTS = 400; // 400ms between requests
+const MAX_RETRIES = 3;
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // If rate limited, wait and retry with exponential backoff
+      if (response.status === 429) {
+        const waitTime = Math.min(1000 * Math.pow(2, i), 10000); // Max 10s
+        console.log(`[BLING-SYNC-ORDERS] Rate limited (429), waiting ${waitTime}ms before retry ${i + 1}/${retries}`);
+        await sleep(waitTime);
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await sleep(1000 * (i + 1));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -154,9 +184,9 @@ serve(async (req) => {
     const errors: string[] = [];
 
     try {
-      // Buscar pedidos do Bling
+      // Buscar pedidos do Bling - reduzido para 25 pedidos por vez
       console.log('[BLING-SYNC-ORDERS] Fetching orders from Bling API');
-      const ordersResponse = await fetch('https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=1&limite=100', {
+      const ordersResponse = await fetchWithRetry('https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=1&limite=25', {
         headers: {
           'Authorization': `Bearer ${integration.access_token}`,
           'Accept': 'application/json',
@@ -205,6 +235,9 @@ serve(async (req) => {
       // Processar cada pedido
       for (const order of ordersData.data || []) {
         try {
+          // Rate limiting: wait before processing each order
+          await sleep(DELAY_BETWEEN_REQUESTS);
+          
           // Verificar se o pedido tem código de rastreio
           if (!order.transporte?.codigoRastreamento) {
             console.log(`[BLING-SYNC-ORDERS] Order ${order.numero} has no tracking code, skipping`);

@@ -6,6 +6,36 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
+// Rate limiting helper - wait between API calls
+const DELAY_BETWEEN_REQUESTS = 400; // 400ms between requests to respect rate limits
+const MAX_RETRIES = 3;
+
+async function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // If rate limited, wait and retry with exponential backoff
+      if (response.status === 429) {
+        const waitTime = Math.min(1000 * Math.pow(2, i), 10000); // Max 10s
+        console.log(`[BLING-FETCH-ORDERS] Rate limited (429), waiting ${waitTime}ms before retry ${i + 1}/${retries}`);
+        await sleep(waitTime);
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      await sleep(1000 * (i + 1));
+    }
+  }
+  throw new Error('Max retries exceeded');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -80,11 +110,11 @@ serve(async (req) => {
     // Get pagination parameters from query
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '50');
+    const limit = Math.min(parseInt(url.searchParams.get('limit') || '25'), 25); // Reduced default to 25, max 25
 
     // Fetch orders from Bling
     console.log(`[BLING-FETCH-ORDERS] Fetching page ${page} with limit ${limit}`);
-    const ordersResponse = await fetch(
+    const ordersResponse = await fetchWithRetry(
       `https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=${page}&limite=${limit}`,
       {
         headers: {
@@ -122,9 +152,12 @@ serve(async (req) => {
     
     for (const order of (ordersData.data || [])) {
       try {
+        // Rate limiting: wait before each order processing
+        await sleep(DELAY_BETWEEN_REQUESTS);
+        
         // Fetch full order details
         console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
-        const detailsResponse = await fetch(
+        const detailsResponse = await fetchWithRetry(
           `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
           {
             headers: {
@@ -143,7 +176,8 @@ serve(async (req) => {
         // Fetch NFe if available
         let nfeData = null;
         try {
-          const nfeResponse = await fetch(
+          await sleep(DELAY_BETWEEN_REQUESTS); // Rate limiting
+          const nfeResponse = await fetchWithRetry(
             `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
             {
               headers: {
@@ -180,7 +214,8 @@ serve(async (req) => {
           // If not found, try fetching from logistics API
           if (!trackingCode && volume.id) {
             try {
-              const logisticsResponse = await fetch(
+              await sleep(DELAY_BETWEEN_REQUESTS); // Rate limiting
+              const logisticsResponse = await fetchWithRetry(
                 `https://api.bling.com.br/Api/v3/logisticas/objetos/${volume.id}`,
                 {
                   headers: {
@@ -194,9 +229,6 @@ serve(async (req) => {
                 const logisticsData = await logisticsResponse.json();
                 trackingCode = logisticsData.data?.rastreamento?.codigo || null;
               }
-              
-              // Rate limiting for API calls
-              await new Promise(resolve => setTimeout(resolve, 150));
             } catch (e) {
               console.log(`[BLING-FETCH-ORDERS] Could not fetch logistics for volume ${volume.id}`);
             }
