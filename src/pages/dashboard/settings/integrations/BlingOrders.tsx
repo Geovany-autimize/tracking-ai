@@ -40,15 +40,15 @@ export default function BlingOrders() {
     setSelectedOrders(new Set());
   };
 
-  // Separate available and tracked volumes
-  const allAvailableOrders = orders.filter(o => !o.isTracked);
+  // Separate available and tracked volumes - ALWAYS exclude delivered from available
+  const allAvailableOrders = orders.filter(o => !o.isTracked && !o.situacao?.nome?.includes('Atendido'));
   const allTrackedOrders = orders.filter(o => o.isTracked);
   
   // Apply status filter with special case for "não entregues"
   const availableOrders = statusFilter === 'all' 
     ? allAvailableOrders 
     : statusFilter === 'nao-entregues'
-    ? allAvailableOrders.filter(o => !o.situacao?.nome?.includes('Atendido'))
+    ? allAvailableOrders
     : allAvailableOrders.filter(o => o.situacao?.nome === statusFilter);
     
   const trackedOrders = statusFilter === 'all'
