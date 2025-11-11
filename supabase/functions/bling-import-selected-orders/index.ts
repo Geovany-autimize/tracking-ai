@@ -107,6 +107,26 @@ serve(async (req) => {
 
         const trackingCode = order.transporte.codigoRastreamento;
 
+        // Fetch NFe if available
+        let nfeData = null;
+        try {
+          const nfeResponse = await fetch(
+            `https://www.bling.com.br/Api/v3/pedidos/vendas/${orderId}/notas-fiscais`,
+            {
+              headers: {
+                'Authorization': `Bearer ${integration.access_token}`,
+                'Accept': 'application/json',
+              },
+            }
+          );
+          if (nfeResponse.ok) {
+            const nfeJson = await nfeResponse.json();
+            nfeData = nfeJson.data?.[0] || null;
+          }
+        } catch (e) {
+          console.log(`[BLING-IMPORT-SELECTED] NFe not available for order ${orderId}`);
+        }
+
         // Check if already exists
         const { data: existingShipment } = await supabase
           .from('shipments')
@@ -142,6 +162,36 @@ serve(async (req) => {
           }
         }
 
+        // Save enriched order details
+        const { error: orderDetailsError } = await supabase
+          .from('bling_order_details')
+          .upsert({
+            customer_id: customerId,
+            bling_order_id: order.id.toString(),
+            order_number: order.numero,
+            order_date: order.data,
+            total_value: order.valor,
+            status: order.situacao?.nome || order.situacao,
+            contact_name: order.contato?.nome,
+            contact_email: order.contato?.email,
+            contact_phone: order.contato?.celular || order.contato?.telefone,
+            delivery_address: order.contato?.endereco || null,
+            carrier_name: order.transporte?.transportadora?.nome,
+            tracking_code: trackingCode,
+            freight_value: order.transporte?.frete?.valor,
+            nfe_number: nfeData?.numero,
+            nfe_key: nfeData?.chaveAcesso,
+            nfe_issue_date: nfeData?.dataEmissao,
+            items: order.itens || [],
+            full_data: { ...order, notaFiscal: nfeData },
+          }, {
+            onConflict: 'customer_id,bling_order_id'
+          });
+
+        if (orderDetailsError) {
+          console.error(`[BLING-IMPORT-SELECTED] Error saving order details:`, orderDetailsError);
+        }
+
         // Create shipment
         const { error: insertError } = await supabase
           .from('shipments')
@@ -160,7 +210,7 @@ serve(async (req) => {
           errors.push(`Erro ao criar rastreamento para pedido ${order.numero}`);
         } else {
           ordersImported++;
-          console.log(`[BLING-IMPORT-SELECTED] Successfully imported order ${order.numero}`);
+          console.log(`[BLING-IMPORT-SELECTED] Successfully imported order ${order.numero} with enriched data`);
         }
 
       } catch (orderError) {

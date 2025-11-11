@@ -58,6 +58,42 @@ export type Database = {
           },
         ]
       }
+      bling_authorization: {
+        Row: {
+          access_token: string | null
+          client_id: string | null
+          client_secret: string | null
+          code: string | null
+          created_at: string
+          id: number
+          refresh_token: string | null
+          token_expires_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          code?: string | null
+          created_at?: string
+          id?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          client_id?: string | null
+          client_secret?: string | null
+          code?: string | null
+          created_at?: string
+          id?: number
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       bling_integrations: {
         Row: {
           access_token: string
@@ -96,6 +132,86 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      bling_order_details: {
+        Row: {
+          bling_order_id: string
+          carrier_name: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string | null
+          customer_id: string
+          delivery_address: Json | null
+          freight_value: number | null
+          full_data: Json | null
+          id: string
+          items: Json | null
+          nfe_issue_date: string | null
+          nfe_key: string | null
+          nfe_number: string | null
+          order_date: string | null
+          order_number: string
+          status: string | null
+          total_value: number | null
+          tracking_code: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bling_order_id: string
+          carrier_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          customer_id: string
+          delivery_address?: Json | null
+          freight_value?: number | null
+          full_data?: Json | null
+          id?: string
+          items?: Json | null
+          nfe_issue_date?: string | null
+          nfe_key?: string | null
+          nfe_number?: string | null
+          order_date?: string | null
+          order_number: string
+          status?: string | null
+          total_value?: number | null
+          tracking_code?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bling_order_id?: string
+          carrier_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          customer_id?: string
+          delivery_address?: Json | null
+          freight_value?: number | null
+          full_data?: Json | null
+          id?: string
+          items?: Json | null
+          nfe_issue_date?: string | null
+          nfe_key?: string | null
+          nfe_number?: string | null
+          order_date?: string | null
+          order_number?: string
+          status?: string | null
+          total_value?: number | null
+          tracking_code?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bling_order_details_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bling_sync_logs: {
         Row: {
@@ -509,6 +625,21 @@ export type Database = {
           identifier?: string
           locked_until?: string | null
           window_start?: string
+        }
+        Relationships: []
+      }
+      recipients: {
+        Row: {
+          created_at: string
+          id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          created_at?: string
+          id?: number
         }
         Relationships: []
       }

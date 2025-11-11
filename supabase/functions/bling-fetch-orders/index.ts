@@ -115,7 +115,86 @@ serve(async (req) => {
     }
 
     const ordersData = await ordersResponse.json();
+    console.log(`[BLING-FETCH-ORDERS] Fetched ${ordersData.data?.length || 0} orders`);
     
+    // Enrich each order with full details
+    const enrichedOrders = await Promise.all(
+      (ordersData.data || []).map(async (order: any) => {
+        try {
+          // Fetch full order details
+          console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
+          const detailsResponse = await fetch(
+            `https://www.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${integration.access_token}`,
+                'Accept': 'application/json',
+              },
+            }
+          );
+
+          let fullDetails = order;
+          if (detailsResponse.ok) {
+            const detailsData = await detailsResponse.json();
+            fullDetails = detailsData.data || order;
+          }
+
+          // Fetch NFe if available
+          let nfeData = null;
+          try {
+            const nfeResponse = await fetch(
+              `https://www.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
+              {
+                headers: {
+                  'Authorization': `Bearer ${integration.access_token}`,
+                  'Accept': 'application/json',
+                },
+              }
+            );
+            if (nfeResponse.ok) {
+              const nfeJson = await nfeResponse.json();
+              nfeData = nfeJson.data?.[0] || null;
+            }
+          } catch (e) {
+            console.log(`[BLING-FETCH-ORDERS] NFe not available for order ${order.id}`);
+          }
+
+          return {
+            id: fullDetails.id,
+            numero: fullDetails.numero,
+            data: fullDetails.data,
+            valor: fullDetails.valor,
+            situacao: fullDetails.situacao,
+            contato: fullDetails.contato,
+            transporte: fullDetails.transporte,
+            itens: fullDetails.itens || [],
+            endereco: fullDetails.contato?.endereco || null,
+            notaFiscal: nfeData,
+            codigoRastreamento: fullDetails.transporte?.codigoRastreamento,
+            isTracked: fullDetails.transporte?.codigoRastreamento 
+              ? false // Will be checked below
+              : false,
+            fullData: fullDetails,
+          };
+        } catch (error) {
+          console.error(`[BLING-FETCH-ORDERS] Error enriching order ${order.id}:`, error);
+          // Return basic order data on error
+          return {
+            id: order.id,
+            numero: order.numero,
+            data: order.data,
+            valor: order.valor,
+            situacao: order.situacao,
+            contato: order.contato,
+            transporte: order.transporte,
+            codigoRastreamento: order.transporte?.codigoRastreamento,
+            isTracked: false,
+            fullData: order,
+          };
+        }
+      })
+    );
+
     // Get existing shipments to mark which orders are already tracked
     const { data: existingShipments } = await supabase
       .from('shipments')
@@ -124,23 +203,14 @@ serve(async (req) => {
 
     const trackedCodes = new Set(existingShipments?.map(s => s.tracking_code) || []);
 
-    // Enrich orders with tracking status
-    const enrichedOrders = (ordersData.data || []).map((order: any) => ({
-      id: order.id,
-      numero: order.numero,
-      data: order.data,
-      valor: order.valor,
-      situacao: order.situacao,
-      contato: order.contato,
-      transporte: order.transporte,
-      codigoRastreamento: order.transporte?.codigoRastreamento,
-      isTracked: order.transporte?.codigoRastreamento 
-        ? trackedCodes.has(order.transporte.codigoRastreamento)
-        : false,
-      fullData: order, // Include full order data for later import
-    }));
+    // Mark which orders are tracked
+    enrichedOrders.forEach((order: any) => {
+      order.isTracked = order.codigoRastreamento 
+        ? trackedCodes.has(order.codigoRastreamento)
+        : false;
+    });
 
-    console.log(`[BLING-FETCH-ORDERS] Fetched ${enrichedOrders.length} orders`);
+    console.log(`[BLING-FETCH-ORDERS] Successfully enriched ${enrichedOrders.length} orders`);
 
     return new Response(
       JSON.stringify({
