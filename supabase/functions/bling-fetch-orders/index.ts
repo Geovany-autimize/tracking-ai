@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Rate limiting helper - wait between API calls
-const DELAY_BETWEEN_REQUESTS = 500; // 500ms between requests to respect rate limits
+const DELAY_BETWEEN_REQUESTS = 0;
 const MAX_RETRIES = 3;
 
 const normalize = (value?: string) =>
@@ -18,6 +18,10 @@ const normalize = (value?: string) =>
 
 const ALLOWED_STATUSES = new Set(['em aberto', 'em andamento', 'em producao']);
 const ALLOWED_STATUS_IDS = [6, 9, 12];
+const MAX_PAGES = 25;
+const MAX_CONCURRENT_REQUESTS = 6;
+const BLING_BASE_ENDPOINT = 'https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=';
+const BLING_QUERY_SUFFIX = '&limite=100&idsSituacoes%5B%5D=6&idsSituacoes%5B%5D=9&idsSituacoes%5B%5D=12';
 
 interface BlingStatusPayload {
   id?: number;
@@ -202,70 +206,36 @@ serve(async (req) => {
 
     // Get pagination parameters from query
     const url = new URL(req.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const requestedLimit = parseInt(url.searchParams.get('limit') || '100');
-    const limit = Math.min(Number.isNaN(requestedLimit) ? 100 : requestedLimit, 100);
-
-    const queryParams = new URLSearchParams();
-    queryParams.set('pagina', page.toString());
-    queryParams.set('limite', limit.toString());
-    ALLOWED_STATUS_IDS.forEach(statusId => {
-      queryParams.append('idsSituacoes[]', statusId.toString());
-    });
-
-    // Fetch orders from Bling
-    console.log(`[BLING-FETCH-ORDERS] Fetching page ${page} with limit ${limit}`);
-    const ordersResponse = await fetchWithRetry(
-      `https://api.bling.com.br/Api/v3/pedidos/vendas?${queryParams.toString()}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${integration.access_token}`,
-          'Accept': 'application/json',
-        },
-      }
-    );
-
-    if (ordersResponse.status === 401) {
-      console.error('[BLING-FETCH-ORDERS] Token invalid');
-      await supabase
-        .from('bling_integrations')
-        .update({ status: 'error' })
-        .eq('id', integration.id);
-
-      return new Response(
-        JSON.stringify({ 
-          error: 'Token revogado. Reconexão necessária.',
-          needsReconnect: true 
-        }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (!ordersResponse.ok) {
-      throw new Error(`Bling API error: ${ordersResponse.status}`);
-    }
-
-    const ordersData = await ordersResponse.json();
-    console.log(`[BLING-FETCH-ORDERS] Fetched ${ordersData.data?.length || 0} orders`);
-    
-    // Process each order and extract volumes
+    const initialPageParam = parseInt(url.searchParams.get('page') || '1', 10);
+    const limit = 100;
+    let currentPage = Number.isNaN(initialPageParam) ? 1 : Math.max(1, initialPageParam);
     const allVolumes: ProcessedVolume[] = [];
-    
-    for (const order of (ordersData.data || [])) {
+    let totalOrdersProcessed = 0;
+    let pagesProcessed = 0;
+
+    const processOrdersInBatches = async (orders: any[]) => {
+      for (let i = 0; i < orders.length; i += MAX_CONCURRENT_REQUESTS) {
+        const batch = orders.slice(i, i + MAX_CONCURRENT_REQUESTS);
+        await Promise.all(
+          batch.map(order => processOrder(order))
+        );
+        if (DELAY_BETWEEN_REQUESTS > 0) {
+          await sleep(DELAY_BETWEEN_REQUESTS);
+        }
+      }
+    };
+
+    const processOrder = async (order: any) => {
       try {
         const initialStatus = mapBlingStatus(order.situacao);
         const normalizedInitialStatus = normalize(initialStatus);
 
         if (!ALLOWED_STATUSES.has(normalizedInitialStatus)) {
           console.log(`[BLING-FETCH-ORDERS] Pedido ${order.numero} ignorado (status ${initialStatus})`);
-          continue;
+          return;
         }
 
-        // Rate limiting: wait before each order processing
-        await sleep(DELAY_BETWEEN_REQUESTS);
-        
         // Fetch full order details
-        console.log(`[BLING-FETCH-ORDERS] Fetching details for order ${order.id}`);
         const detailsResponse = await fetchWithRetry(
           `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}`,
           {
@@ -287,7 +257,7 @@ serve(async (req) => {
 
         if (!ALLOWED_STATUSES.has(normalizedMappedStatus)) {
           console.log(`[BLING-FETCH-ORDERS] Pedido ${fullDetails.numero} pulado após detalhes (status ${mappedStatus})`);
-          continue;
+          return;
         }
 
         fullDetails.situacao = {
@@ -302,7 +272,6 @@ serve(async (req) => {
 
         if (fullDetails.contato?.id) {
           try {
-            await sleep(DELAY_BETWEEN_REQUESTS);
             const contactResponse = await fetchWithRetry(
               `https://api.bling.com.br/Api/v3/contatos/${fullDetails.contato.id}`,
               {
@@ -342,7 +311,6 @@ serve(async (req) => {
         // Fetch NFe if available
         let nfeData: BlingInvoicePayload | null = null;
         try {
-          await sleep(DELAY_BETWEEN_REQUESTS); // Rate limiting
           const nfeResponse = await fetchWithRetry(
             `https://api.bling.com.br/Api/v3/pedidos/vendas/${order.id}/notas-fiscais`,
             {
@@ -365,7 +333,7 @@ serve(async (req) => {
         
         if (volumes.length === 0) {
           console.log(`[BLING-FETCH-ORDERS] Order ${fullDetails.numero} has no volumes, skipping`);
-          continue;
+          return;
         }
 
         console.log(`[BLING-FETCH-ORDERS] Order ${fullDetails.numero} has ${volumes.length} volume(s)`);
@@ -380,7 +348,6 @@ serve(async (req) => {
           // If not found, try fetching from logistics API
           if (!trackingCode && volume.id) {
             try {
-              await sleep(DELAY_BETWEEN_REQUESTS); // Rate limiting
               const logisticsResponse = await fetchWithRetry(
                 `https://api.bling.com.br/Api/v3/logisticas/objetos/${volume.id}`,
                 {
@@ -400,13 +367,9 @@ serve(async (req) => {
             }
           }
           
-          console.log(`[BLING-FETCH-ORDERS] Volume ${volume.id} tracking: ${trackingCode || 'NOT FOUND'}`);
-          console.log(`[BLING-FETCH-ORDERS] Volume data:`, JSON.stringify(volume, null, 2));
-
-          // Only add volume if it has a tracking code
           if (trackingCode) {
             allVolumes.push({
-              id: `${fullDetails.id}-${volume.id}`, // Composite ID
+              id: `${fullDetails.id}-${volume.id}`,
               orderId: fullDetails.id.toString(),
               volumeId: volume.id.toString(),
               volumeNumero: i + 1,
@@ -430,17 +393,66 @@ serve(async (req) => {
               endereco: fullDetails.contato?.endereco || null,
               notaFiscal: nfeData,
               codigoRastreamento: trackingCode,
-              isTracked: false, // Will be checked below
+              isTracked: false,
               fullData: fullDetails,
             });
           } else {
             console.log(`[BLING-FETCH-ORDERS] ⚠️ Volume ${volume.id} has NO tracking code`);
           }
         }
-
       } catch (error) {
         console.error(`[BLING-FETCH-ORDERS] Error processing order ${order.id}:`, error);
       }
+    };
+    while (currentPage <= MAX_PAGES) {
+      console.log(`[BLING-FETCH-ORDERS] Fetching page ${currentPage} with limit ${limit}`);
+      const ordersResponse = await fetchWithRetry(
+        `${BLING_BASE_ENDPOINT}${currentPage}${BLING_QUERY_SUFFIX}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${integration.access_token}`,
+            'Accept': 'application/json',
+          },
+        }
+      );
+
+      if (ordersResponse.status === 401) {
+        console.error('[BLING-FETCH-ORDERS] Token invalid');
+        await supabase
+          .from('bling_integrations')
+          .update({ status: 'error' })
+          .eq('id', integration.id);
+
+        return new Response(
+          JSON.stringify({ 
+            error: 'Token revogado. Reconexão necessária.',
+            needsReconnect: true 
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!ordersResponse.ok) {
+        throw new Error(`Bling API error: ${ordersResponse.status}`);
+      }
+
+      const ordersData = await ordersResponse.json();
+      const orders = ordersData.data || [];
+      console.log(`[BLING-FETCH-ORDERS] Page ${currentPage} fetched ${orders.length} orders`);
+
+      if (orders.length === 0) {
+        break;
+      }
+
+      await processOrdersInBatches(orders);
+      totalOrdersProcessed += orders.length;
+      pagesProcessed += 1;
+
+      if (orders.length < limit) {
+        break;
+      }
+
+      currentPage += 1;
     }
 
     // Get existing shipments to mark which volumes are already tracked
@@ -462,7 +474,7 @@ serve(async (req) => {
       volume.isTracked = trackedVolumeIds.has(volumeKey);
     });
 
-    console.log(`[BLING-FETCH-ORDERS] Successfully processed ${allVolumes.length} volumes from ${ordersData.data?.length || 0} orders`);
+    console.log(`[BLING-FETCH-ORDERS] Successfully processed ${allVolumes.length} volumes from ${totalOrdersProcessed} orders across ${pagesProcessed} page(s)`);
     console.log(`[BLING-FETCH-ORDERS] Tracked: ${allVolumes.filter(v => v.isTracked).length}, Available: ${allVolumes.filter(v => !v.isTracked).length}`);
 
     return new Response(
@@ -470,7 +482,8 @@ serve(async (req) => {
         success: true,
         orders: allVolumes, // Now returning volumes, not orders
         total: allVolumes.length,
-        page,
+        pagesProcessed,
+        totalOrdersProcessed,
         limit,
       }),
       { 
