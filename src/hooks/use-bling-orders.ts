@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface BlingOrder {
   id: string; // Composite: orderId-volumeId
@@ -36,21 +37,41 @@ export interface BlingOrder {
 
 export function useBlingOrders() {
   const queryClient = useQueryClient();
+  const { customer } = useAuth();
 
   // Fetch orders from Bling
   const { data: ordersData, isLoading, refetch } = useQuery({
-    queryKey: ['bling-orders'],
+    queryKey: ['bling-orders', customer?.id],
+    enabled: !!customer?.id,
     queryFn: async () => {
-      const token = localStorage.getItem('session_token');
-      
-      const { data, error } = await supabase.functions.invoke('bling-fetch-orders', {
+      if (!customer?.id) {
+        throw new Error('Cliente não autenticado');
+      }
+
+      const response = await fetch('https://webhook-n8n.autimize.com.br/webhook/ec304f57-e075-4642-98ce-0e5035bc22c0', {
+        method: 'POST',
         headers: {
-          'x-session-token': token || '',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          customer_id: customer.id,
+        }),
       });
 
-      if (error) throw error;
-      return data;
+      if (!response.ok) {
+        throw new Error('Falha ao buscar pedidos do Bling');
+      }
+
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        return { orders: data };
+      }
+      if (Array.isArray(data?.orders)) {
+        return { orders: data.orders };
+      }
+
+      console.warn('[useBlingOrders] Resposta inesperada do webhook', data);
+      return { orders: [] };
     },
     retry: false,
   });
