@@ -40,9 +40,9 @@ export function useBlingOrders() {
   const { customer } = useAuth();
 
   // Fetch orders from Bling
-  const { data: ordersData, isLoading, refetch } = useQuery({
+  const { data: ordersData, isLoading, refetch, isFetching } = useQuery({
     queryKey: ['bling-orders', customer?.id],
-    enabled: !!customer?.id,
+    enabled: false,
     queryFn: async () => {
       if (!customer?.id) {
         throw new Error('Cliente não autenticado');
@@ -116,6 +116,7 @@ export function useBlingOrders() {
   return {
     orders: (ordersData?.orders || []) as BlingOrder[],
     isLoading,
+    isFetching,
     refetch,
     importOrders: (orderIds: string[]) => importOrdersMutation.mutate(orderIds),
     isImporting: importOrdersMutation.isPending,
