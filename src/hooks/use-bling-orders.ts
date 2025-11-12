@@ -70,13 +70,16 @@ export function useBlingOrders() {
 
       const data = await response.json();
 
-      const ordersArray: BlingWebhookOrder[] = Array.isArray(data)
-        ? (data as BlingWebhookOrder[])
-        : Array.isArray(data?.data)
-        ? (data.data as BlingWebhookOrder[])
-        : Array.isArray(data?.orders)
-        ? (data.orders as BlingWebhookOrder[])
-        : [];
+      // Novo formato: [{data: [{pedido: {...}}]}]
+      let ordersArray: BlingWebhookOrder[] = [];
+      
+      if (Array.isArray(data)) {
+        ordersArray = data.flatMap(item => 
+          Array.isArray(item?.data) 
+            ? item.data.map((dataItem: any) => dataItem.pedido).filter(Boolean)
+            : []
+        );
+      }
 
       if (!ordersArray.length) {
         console.warn('[useBlingOrders] Resposta do webhook vazia ou inesperada', data);
