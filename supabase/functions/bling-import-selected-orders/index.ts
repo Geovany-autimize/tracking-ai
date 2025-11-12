@@ -406,9 +406,9 @@ serve(async (req) => {
           }
 
           if (!trackingCode) {
-            console.log(`[BLING-IMPORT-SELECTED] Volume ${volumeId} has no tracking code, skipping`);
+            console.log(`[BLING-IMPORT-SELECTED] ❌ Volume ${volumeId} has no tracking code after all attempts`);
             volumesFailed++;
-            errors.push(`Volume ${index + 1} do pedido ${order.numero} não tem código de rastreamento`);
+            errors.push(`Pedido ${order.numero} - Volume ${index + 1}: Código de rastreamento não encontrado. Verifique se o volume foi postado no Bling.`);
             continue;
           }
 
