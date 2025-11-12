@@ -240,7 +240,7 @@ export default function BlingOrders() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 justify-between md:justify-end">
-                    <span className="font-semibold">{formatCurrency(order.valor)}</span>
+                    <span className="font-semibold">{formatCurrency(order.total)}</span>
                     {order.isTracked && (
                       <Badge variant="outline" className="gap-1">
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -281,7 +281,7 @@ export default function BlingOrders() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-semibold">{formatCurrency(order.valor)}</span>
+                  <span className="font-semibold">{formatCurrency(order.total)}</span>
                   <Badge variant="outline">Rastreado</Badge>
                 </div>
               </div>
