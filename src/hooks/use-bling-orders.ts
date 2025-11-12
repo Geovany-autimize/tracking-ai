@@ -12,6 +12,7 @@ export interface BlingOrderSummary {
   total: number;
   situacaoId: number;
   situacaoValor: number;
+  situacao?: { id?: number; valor?: number; nome?: string };
   isTracked: boolean;
   raw: unknown;
 }
@@ -107,6 +108,7 @@ export function useBlingOrders() {
           total: Number(order.total ?? 0),
           situacaoId: Number(order.situacao?.id ?? 0),
           situacaoValor: Number(order.situacao?.valor ?? 0),
+          situacao: order.situacao,
           contatoNome: order.contato?.nome || 'Cliente',
           isTracked: alreadyTrackedOrderIds.has(orderId),
           raw: order,
