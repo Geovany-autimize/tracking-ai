@@ -1,46 +1,99 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useBlingOrders } from '@/hooks/use-bling-orders';
-import { Package, CheckCircle2, RefreshCw, ArrowLeft, Package2 } from 'lucide-react';
+import { useBlingOrders, BlingOrderSummary } from '@/hooks/use-bling-orders';
+import { Package, CheckCircle2, RefreshCw, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/utils';
 
-const normalize = (value?: string) =>
-  (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+const STATUS_LABELS: Record<number, string> = {
+  6: 'Em aberto',
+  9: 'Em andamento',
+  12: 'Em produção',
+};
 
-const allowedStatuses = new Set(['em aberto', 'em andamento', 'em producao']);
-const statusOrder = ['Em aberto', 'Em andamento', 'Em produção'];
+const STATUS_ORDER = [6, 9, 12];
+
+const getStatusLabel = (statusId: number) => STATUS_LABELS[statusId] ?? `Status ${statusId}`;
+
+const getStatusVariant = (statusId: number): 'default' | 'secondary' | 'outline' => {
+  if (statusId === 6) return 'outline';
+  if (statusId === 9) return 'secondary';
+  if (statusId === 12) return 'default';
+  return 'outline';
+};
+
+const formatDate = (value?: string) => {
+  if (!value) return 'Sem data';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('pt-BR');
+};
 
 export default function BlingOrders() {
   const navigate = useNavigate();
-  const { orders, isLoading, refetch, importOrders, isImporting } = useBlingOrders();
+  const { orders, isLoading, isFetching, refetch, importOrders, isImporting } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [statusFilter, setStatusFilter] = useState<number | 'todos'>('todos');
+
+  const { availableOrders, trackedOrders, statusCounts } = useMemo(() => {
+    const mapped = orders.reduce(
+      (acc, order) => {
+        if (order.isTracked) {
+          acc.tracked.push(order);
+        } else {
+          acc.available.push(order);
+        }
+
+        acc.counts[order.situacaoId] = (acc.counts[order.situacaoId] || 0) + 1;
+        return acc;
+      },
+      {
+        available: [] as BlingOrderSummary[],
+        tracked: [] as BlingOrderSummary[],
+        counts: {} as Record<number, number>,
+      }
+    );
+
+    return {
+      availableOrders: mapped.available,
+      trackedOrders: mapped.tracked,
+      statusCounts: mapped.counts,
+    };
+  }, [orders]);
+
+  const normalizedStatusFilter = statusFilter;
+
+  const filteredAvailable = normalizedStatusFilter === 'todos'
+    ? availableOrders
+    : availableOrders.filter(order => order.situacaoId === normalizedStatusFilter);
+
+  const filteredTracked = normalizedStatusFilter === 'todos'
+    ? trackedOrders
+    : trackedOrders.filter(order => order.situacaoId === normalizedStatusFilter);
 
   const handleSelectAll = () => {
-    if (selectedOrders.size === availableOrders.length) {
+    if (selectedOrders.size === filteredAvailable.length) {
       setSelectedOrders(new Set());
     } else {
-      setSelectedOrders(new Set(availableOrders.map(o => o.id)));
+      setSelectedOrders(new Set(filteredAvailable.map(order => order.orderId)));
     }
   };
 
   const handleToggleOrder = (orderId: string) => {
-    const newSelected = new Set(selectedOrders);
-    if (newSelected.has(orderId)) {
-      newSelected.delete(orderId);
-    } else {
-      newSelected.add(orderId);
-    }
-    setSelectedOrders(newSelected);
+    setSelectedOrders(prev => {
+      const next = new Set(prev);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
   };
 
   const handleImport = () => {
@@ -49,55 +102,24 @@ export default function BlingOrders() {
     setSelectedOrders(new Set());
   };
 
-  const filteredOrders = orders.filter(order => allowedStatuses.has(normalize(order.situacao?.nome)));
-  const allAvailableOrders = filteredOrders.filter(order => !order.isTracked);
-  const allTrackedOrders = filteredOrders.filter(order => order.isTracked);
+  const isBusy = isLoading || isFetching;
+  const showStatusFilter = orders.length > 0;
 
-  const availableOrders = statusFilter === 'todos'
-    ? allAvailableOrders
-    : allAvailableOrders.filter(o => o.situacao?.nome === statusFilter);
-
-  const trackedOrders = statusFilter === 'todos'
-    ? allTrackedOrders
-    : allTrackedOrders.filter(o => o.situacao?.nome === statusFilter);
-  
-  // Get unique status values for filter
-  const uniqueStatuses = Array.from(new Set(filteredOrders.map(o => o.situacao?.nome).filter(Boolean)));
-  const orderedStatuses = [
-    ...statusOrder.filter(status => uniqueStatuses.includes(status)),
-    ...uniqueStatuses.filter(status => !statusOrder.includes(status)),
+  const statusButtons = [
+    ...STATUS_ORDER.filter(id => statusCounts[id]),
+    ...Object.keys(statusCounts)
+      .map(Number)
+      .filter(id => !STATUS_ORDER.includes(id)),
   ];
-
-  // Count by status
-  const statusCounts = orderedStatuses.reduce((acc, status) => {
-    acc[status] = filteredOrders.filter(o => o.situacao?.nome === status).length;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const totalFilteredCount = filteredOrders.length;
-
-  // Group by order for better visualization
-  const groupByOrder = (volumes: typeof orders) => {
-    const grouped = new Map<string, typeof orders>();
-    volumes.forEach(volume => {
-      const existing = grouped.get(volume.orderId) || [];
-      grouped.set(volume.orderId, [...existing, volume]);
-    });
-    return grouped;
-  };
-
-  const availableGrouped = groupByOrder(availableOrders);
-  const trackedGrouped = groupByOrder(trackedOrders);
 
   return (
     <div className="space-y-6">
-      <PageHeader 
-        title="Pedidos do Bling" 
-        description="Selecione os volumes que deseja rastrear"
+      <PageHeader
+        title="Pedidos do Bling"
+        description="Selecione os pedidos que deseja importar para rastreamento"
       />
 
-      {/* Status Filter */}
-      {!isLoading && orders.length > 0 && (
+      {showStatusFilter && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-2">
@@ -106,16 +128,16 @@ export default function BlingOrders() {
                 size="sm"
                 onClick={() => setStatusFilter('todos')}
               >
-                Todos ({totalFilteredCount})
+                Todos ({orders.length})
               </Button>
-              {orderedStatuses.map(status => (
+              {statusButtons.map(statusId => (
                 <Button
-                  key={status}
-                  variant={statusFilter === status ? 'default' : 'outline'}
+                  key={statusId}
+                  variant={statusFilter === statusId ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setStatusFilter(status)}
+                  onClick={() => setStatusFilter(statusId)}
                 >
-                  {status} ({statusCounts[status]})
+                  {getStatusLabel(statusId)} ({statusCounts[statusId]})
                 </Button>
               ))}
             </div>
@@ -123,7 +145,6 @@ export default function BlingOrders() {
         </Card>
       )}
 
-      {/* Actions Bar */}
       <div className="flex items-center justify-between gap-4">
         <Button
           variant="outline"
@@ -138,10 +159,10 @@ export default function BlingOrders() {
           <Button
             variant="outline"
             onClick={() => refetch()}
-            disabled={isLoading}
+            disabled={isBusy}
             className="gap-2"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isBusy ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
 
@@ -156,23 +177,22 @@ export default function BlingOrders() {
         </div>
       </div>
 
-      {/* Available Volumes */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Volumes Disponíveis</CardTitle>
+              <CardTitle>Pedidos disponíveis</CardTitle>
               <CardDescription>
-                {availableOrders.length} {availableOrders.length === 1 ? 'volume' : 'volumes'} de {availableGrouped.size} {availableGrouped.size === 1 ? 'pedido' : 'pedidos'}
+                {filteredAvailable.length} pedido{filteredAvailable.length === 1 ? '' : 's'} disponível(is)
               </CardDescription>
             </div>
-            {availableOrders.length > 0 && (
+            {filteredAvailable.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleSelectAll}
               >
-                {selectedOrders.size === availableOrders.length ? 'Desmarcar Todos' : 'Marcar Todos'}
+                {selectedOrders.size === filteredAvailable.length ? 'Desmarcar todos' : 'Marcar todos'}
               </Button>
             )}
           </div>
@@ -184,170 +204,88 @@ export default function BlingOrders() {
                 <Skeleton key={i} className="h-20 w-full" />
               ))}
             </div>
-          ) : availableOrders.length === 0 ? (
+          ) : filteredAvailable.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Nenhum volume disponível para rastreamento</p>
+              <p>Nenhum pedido disponível</p>
               <p className="text-sm mt-1">
-                Apenas volumes com código de rastreamento aparecem aqui
+                Clique em &quot;Atualizar&quot; para buscar novos pedidos.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {Array.from(availableGrouped.entries()).map(([orderId, volumes]) => {
-                const firstVolume = volumes[0];
-                const isMultiVolume = volumes.length > 1;
-
-                return (
-                  <div key={orderId} className="border rounded-lg overflow-hidden">
-                    {/* Order Header */}
-                    <div className="bg-muted/30 px-4 py-2 flex items-center justify-between border-b">
+            <div className="space-y-3">
+              {filteredAvailable.map(order => (
+                <div
+                  key={order.orderId}
+                  className="border rounded-lg p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between hover:bg-accent/40 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      checked={selectedOrders.has(order.orderId)}
+                      onCheckedChange={() => handleToggleOrder(order.orderId)}
+                    />
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <Package2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Pedido #{firstVolume.numero}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {firstVolume.contato?.nome}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {/* CORREÇÃO 1 & 4: Status badge + volume indicator */}
-                        {isMultiVolume && (
-                          <Badge variant="outline" className="gap-1">
-                            <Package2 className="h-3 w-3" />
-                            {volumes.length} {volumes.length === 1 ? 'volume' : 'volumes'}
-                          </Badge>
-                        )}
-                        <Badge 
-                          variant={
-                            firstVolume.situacao?.nome?.includes('Atendido') ? 'default' :
-                            firstVolume.situacao?.nome?.includes('andamento') ? 'secondary' :
-                            'outline'
-                          }
-                        >
-                          {firstVolume.situacao?.nome}
+                        <span className="font-medium">Pedido #{order.numero}</span>
+                        <Badge variant={getStatusVariant(order.situacaoId)}>
+                          {getStatusLabel(order.situacaoId)}
                         </Badge>
-                        <span className="text-sm font-medium">{formatCurrency(firstVolume.valor)}</span>
                       </div>
-                    </div>
-
-                    {/* Volumes */}
-                    <div className="divide-y">
-                      {volumes.map((volume) => (
-                        <div
-                          key={volume.id}
-                          className="flex items-start gap-3 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
-                          onClick={() => handleToggleOrder(volume.id)}
-                        >
-                          <Checkbox
-                            checked={selectedOrders.has(volume.id)}
-                            onCheckedChange={() => handleToggleOrder(volume.id)}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {isMultiVolume && (
-                                <Badge variant="outline" className="text-xs">
-                                  Volume {volume.volumeNumero}/{volume.totalVolumes}
-                                </Badge>
-                              )}
-                              <span className="text-sm font-mono text-muted-foreground">
-                                📦 {volume.codigoRastreamento}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              Criado em {new Date(volume.data).toLocaleDateString('pt-BR')}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                      <p className="text-sm text-muted-foreground">
+                        Cliente: {order.contatoNome}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Data: {formatDate(order.data)}
+                      </p>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex items-center gap-3 justify-between md:justify-end">
+                    <span className="font-semibold">{formatCurrency(order.valor)}</span>
+                    {order.isTracked && (
+                      <Badge variant="outline" className="gap-1">
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        Já importado
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Already Tracked Volumes */}
-      {trackedOrders.length > 0 && (
+      {filteredTracked.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Volumes Já Rastreados
+              Pedidos já importados
             </CardTitle>
             <CardDescription>
-              {trackedOrders.length} {trackedOrders.length === 1 ? 'volume' : 'volumes'} de {trackedGrouped.size} {trackedGrouped.size === 1 ? 'pedido' : 'pedidos'}
+              {filteredTracked.length} pedido{filteredTracked.length === 1 ? '' : 's'} importado(s)
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {Array.from(trackedGrouped.entries()).map(([orderId, volumes]) => {
-                const firstVolume = volumes[0];
-                const isMultiVolume = volumes.length > 1;
-
-                return (
-                  <div key={orderId} className="border rounded-lg overflow-hidden bg-muted/30">
-                    {/* Order Header */}
-                    <div className="px-4 py-2 flex items-center justify-between border-b bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Package2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">Pedido #{firstVolume.numero}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {firstVolume.contato?.nome}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* CORREÇÃO 4: Volume indicator for tracked orders */}
-                        {isMultiVolume && (
-                          <Badge variant="outline" className="gap-1">
-                            <Package2 className="h-3 w-3" />
-                            {volumes.length}/{firstVolume.totalVolumes} importados
-                          </Badge>
-                        )}
-                        <Badge 
-                          variant={
-                            firstVolume.situacao?.nome?.includes('Atendido') ? 'default' :
-                            firstVolume.situacao?.nome?.includes('andamento') ? 'secondary' :
-                            'outline'
-                          }
-                        >
-                          {firstVolume.situacao?.nome}
-                        </Badge>
-                        <Badge variant="outline">Rastreado</Badge>
-                      </div>
-                    </div>
-
-                    {/* Volumes */}
-                    <div className="divide-y">
-                      {volumes.map((volume) => (
-                        <div
-                          key={volume.id}
-                          className="flex items-start gap-3 p-4"
-                        >
-                          <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5" />
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              {isMultiVolume && (
-                                <Badge variant="outline" className="text-xs">
-                                  Volume {volume.volumeNumero}/{volume.totalVolumes}
-                                </Badge>
-                              )}
-                              <span className="text-sm font-mono text-muted-foreground">
-                                📦 {volume.codigoRastreamento}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+          <CardContent className="space-y-3">
+            {filteredTracked.map(order => (
+              <div key={order.orderId} className="border rounded-lg p-4 bg-muted/40 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">Pedido #{order.numero}</span>
+                    <Badge variant={getStatusVariant(order.situacaoId)}>
+                      {getStatusLabel(order.situacaoId)}
+                    </Badge>
                   </div>
-                );
-              })}
-            </div>
+                  <p className="text-sm text-muted-foreground">
+                    Cliente: {order.contatoNome} • Data: {formatDate(order.data)}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold">{formatCurrency(order.valor)}</span>
+                  <Badge variant="outline">Rastreado</Badge>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       )}

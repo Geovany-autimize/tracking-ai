@@ -3,36 +3,41 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
-export interface BlingOrder {
-  id: string; // Composite: orderId-volumeId
-  orderId: string; // Original order ID
-  volumeId: string; // Volume/label ID
-  volumeNumero: number; // Volume number (1, 2, 3...)
-  totalVolumes: number; // Total volumes in order
+export interface BlingOrderSummary {
+  orderId: string;
   numero: string;
-  data: string;
-  valor: number;
-  situacao: {
-    id: number;
-    valor: number;
-    nome: string;
-  };
-  contato: {
-    id: string;
-    nome: string;
-    email: string;
-    telefone?: string;
-    celular?: string;
-  };
-  transporte?: {
-    codigoRastreamento?: string;
-    transportador?: {
-      nome: string;
-    };
-  };
-  codigoRastreamento: string;
+  data?: string;
+  contatoNome: string;
+  totalProdutos?: number;
+  total: number;
+  situacaoId: number;
+  situacaoValor: number;
   isTracked: boolean;
-  fullData: any;
+  raw: unknown;
+}
+
+interface BlingWebhookOrder {
+  id: number;
+  numero?: number | string;
+  numeroLoja?: string;
+  data?: string;
+  dataSaida?: string;
+  dataPrevista?: string;
+  totalProdutos?: number;
+  total?: number;
+  contato?: {
+    id?: number;
+    nome?: string;
+    tipoPessoa?: string;
+    numeroDocumento?: string;
+  };
+  situacao?: {
+    id?: number;
+    valor?: number;
+  };
+  loja?: {
+    id?: number;
+  };
 }
 
 export function useBlingOrders() {
@@ -63,15 +68,52 @@ export function useBlingOrders() {
       }
 
       const data = await response.json();
-      if (Array.isArray(data)) {
-        return { orders: data };
-      }
-      if (Array.isArray(data?.orders)) {
-        return { orders: data.orders };
+
+      const ordersArray: BlingWebhookOrder[] = Array.isArray(data)
+        ? (data as BlingWebhookOrder[])
+        : Array.isArray(data?.data)
+        ? (data.data as BlingWebhookOrder[])
+        : Array.isArray(data?.orders)
+        ? (data.orders as BlingWebhookOrder[])
+        : [];
+
+      if (!ordersArray.length) {
+        console.warn('[useBlingOrders] Resposta do webhook vazia ou inesperada', data);
+        return { orders: [] };
       }
 
-      console.warn('[useBlingOrders] Resposta inesperada do webhook', data);
-      return { orders: [] };
+      const token = localStorage.getItem('session_token');
+      const { data: existingShipmentsData } = await supabase
+        .from('shipments')
+        .select('bling_order_id')
+        .eq('customer_id', customer.id)
+        .neq('bling_order_id', null);
+
+      const alreadyTrackedOrderIds = new Set(
+        (existingShipmentsData || [])
+          .map(shipment => shipment.bling_order_id)
+          .filter(Boolean)
+          .map(String)
+      );
+
+      const normalizedOrders: BlingOrderSummary[] = ordersArray.map(order => {
+        const orderId = String(order.id);
+        return {
+          id: orderId,
+          orderId,
+          numero: order.numero ? String(order.numero) : orderId,
+          data: order.data,
+          totalProdutos: order.totalProdutos,
+          valor: Number(order.total ?? 0),
+          contatoNome: order.contato?.nome || 'Cliente',
+          situacaoId: Number(order.situacao?.id ?? 0),
+          situacaoValor: Number(order.situacao?.valor ?? 0),
+          isTracked: alreadyTrackedOrderIds.has(orderId),
+          raw: order,
+        };
+      });
+
+      return { orders: normalizedOrders };
     },
     retry: false,
   });
@@ -114,7 +156,7 @@ export function useBlingOrders() {
   });
 
   return {
-    orders: (ordersData?.orders || []) as BlingOrder[],
+    orders: (ordersData?.orders || []) as BlingOrderSummary[],
     isLoading,
     isFetching,
     refetch,
