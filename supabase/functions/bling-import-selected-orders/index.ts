@@ -359,6 +359,14 @@ serve(async (req) => {
             continue;
           }
 
+          // Log volume structure for debugging
+          console.log(`[BLING-IMPORT-SELECTED] Volume ${index + 1} structure:`, JSON.stringify({
+            volumeId,
+            codigoRastreamento: volume.codigoRastreamento,
+            transporteRastreamento: order.transporte?.codigoRastreamento,
+            etiquetaRastreamento: order.transporte?.etiqueta?.codigoRastreamento,
+          }));
+
           // Extract tracking code from multiple possible sources
           let trackingCode = volume.codigoRastreamento || 
                              order.transporte?.codigoRastreamento ||
@@ -366,6 +374,7 @@ serve(async (req) => {
                              null;
           
           if (!trackingCode) {
+            console.log(`[BLING-IMPORT-SELECTED] No tracking code found in volume/order, trying logistics API for volume ${volumeId}`);
             try {
               await new Promise(resolve => setTimeout(resolve, 200)); // Rate limiting
               const logisticsResponse = await fetch(
@@ -378,14 +387,22 @@ serve(async (req) => {
                 }
               );
 
+              console.log(`[BLING-IMPORT-SELECTED] Logistics API response status: ${logisticsResponse.status}`);
+              
               if (logisticsResponse.ok) {
                 const logisticsData = await logisticsResponse.json();
+                console.log(`[BLING-IMPORT-SELECTED] Logistics data:`, JSON.stringify(logisticsData));
                 trackingCode = logisticsData.data?.rastreamento?.codigo || null;
-                console.log(`[BLING-IMPORT-SELECTED] Fetched tracking from logistics API: ${trackingCode || 'NOT FOUND'}`);
+                console.log(`[BLING-IMPORT-SELECTED] Extracted tracking code: ${trackingCode || 'NOT FOUND'}`);
+              } else {
+                const errorText = await logisticsResponse.text();
+                console.error(`[BLING-IMPORT-SELECTED] Logistics API error: ${errorText}`);
               }
             } catch (e) {
-              console.error(`[BLING-IMPORT-SELECTED] Error fetching logistics for volume ${volumeId}:`, e);
+              console.error(`[BLING-IMPORT-SELECTED] Exception fetching logistics:`, e);
             }
+          } else {
+            console.log(`[BLING-IMPORT-SELECTED] Found tracking code directly: ${trackingCode}`);
           }
 
           if (!trackingCode) {
