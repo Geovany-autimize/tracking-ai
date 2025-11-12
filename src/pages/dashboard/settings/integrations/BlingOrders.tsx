@@ -169,10 +169,19 @@ export default function BlingOrders() {
           <Button
             onClick={handleImport}
             disabled={selectedOrders.size === 0 || isImporting}
-            className="gap-2"
+            className="gap-2 relative"
           >
-            <Package className="h-4 w-4" />
-            Importar {selectedOrders.size > 0 && `(${selectedOrders.size})`}
+            {isImporting ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Importando...
+              </>
+            ) : (
+              <>
+                <Package className="h-4 w-4" />
+                Importar {selectedOrders.size > 0 && `(${selectedOrders.size})`}
+              </>
+            )}
           </Button>
         </div>
       </div>
