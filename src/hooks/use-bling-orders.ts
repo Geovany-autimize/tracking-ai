@@ -125,15 +125,25 @@ export function useBlingOrders() {
     mutationFn: async (orderIds: string[]) => {
       const token = localStorage.getItem('session_token');
       
-      const { data, error } = await supabase.functions.invoke('bling-import-selected-orders', {
-        body: { orderIds },
-        headers: {
-          'x-session-token': token || '',
-        },
-      });
+      // Show loading toast
+      const loadingToast = toast.loading(`Importando ${orderIds.length} ${orderIds.length === 1 ? 'pedido' : 'pedidos'}...`);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('bling-import-selected-orders', {
+          body: { orderIds },
+          headers: {
+            'x-session-token': token || '',
+          },
+        });
 
-      if (error) throw error;
-      return data;
+        toast.dismiss(loadingToast);
+        
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        toast.dismiss(loadingToast);
+        throw error;
+      }
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['bling-orders', customer?.id] });
@@ -141,19 +151,26 @@ export function useBlingOrders() {
       
       if (data.imported > 0) {
         toast.success(
-          `${data.imported} ${data.imported === 1 ? 'pedido importado' : 'pedidos importados'} com sucesso!`
+          `✅ ${data.imported} ${data.imported === 1 ? 'pedido importado' : 'pedidos importados'} com sucesso!`,
+          { duration: 5000 }
         );
       }
       
       if (data.failed > 0) {
+        const errorMessages = data.errors?.slice(0, 3).join('\n• ') || '';
         toast.error(
-          `${data.failed} ${data.failed === 1 ? 'pedido falhou' : 'pedidos falharam'}. ${data.errors?.[0] || ''}`
+          `❌ ${data.failed} ${data.failed === 1 ? 'pedido falhou' : 'pedidos falharam'}${errorMessages ? `:\n• ${errorMessages}` : ''}`,
+          { duration: 10000 }
         );
+      }
+      
+      if (data.imported === 0 && data.failed === 0) {
+        toast.info('Nenhum pedido foi importado', { duration: 5000 });
       }
     },
     onError: (error) => {
       console.error('Import orders error:', error);
-      toast.error('Erro ao importar pedidos');
+      toast.error('Erro ao importar pedidos. Tente novamente.');
     },
   });
 
