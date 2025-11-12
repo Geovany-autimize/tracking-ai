@@ -192,12 +192,18 @@ serve(async (req) => {
           nome: mappedStatus,
         };
 
-        // Find volumes
+        // Find volumes - handle orders without volumes array
         const volumes = order.transporte?.volumes || [];
         const typedVolumes = (volumes as Array<{ id?: string | number; [key: string]: unknown }>);
-        const volumeSelection = selection.allVolumes
+        let volumeSelection = selection.allVolumes
           ? typedVolumes
           : typedVolumes.filter(v => selection.volumeIds.has(v.id?.toString() || ''));
+
+        // If no volumes, treat as single shipment order
+        if (volumeSelection.length === 0 && selection.allVolumes) {
+          console.log(`[BLING-IMPORT-SELECTED] Order ${orderId} has no volumes, treating as single shipment`);
+          volumeSelection = [{ id: orderId }]; // Create virtual volume
+        }
 
         if (volumeSelection.length === 0) {
           console.log(`[BLING-IMPORT-SELECTED] No volumes selected for order ${orderId}, skipping`);
@@ -353,9 +359,15 @@ serve(async (req) => {
             continue;
           }
 
-          let trackingCode = volume.codigoRastreamento || null;
+          // Extract tracking code from multiple possible sources
+          let trackingCode = volume.codigoRastreamento || 
+                             order.transporte?.codigoRastreamento ||
+                             order.transporte?.etiqueta?.codigoRastreamento ||
+                             null;
+          
           if (!trackingCode) {
             try {
+              await new Promise(resolve => setTimeout(resolve, 200)); // Rate limiting
               const logisticsResponse = await fetch(
                 `https://api.bling.com.br/Api/v3/logisticas/objetos/${volumeId}`,
                 {
@@ -369,6 +381,7 @@ serve(async (req) => {
               if (logisticsResponse.ok) {
                 const logisticsData = await logisticsResponse.json();
                 trackingCode = logisticsData.data?.rastreamento?.codigo || null;
+                console.log(`[BLING-IMPORT-SELECTED] Fetched tracking from logistics API: ${trackingCode || 'NOT FOUND'}`);
               }
             } catch (e) {
               console.error(`[BLING-IMPORT-SELECTED] Error fetching logistics for volume ${volumeId}:`, e);
