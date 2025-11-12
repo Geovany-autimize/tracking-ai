@@ -10,19 +10,96 @@ const corsHeaders = {
 const DELAY_BETWEEN_REQUESTS = 500; // 500ms between requests to respect rate limits
 const MAX_RETRIES = 3;
 
+const normalize = (value?: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const ALLOWED_STATUSES = new Set(['em aberto', 'em andamento', 'em producao']);
+
+interface BlingStatusPayload {
+  id?: number;
+  valor?: number;
+  nome?: string;
+  descricao?: string;
+  descricaoSituacao?: string;
+  situacao?: string;
+}
+
+interface BlingContactPayload {
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  celular?: string;
+  endereco?: {
+    geral?: Record<string, unknown>;
+  };
+  [key: string]: unknown;
+}
+
+interface ProcessedVolume {
+  id: string;
+  orderId: string;
+  volumeId: string;
+  volumeNumero: number;
+  totalVolumes: number;
+  numero: string;
+  data: string;
+  valor: number;
+  situacao: {
+    nome?: string;
+    [key: string]: unknown;
+  };
+  contato: {
+    nome?: string | null;
+    email?: string | null;
+    telefone?: string | null;
+    celular?: string | null;
+    [key: string]: unknown;
+  };
+  transporte?: Record<string, unknown>;
+  itens: unknown[];
+  endereco: unknown;
+  notaFiscal: unknown;
+  codigoRastreamento: string;
+  isTracked: boolean;
+  fullData: unknown;
+}
+
+interface BlingInvoicePayload {
+  numero?: string;
+  chaveAcesso?: string;
+  dataEmissao?: string;
+  [key: string]: unknown;
+}
+
 // Map Bling status IDs to readable names
-function mapBlingStatus(situacao: any): string {
+function mapBlingStatus(situacao: BlingStatusPayload | null | undefined): string {
   const statusMap: Record<number, string> = {
     6: 'Em aberto',
-    9: 'Em andamento', 
+    9: 'Em andamento',
     12: 'Em produção',
     15: 'Atendido', // Entregue
     18: 'Cancelado',
     24: 'Verificado',
   };
-  
-  const statusId = situacao?.id || situacao?.valor;
-  return statusMap[statusId] || 'Desconhecido';
+
+  const statusIdValue = situacao?.id ?? situacao?.valor;
+  const statusId = typeof statusIdValue === 'number' ? statusIdValue : undefined;
+  const mapped = statusId !== undefined ? statusMap[statusId] : undefined;
+
+  if (mapped) return mapped;
+
+  const fallback =
+    situacao?.nome ||
+    situacao?.descricao ||
+    situacao?.descricaoSituacao ||
+    situacao?.situacao;
+
+  return typeof fallback === 'string' && fallback.trim().length > 0
+    ? fallback.trim()
+    : 'Desconhecido';
 }
 
 async function sleep(ms: number) {
@@ -163,10 +240,18 @@ serve(async (req) => {
     console.log(`[BLING-FETCH-ORDERS] Fetched ${ordersData.data?.length || 0} orders`);
     
     // Process each order and extract volumes
-    const allVolumes: any[] = [];
+    const allVolumes: ProcessedVolume[] = [];
     
     for (const order of (ordersData.data || [])) {
       try {
+        const initialStatus = mapBlingStatus(order.situacao);
+        const normalizedInitialStatus = normalize(initialStatus);
+
+        if (!ALLOWED_STATUSES.has(normalizedInitialStatus)) {
+          console.log(`[BLING-FETCH-ORDERS] Pedido ${order.numero} ignorado (status ${initialStatus})`);
+          continue;
+        }
+
         // Rate limiting: wait before each order processing
         await sleep(DELAY_BETWEEN_REQUESTS);
         
@@ -188,10 +273,25 @@ serve(async (req) => {
           fullDetails = detailsData.data || order;
         }
 
-        // Fetch contact email if contact exists
-        let contactEmail = fullDetails.contato?.email || null;
+        const mappedStatus = mapBlingStatus(fullDetails.situacao);
+        const normalizedMappedStatus = normalize(mappedStatus);
 
-        if (!contactEmail && fullDetails.contato?.id) {
+        if (!ALLOWED_STATUSES.has(normalizedMappedStatus)) {
+          console.log(`[BLING-FETCH-ORDERS] Pedido ${fullDetails.numero} pulado após detalhes (status ${mappedStatus})`);
+          continue;
+        }
+
+        fullDetails.situacao = {
+          ...fullDetails.situacao,
+          nome: mappedStatus,
+        };
+
+        // Fetch contact email if contact exists
+        let contactName = fullDetails.contato?.nome || null;
+        let contactEmail = fullDetails.contato?.email || null;
+        let contactPhone = fullDetails.contato?.celular || fullDetails.contato?.telefone || null;
+
+        if (fullDetails.contato?.id) {
           try {
             await sleep(DELAY_BETWEEN_REQUESTS);
             const contactResponse = await fetchWithRetry(
@@ -205,9 +305,25 @@ serve(async (req) => {
             );
             
             if (contactResponse.ok) {
-              const contactData = await contactResponse.json();
-              contactEmail = contactData.data?.email || null;
-              console.log(`[BLING-FETCH-ORDERS] Found contact email: ${contactEmail || 'NOT FOUND'}`);
+              const contactData = await contactResponse.json() as { data?: BlingContactPayload };
+              const contact = contactData.data;
+
+              if (contact) {
+                contactName = contact.nome || contactName;
+                contactEmail = contact.email || contactEmail;
+                contactPhone = contact.celular || contact.telefone || contactPhone;
+
+                fullDetails.contato = {
+                  ...fullDetails.contato,
+                  nome: contactName || fullDetails.contato?.nome,
+                  email: contactEmail || fullDetails.contato?.email,
+                  telefone: contact.telefone || fullDetails.contato?.telefone,
+                  celular: contact.celular || fullDetails.contato?.celular,
+                  endereco: contact.endereco?.geral || fullDetails.contato?.endereco,
+                };
+
+                console.log(`[BLING-FETCH-ORDERS] Contact loaded: ${contact.nome || 'UNKNOWN'}`);
+              }
             }
           } catch (e) {
             console.log(`[BLING-FETCH-ORDERS] Could not fetch contact email`);
@@ -215,7 +331,7 @@ serve(async (req) => {
         }
 
         // Fetch NFe if available
-        let nfeData = null;
+        let nfeData: BlingInvoicePayload | null = null;
         try {
           await sleep(DELAY_BETWEEN_REQUESTS); // Rate limiting
           const nfeResponse = await fetchWithRetry(
@@ -228,7 +344,7 @@ serve(async (req) => {
             }
           );
           if (nfeResponse.ok) {
-            const nfeJson = await nfeResponse.json();
+            const nfeJson = await nfeResponse.json() as { data?: BlingInvoicePayload[] };
             nfeData = nfeJson.data?.[0] || null;
           }
         } catch (e) {
@@ -291,11 +407,14 @@ serve(async (req) => {
               valor: fullDetails.valor,
               situacao: {
                 ...fullDetails.situacao,
-                nome: mapBlingStatus(fullDetails.situacao)
+                nome: mappedStatus
               },
               contato: {
                 ...fullDetails.contato,
-                email: contactEmail,
+                nome: fullDetails.contato?.nome || contactName,
+                email: contactEmail || fullDetails.contato?.email,
+                telefone: fullDetails.contato?.telefone || contactPhone,
+                celular: fullDetails.contato?.celular || contactPhone,
               },
               transporte: fullDetails.transporte,
               itens: fullDetails.itens || [],
@@ -329,7 +448,7 @@ serve(async (req) => {
     );
 
     // Mark which volumes are tracked
-    allVolumes.forEach((volume: any) => {
+    allVolumes.forEach((volume) => {
       const volumeKey = `${volume.orderId}-${volume.volumeId}`;
       volume.isTracked = trackedVolumeIds.has(volumeKey);
     });

@@ -6,6 +6,68 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-session-token',
 };
 
+const normalize = (value?: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const ALLOWED_STATUSES = new Set(['em aberto', 'em andamento', 'em producao']);
+
+interface BlingStatusPayload {
+  id?: number;
+  valor?: number;
+  nome?: string;
+  descricao?: string;
+  descricaoSituacao?: string;
+  situacao?: string;
+}
+
+interface BlingContactPayload {
+  nome?: string;
+  email?: string;
+  telefone?: string;
+  celular?: string;
+  endereco?: {
+    geral?: Record<string, unknown>;
+  };
+  [key: string]: unknown;
+}
+
+interface BlingInvoicePayload {
+  numero?: string;
+  chaveAcesso?: string;
+  dataEmissao?: string;
+  [key: string]: unknown;
+}
+
+function mapBlingStatus(situacao: BlingStatusPayload | null | undefined): string {
+  const statusMap: Record<number, string> = {
+    6: 'Em aberto',
+    9: 'Em andamento',
+    12: 'Em produção',
+    15: 'Atendido',
+    18: 'Cancelado',
+    24: 'Verificado',
+  };
+
+  const statusIdValue = situacao?.id ?? situacao?.valor;
+  const statusId = typeof statusIdValue === 'number' ? statusIdValue : undefined;
+  const mapped = statusId !== undefined ? statusMap[statusId] : undefined;
+
+  if (mapped) return mapped;
+
+  const fallback =
+    situacao?.nome ||
+    situacao?.descricao ||
+    situacao?.descricaoSituacao ||
+    situacao?.situacao;
+
+  return typeof fallback === 'string' && fallback.trim().length > 0
+    ? fallback.trim()
+    : 'Desconhecido';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -101,15 +163,31 @@ serve(async (req) => {
         const orderData = await orderResponse.json();
         const order = orderData.data;
 
+        const mappedStatus = mapBlingStatus(order.situacao);
+        const normalizedStatus = normalize(mappedStatus);
+
+        if (!ALLOWED_STATUSES.has(normalizedStatus)) {
+          console.log(`[BLING-IMPORT-SELECTED] Pedido ${order.numero} ignorado pelo status ${mappedStatus}`);
+          volumesFailed++;
+          errors.push(`Pedido ${order.numero} em status não permitido (${mappedStatus})`);
+          continue;
+        }
+
+        order.situacao = {
+          ...order.situacao,
+          nome: mappedStatus,
+        };
+
         // Find the specific volume
         const volumes = order.transporte?.volumes || [];
-        const volumeIndex = volumes.findIndex((v: any) => v.id.toString() === blingVolumeId);
+        const typedVolumes = (volumes as Array<{ id?: string | number; [key: string]: unknown }>);
+        const volumeIndex = typedVolumes.findIndex(v => v.id?.toString() === blingVolumeId);
         
         if (volumeIndex === -1) {
           throw new Error(`Volume ${blingVolumeId} not found in order ${orderId}`);
         }
 
-        const volume = volumes[volumeIndex];
+        const volume = typedVolumes[volumeIndex];
 
         // Fetch logistics object for tracking code
         let trackingCode = null;
@@ -139,10 +217,12 @@ serve(async (req) => {
           continue;
         }
 
-        // Fetch contact email if contact exists
+        // Fetch contact details if contact exists
+        let contactName = order.contato?.nome || null;
+        let contactPhone = order.contato?.celular || order.contato?.telefone || null;
         let contactEmail = order.contato?.email || null;
 
-        if (!contactEmail && order.contato?.id) {
+        if (order.contato?.id) {
           console.log(`[BLING-IMPORT-SELECTED] Fetching contact details for ${order.contato.id}`);
           try {
             await new Promise(resolve => setTimeout(resolve, 200)); // Rate limiting
@@ -157,9 +237,24 @@ serve(async (req) => {
             );
             
             if (contactResponse.ok) {
-              const contactData = await contactResponse.json();
-              contactEmail = contactData.data?.email || null;
-              console.log(`[BLING-IMPORT-SELECTED] Found contact email: ${contactEmail || 'NOT FOUND'}`);
+              const contactData = await contactResponse.json() as { data?: BlingContactPayload };
+              const contact = contactData.data;
+
+              if (contact) {
+                contactName = contact.nome || contactName;
+                contactEmail = contact.email || contactEmail;
+                contactPhone = contact.celular || contact.telefone || contactPhone;
+
+                order.contato = {
+                  ...order.contato,
+                  nome: contactName || order.contato?.nome,
+                  email: contactEmail || order.contato?.email,
+                  telefone: contact.telefone || order.contato?.telefone,
+                  celular: contact.celular || order.contato?.celular,
+                  endereco: contact.endereco?.geral || order.contato?.endereco,
+                };
+                console.log(`[BLING-IMPORT-SELECTED] Contact loaded: ${contact.nome || 'UNKNOWN'}`);
+              }
             }
           } catch (e) {
             console.log(`[BLING-IMPORT-SELECTED] Could not fetch contact details:`, e);
@@ -183,7 +278,7 @@ serve(async (req) => {
         }
 
         // Fetch NFe if available
-        let nfeData = null;
+        let nfeData: BlingInvoicePayload | null = null;
         try {
           const nfeResponse = await fetch(
             `https://api.bling.com.br/Api/v3/pedidos/vendas/${orderId}/notas-fiscais`,
@@ -195,26 +290,30 @@ serve(async (req) => {
             }
           );
           if (nfeResponse.ok) {
-            const nfeJson = await nfeResponse.json();
+            const nfeJson = await nfeResponse.json() as { data?: BlingInvoicePayload[] };
             nfeData = nfeJson.data?.[0] || null;
           }
         } catch (e) {
           console.log(`[BLING-IMPORT-SELECTED] NFe not available for order ${orderId}`);
         }
 
+        const fullName = (contactName || order.contato?.nome || 'Cliente Bling').trim();
+        const [firstNameRaw, ...restName] = fullName.split(/\s+/);
+        const firstName = firstNameRaw || 'Cliente';
+        const lastName = restName.length > 0 ? restName.join(' ') : firstName;
+        const phone = contactPhone || order.contato?.celular || order.contato?.telefone || '';
+        const email = contactEmail || order.contato?.email || '';
+
         // Create shipment_customer if needed
         let shipmentCustomerId = null;
-        if (order.contato && contactEmail) {
-          console.log(`[BLING-IMPORT-SELECTED] Creating customer: ${contactEmail}`);
-          
-          // Check if customer already exists by email
+        if (email) {
           const { data: existingCustomer } = await supabase
             .from('shipment_customers')
             .select('id')
             .eq('customer_id', customerId)
-            .eq('email', contactEmail)
+            .eq('email', email)
             .single();
-            
+
           if (existingCustomer) {
             shipmentCustomerId = existingCustomer.id;
             console.log(`[BLING-IMPORT-SELECTED] Using existing customer: ${existingCustomer.id}`);
@@ -223,23 +322,23 @@ serve(async (req) => {
               .from('shipment_customers')
               .insert({
                 customer_id: customerId,
-                first_name: order.contato.nome?.split(' ')[0] || 'Cliente',
-                last_name: order.contato.nome?.split(' ').slice(1).join(' ') || 'Bling',
-                email: contactEmail,
-                phone: order.contato.celular || order.contato.telefone || '',
+                first_name: firstName,
+                last_name: lastName,
+                email,
+                phone,
               })
               .select('id')
               .single();
 
-            if (customerError) {
-              console.error(`[BLING-IMPORT-SELECTED] ❌ Error creating customer:`, customerError);
-            } else if (newCustomer) {
+            if (!customerError && newCustomer) {
               shipmentCustomerId = newCustomer.id;
               console.log(`[BLING-IMPORT-SELECTED] ✅ Created new customer: ${newCustomer.id}`);
+            } else if (customerError) {
+              console.error(`[BLING-IMPORT-SELECTED] ❌ Error creating customer:`, customerError);
             }
           }
         } else {
-          console.log(`[BLING-IMPORT-SELECTED] ⚠️ No contact email for order ${order.numero}, skipping customer creation`);
+          console.log(`[BLING-IMPORT-SELECTED] ⚠️ Missing email for contact of order ${order.numero}, skipping customer creation`);
         }
 
         // Save enriched order details (once per order, not per volume)
@@ -283,8 +382,8 @@ serve(async (req) => {
             status: 'pending',
             bling_order_id: orderId,
             bling_volume_id: blingVolumeId,
-            volume_numero: volumeIndex + 1,
-            total_volumes: volumes.length,
+          volume_numero: volumeIndex + 1,
+          total_volumes: typedVolumes.length,
             shipment_data: order,
           })
           .select('id')

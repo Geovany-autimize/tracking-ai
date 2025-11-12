@@ -10,11 +10,20 @@ import { Package, CheckCircle2, RefreshCw, ArrowLeft, Package2 } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/utils';
 
+const normalize = (value?: string) =>
+  (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+const allowedStatuses = new Set(['em aberto', 'em andamento', 'em producao']);
+const statusOrder = ['Em aberto', 'Em andamento', 'Em produção'];
+
 export default function BlingOrders() {
   const navigate = useNavigate();
   const { orders, isLoading, refetch, importOrders, isImporting } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [statusFilter, setStatusFilter] = useState<string>('nao-entregues');
+  const [statusFilter, setStatusFilter] = useState<string>('todos');
 
   const handleSelectAll = () => {
     if (selectedOrders.size === availableOrders.length) {
@@ -40,44 +49,32 @@ export default function BlingOrders() {
     setSelectedOrders(new Set());
   };
 
-  // Separate available and tracked volumes - ONLY show orders in transit or pending
-  // Exclude: delivered, cancelled, finalized orders
-  const excludedStatuses = ['Atendido', 'Cancelado', 'Finalizado', 'Entregue'];
-  const allAvailableOrders = orders.filter(o => {
-    if (o.isTracked) return false;
-    const statusName = o.situacao?.nome || '';
-    const statusId = o.situacao?.id;
-    
-    // Filter by name OR by ID (15 = Atendido/Entregue)
-    return !excludedStatuses.some(excluded => statusName.includes(excluded)) 
-           && statusId !== 15;
-  });
-  const allTrackedOrders = orders.filter(o => o.isTracked);
-  
-  // Apply status filter with special case for "não entregues"
-  const availableOrders = statusFilter === 'all' 
-    ? allAvailableOrders 
-    : statusFilter === 'nao-entregues'
+  const filteredOrders = orders.filter(order => allowedStatuses.has(normalize(order.situacao?.nome)));
+  const allAvailableOrders = filteredOrders.filter(order => !order.isTracked);
+  const allTrackedOrders = filteredOrders.filter(order => order.isTracked);
+
+  const availableOrders = statusFilter === 'todos'
     ? allAvailableOrders
     : allAvailableOrders.filter(o => o.situacao?.nome === statusFilter);
-    
-  const trackedOrders = statusFilter === 'all'
+
+  const trackedOrders = statusFilter === 'todos'
     ? allTrackedOrders
-    : statusFilter === 'nao-entregues'
-    ? allTrackedOrders.filter(o => !o.situacao?.nome?.includes('Atendido'))
     : allTrackedOrders.filter(o => o.situacao?.nome === statusFilter);
   
   // Get unique status values for filter
-  const allStatuses = Array.from(new Set(orders.map(o => o.situacao?.nome).filter(Boolean)));
-  
+  const uniqueStatuses = Array.from(new Set(filteredOrders.map(o => o.situacao?.nome).filter(Boolean)));
+  const orderedStatuses = [
+    ...statusOrder.filter(status => uniqueStatuses.includes(status)),
+    ...uniqueStatuses.filter(status => !statusOrder.includes(status)),
+  ];
+
   // Count by status
-  const statusCounts = allStatuses.reduce((acc, status) => {
-    acc[status] = orders.filter(o => o.situacao?.nome === status).length;
+  const statusCounts = orderedStatuses.reduce((acc, status) => {
+    acc[status] = filteredOrders.filter(o => o.situacao?.nome === status).length;
     return acc;
   }, {} as Record<string, number>);
   
-  // Count not delivered orders
-  const notDeliveredCount = orders.filter(o => !o.situacao?.nome?.includes('Atendido')).length;
+  const totalFilteredCount = filteredOrders.length;
 
   // Group by order for better visualization
   const groupByOrder = (volumes: typeof orders) => {
@@ -105,20 +102,13 @@ export default function BlingOrders() {
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-2">
               <Button
-                variant={statusFilter === 'nao-entregues' ? 'default' : 'outline'}
+                variant={statusFilter === 'todos' ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => setStatusFilter('nao-entregues')}
+                onClick={() => setStatusFilter('todos')}
               >
-                Não Entregues ({notDeliveredCount})
+                Todos ({totalFilteredCount})
               </Button>
-              <Button
-                variant={statusFilter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setStatusFilter('all')}
-              >
-                Todos ({orders.length})
-              </Button>
-              {allStatuses.map(status => (
+              {orderedStatuses.map(status => (
                 <Button
                   key={status}
                   variant={statusFilter === status ? 'default' : 'outline'}
