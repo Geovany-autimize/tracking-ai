@@ -134,7 +134,7 @@ export function useBlingOrders() {
       return data;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['bling-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['bling-orders', customer?.id] });
       queryClient.invalidateQueries({ queryKey: ['shipments'] });
       
       if (data.imported > 0) {

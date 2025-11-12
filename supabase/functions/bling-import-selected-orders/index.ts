@@ -311,6 +311,8 @@ serve(async (req) => {
           console.log(`[BLING-IMPORT-SELECTED] ⚠️ Missing email for contact of order ${order.numero}, skipping customer creation`);
         }
 
+        const primaryTrackingCode = volumeSelection[0]?.codigoRastreamento || null;
+
         const { error: orderDetailsError } = await supabase
           .from('bling_order_details')
           .upsert({
@@ -325,7 +327,7 @@ serve(async (req) => {
             contact_phone: order.contato?.celular || order.contato?.telefone,
             delivery_address: order.contato?.endereco || null,
             carrier_name: order.transporte?.transportadora?.nome,
-            tracking_code: selection.allVolumes ? null : undefined,
+            tracking_code: primaryTrackingCode,
             freight_value: order.transporte?.frete?.valor,
             nfe_number: nfeData?.numero,
             nfe_key: nfeData?.chaveAcesso,
