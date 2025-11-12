@@ -17,6 +17,7 @@ const normalize = (value?: string) =>
     .toLowerCase();
 
 const ALLOWED_STATUSES = new Set(['em aberto', 'em andamento', 'em producao']);
+const ALLOWED_STATUS_IDS = [6, 9, 12];
 
 interface BlingStatusPayload {
   id?: number;
@@ -202,12 +203,20 @@ serve(async (req) => {
     // Get pagination parameters from query
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '25'), 25); // Reduced default to 25, max 25
+    const requestedLimit = parseInt(url.searchParams.get('limit') || '100');
+    const limit = Math.min(Number.isNaN(requestedLimit) ? 100 : requestedLimit, 100);
+
+    const queryParams = new URLSearchParams();
+    queryParams.set('pagina', page.toString());
+    queryParams.set('limite', limit.toString());
+    ALLOWED_STATUS_IDS.forEach(statusId => {
+      queryParams.append('idsSituacoes[]', statusId.toString());
+    });
 
     // Fetch orders from Bling
     console.log(`[BLING-FETCH-ORDERS] Fetching page ${page} with limit ${limit}`);
     const ordersResponse = await fetchWithRetry(
-      `https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=${page}&limite=${limit}`,
+      `https://api.bling.com.br/Api/v3/pedidos/vendas?${queryParams.toString()}`,
       {
         headers: {
           'Authorization': `Bearer ${integration.access_token}`,

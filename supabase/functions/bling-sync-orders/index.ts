@@ -186,7 +186,14 @@ serve(async (req) => {
     try {
       // Buscar pedidos do Bling - reduzido para 25 pedidos por vez
       console.log('[BLING-SYNC-ORDERS] Fetching orders from Bling API');
-      const ordersResponse = await fetchWithRetry('https://api.bling.com.br/Api/v3/pedidos/vendas?pagina=1&limite=25', {
+      const syncQuery = new URLSearchParams();
+      syncQuery.set('pagina', '1');
+      syncQuery.set('limite', '100');
+      [6, 9, 12].forEach(statusId => {
+        syncQuery.append('idsSituacoes[]', statusId.toString());
+      });
+
+      const ordersResponse = await fetchWithRetry(`https://api.bling.com.br/Api/v3/pedidos/vendas?${syncQuery.toString()}`, {
         headers: {
           'Authorization': `Bearer ${integration.access_token}`,
           'Accept': 'application/json',

@@ -23,6 +23,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { parseTrackingResponse, mapApiStatusToInternal } from '@/lib/tracking-api';
 import { cn } from '@/lib/utils';
 import { getShipmentStatusInfo } from '@/lib/shipment-status';
+
+const extractBlingOrderNumber = (data: unknown): string | null => {
+  if (!data || typeof data !== 'object') return null;
+
+  const rootNumero = (data as { numero?: unknown }).numero;
+  if (typeof rootNumero === 'string' || typeof rootNumero === 'number') {
+    return String(rootNumero);
+  }
+
+  const nestedPedido = (data as { pedido?: { numero?: unknown } }).pedido;
+  if (nestedPedido && typeof nestedPedido === 'object') {
+    const nestedNumero = (nestedPedido as { numero?: unknown }).numero;
+    if (typeof nestedNumero === 'string' || typeof nestedNumero === 'number') {
+      return String(nestedNumero);
+    }
+  }
+
+  return null;
+};
 export default function ShipmentDetails() {
   const {
     id
@@ -223,6 +242,10 @@ export default function ShipmentDetails() {
   const customerName = shipmentData.shipment_customer ? `${shipmentData.shipment_customer.first_name} ${shipmentData.shipment_customer.last_name}` : 'Não vinculado';
   const statusInfo = getShipmentStatusInfo(shipmentData.status);
   const StatusIcon = statusInfo.icon;
+  const blingOrderNumber =
+    extractBlingOrderNumber(shipmentData.shipment_data) ??
+    (typeof shipmentData.bling_order_id === 'string' ? shipmentData.bling_order_id : null);
+
   return <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -278,6 +301,13 @@ export default function ShipmentDetails() {
                   <Label className="text-xs text-muted-foreground">Código de Rastreio</Label>
                   <p className="font-mono font-semibold text-lg">{shipmentData.tracking_code}</p>
                 </div>
+
+                {blingOrderNumber && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Pedido Bling</Label>
+                    <p className="font-mono font-semibold text-lg">{blingOrderNumber}</p>
+                  </div>
+                )}
 
                 {shipmentData.tracker_id && (
                   <div className="space-y-1">
