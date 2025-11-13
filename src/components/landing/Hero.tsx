@@ -31,9 +31,20 @@ export const Hero = () => {
                 </span>{" "}
                 e aumenta a satisfação
               </h1>
-              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl leading-relaxed">
-                O TrackingAI centraliza o status dos pedidos e notifica seus clientes por WhatsApp e e-mail automaticamente — do postado ao entregue.
-              </p>
+              <div className="space-y-4 max-w-2xl">
+                <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
+                  O TrackingAI é a plataforma completa de gestão e comunicação de rastreamento para e-commerces.
+                </p>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Simplifique sua operação:</strong> Importe pedidos automaticamente do Bling, Shopify, Tiny e outros ERPs. Acompanhe todos os rastreios em um único painel centralizado.
+                </p>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Mantenha clientes informados:</strong> Envie notificações automáticas por WhatsApp e e-mail em cada etapa da entrega — objeto postado, em trânsito, saiu para entrega, entregue e exceções.
+                </p>
+                <p className="text-lg text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Tome decisões inteligentes:</strong> Acompanhe métricas de desempenho das transportadoras, identifique gargalos logísticos e reduza drasticamente os tickets de "Cadê meu pedido?".
+                </p>
+              </div>
             </div>
 
             {/* Value bullets */}
