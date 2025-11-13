@@ -245,13 +245,14 @@ serve(async (req) => {
           // Rate limiting: wait before processing each order
           await sleep(DELAY_BETWEEN_REQUESTS);
           
-          // Verificar se o pedido tem código de rastreio
-          if (!order.transporte?.codigoRastreamento) {
+          // Verificar se o pedido tem código de rastreio nos volumes
+          const trackingCode = order.transporte?.volumes?.[0]?.codigoRastreamento || 
+                               order.transporte?.codigoRastreamento;
+          
+          if (!trackingCode) {
             console.log(`[BLING-SYNC-ORDERS] Order ${order.numero} has no tracking code, skipping`);
             continue;
           }
-
-          const trackingCode = order.transporte.codigoRastreamento;
 
           // Verificar se já existe shipment com esse tracking_code
           const { data: existingShipment } = await supabase

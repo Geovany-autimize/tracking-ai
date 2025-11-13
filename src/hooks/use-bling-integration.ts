@@ -73,17 +73,29 @@ export function useBlingIntegration() {
       const oauthStartTime = new Date().toISOString();
       console.log('[OAUTH-START] Starting OAuth at:', oauthStartTime);
       
+      // Abrir janela imediatamente para evitar bloqueio de popup
+      const authWindow = window.open('about:blank', '_blank');
+      
       const { data, error } = await supabase.functions.invoke('bling-oauth-start', {
         headers: {
           'x-session-token': token || '',
         },
       });
 
-      if (error) throw error;
-      if (!data?.authUrl) throw new Error('URL de autorização não recebida');
+      if (error) {
+        authWindow?.close();
+        throw error;
+      }
       
-      console.log('[OAUTH-START] Opening auth URL:', data.authUrl);
-      window.open(data.authUrl, '_blank');
+      if (!data?.authUrl) {
+        authWindow?.close();
+        throw new Error('URL de autorização não recebida');
+      }
+      
+      console.log('[OAUTH-START] Redirecting to auth URL:', data.authUrl);
+      if (authWindow) {
+        authWindow.location.href = data.authUrl;
+      }
       
       // Iniciar polling para detectar quando conectar
       return new Promise<void>((resolve) => {
