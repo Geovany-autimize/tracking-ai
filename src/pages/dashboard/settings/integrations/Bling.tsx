@@ -1,7 +1,7 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
-import { Package, ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Package, ArrowLeft, RefreshCw, Unplug, CheckCircle, AlertCircle, Clock, AlertTriangle, X } from 'lucide-react';
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 export default function BlingIntegration() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isSuccessCallback = searchParams.get('success') === 'true';
+  
   const {
     integration,
     syncLogs,
@@ -29,6 +32,53 @@ export default function BlingIntegration() {
     isDisconnecting,
     isValidating,
   } = useBlingIntegration();
+
+  // Se é callback de sucesso, mostrar tela de sucesso
+  if (isSuccessCallback) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
+        <Card className="max-w-md w-full text-center">
+          <CardContent className="pt-12 pb-8 space-y-6">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-green-500/10 p-4">
+                <CheckCircle className="h-16 w-16 text-green-500" />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold">Autenticação bem-sucedida!</h2>
+              <p className="text-muted-foreground">
+                Sua conta Bling foi conectada com sucesso ao Tracking AI.
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-4">
+              <Button
+                onClick={() => window.close()}
+                className="w-full gap-2"
+                size="lg"
+              >
+                <X className="h-4 w-4" />
+                Fechar esta aba
+              </Button>
+              
+              <Button
+                onClick={() => navigate('/dashboard/settings/integrations/bling')}
+                variant="outline"
+                className="w-full"
+              >
+                Ir para Configurações
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Você já pode fechar esta janela e voltar para a aba principal
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Validar token ao montar o componente
   useEffect(() => {
