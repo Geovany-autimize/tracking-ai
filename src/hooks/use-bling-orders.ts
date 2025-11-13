@@ -70,18 +70,23 @@ export function useBlingOrders() {
 
       const data = await response.json();
 
-      // Novo formato: array direto de pedidos
+      // Processar resposta do webhook
       let ordersArray: BlingWebhookOrder[] = [];
       
       if (Array.isArray(data)) {
-        // Se já é um array direto de pedidos
+        // Se é um array de pedidos
         ordersArray = data;
+      } else if (data && typeof data === 'object') {
+        // Se é um único pedido, transformar em array
+        ordersArray = [data];
       }
 
       if (!ordersArray.length) {
         console.warn('[useBlingOrders] Resposta do webhook vazia ou inesperada', data);
         return { orders: [] };
       }
+
+      console.log('[useBlingOrders] Pedidos recebidos:', ordersArray.length);
 
       const token = localStorage.getItem('session_token');
       const { data: existingShipmentsData } = await supabase
