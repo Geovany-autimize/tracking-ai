@@ -70,15 +70,12 @@ export function useBlingOrders() {
 
       const data = await response.json();
 
-      // Novo formato: [{data: [{pedido: {...}}]}]
+      // Novo formato: array direto de pedidos
       let ordersArray: BlingWebhookOrder[] = [];
       
       if (Array.isArray(data)) {
-        ordersArray = data.flatMap(item => 
-          Array.isArray(item?.data) 
-            ? item.data.map((dataItem: any) => dataItem.pedido).filter(Boolean)
-            : []
-        );
+        // Se já é um array direto de pedidos
+        ordersArray = data;
       }
 
       if (!ordersArray.length) {
