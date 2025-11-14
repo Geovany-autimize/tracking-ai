@@ -38,8 +38,9 @@ export function AppSidebar() {
     navigate('/login');
   };
 
-  const mainMenuItems = APP_NAV.filter(item => item.href !== '/dashboard/profile');
+  const mainMenuItems = APP_NAV.filter(item => item.href !== '/dashboard/profile' && item.href !== '/dashboard/manual');
   const profileItem = APP_NAV.find(item => item.href === '/dashboard/profile');
+  const manualItem = APP_NAV.find(item => item.href === '/dashboard/manual');
 
   return (
     <Sidebar collapsible="icon">
@@ -138,6 +139,36 @@ export function AppSidebar() {
                         return <Icon className="h-5 w-5 shrink-0" />;
                       })()}
                       {!collapsed && <span>{profileItem.label}</span>}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Manual */}
+        {manualItem && (
+          <SidebarGroup className="mt-0 py-2">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={isActive(manualItem.href)} 
+                    tooltip={manualItem.label}
+                    size="lg"
+                    className={cn(
+                      "transition-all duration-200 h-12",
+                      collapsed && "mx-auto justify-center"
+                    )}
+                  >
+                    <Link to={manualItem.href}>
+                      {(() => {
+                        const Icon = (Icons[manualItem.icon as keyof typeof Icons] || Icons.Circle) as any;
+                        return <Icon className="h-5 w-5 shrink-0" />;
+                      })()}
+                      {!collapsed && <span>{manualItem.label}</span>}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

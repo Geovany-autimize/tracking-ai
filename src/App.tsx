@@ -25,6 +25,7 @@ import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 import BlingIntegration from './pages/dashboard/settings/integrations/Bling';
 import BlingOrders from './pages/dashboard/settings/integrations/BlingOrders';
+import ManualPage from './pages/dashboard/Manual';
 import { HighlightsProvider } from "@/contexts/HighlightsContext";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
               <Route path="settings/integrations/bling" element={<BlingIntegration />} />
               <Route path="settings/integrations/bling/orders" element={<BlingOrders />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="manual" element={<ManualPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

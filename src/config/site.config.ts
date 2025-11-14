@@ -22,4 +22,5 @@ export const APP_NAV = [
   { label: 'Planos', href: '/dashboard/billing', icon: 'CreditCard' },
   { label: 'Configurações', href: '/dashboard/settings', icon: 'Settings' },
   { label: 'Perfil', href: '/dashboard/profile', icon: 'User' },
+  { label: 'Manual', href: '/dashboard/manual', icon: 'BookOpen' },
 ] as const;
