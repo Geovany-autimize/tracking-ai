@@ -80,3 +80,6 @@ verify_jwt = false
 
 [functions.bling-sync-orders]
 verify_jwt = false
+
+[functions.refresh-active-trackings]
+verify_jwt = false
