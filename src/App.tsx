@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
+import Manual from "./pages/Manual";
 import AppLayout from "./components/app/AppLayout";
 import DashboardHome from "./pages/dashboard/Home";
 import ShipmentsPage from "./pages/dashboard/Shipments";
@@ -25,7 +26,6 @@ import CreditsSuccess from "./pages/dashboard/billing/CreditsSuccess";
 import WhatsAppSettings from "./pages/dashboard/settings/WhatsApp";
 import BlingIntegration from './pages/dashboard/settings/integrations/Bling';
 import BlingOrders from './pages/dashboard/settings/integrations/BlingOrders';
-import ManualPage from './pages/dashboard/Manual';
 import { HighlightsProvider } from "@/contexts/HighlightsContext";
 
 const queryClient = new QueryClient();
@@ -40,9 +40,10 @@ const App = () => (
           <WhatsAppProvider>
             <HighlightsProvider>
             <Routes>
-            <Route path="/" element={<Index />} />
+            <Route index element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/manual" element={<Manual />} />
             <Route path="/dashboard" element={<AppLayout />}>
               <Route index element={<DashboardHome />} />
               <Route path="shipments" element={<ShipmentsPage />} />
@@ -59,7 +60,6 @@ const App = () => (
               <Route path="settings/integrations/bling" element={<BlingIntegration />} />
               <Route path="settings/integrations/bling/orders" element={<BlingOrders />} />
               <Route path="profile" element={<ProfilePage />} />
-              <Route path="manual" element={<ManualPage />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
