@@ -83,6 +83,32 @@ serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
     console.log('[BLING-OAUTH-CALLBACK] Token received successfully');
+    console.log('[BLING-OAUTH-CALLBACK] Token data:', JSON.stringify(tokenData, null, 2));
+
+    // Buscar informações do usuário/empresa autenticada
+    let blingCompanyId = null;
+    try {
+      console.log('[BLING-OAUTH-CALLBACK] Fetching user info from Bling API');
+      const userInfoResponse = await fetch('https://api.bling.com.br/Api/v3/usuarios/me', {
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (userInfoResponse.ok) {
+        const userInfo = await userInfoResponse.json();
+        console.log('[BLING-OAUTH-CALLBACK] User info received:', JSON.stringify(userInfo, null, 2));
+        
+        // Tentar extrair o company_id de diferentes possíveis campos
+        blingCompanyId = userInfo?.data?.id || userInfo?.id || userInfo?.empresa?.id || tokenData?.company_id;
+        console.log('[BLING-OAUTH-CALLBACK] Extracted company_id:', blingCompanyId);
+      } else {
+        console.warn('[BLING-OAUTH-CALLBACK] Failed to fetch user info:', userInfoResponse.status);
+      }
+    } catch (userInfoError) {
+      console.error('[BLING-OAUTH-CALLBACK] Error fetching user info:', userInfoError);
+    }
 
     // Calcular data de expiração
     const expiresAt = new Date();
@@ -109,6 +135,7 @@ serve(async (req) => {
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           token_expires_at: expiresAt.toISOString(),
+          bling_company_id: blingCompanyId,
           status: 'active',
           updated_at: new Date().toISOString(),
         })
@@ -128,6 +155,7 @@ serve(async (req) => {
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token,
           token_expires_at: expiresAt.toISOString(),
+          bling_company_id: blingCompanyId,
           status: 'active',
         });
 
