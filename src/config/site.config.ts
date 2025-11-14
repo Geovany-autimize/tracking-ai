@@ -9,6 +9,7 @@ export const SITE = {
     { label: "Integrações", href: "#integracoes" },
     { label: "Preços", href: "#precos" },
     { label: "FAQ", href: "#faq" },
+    { label: "Manual", href: "/manual" },
   ],
   whatsappSales: "https://wa.me/5511999999999?text=Quero%20conhecer%20o%20plano%20Enterprise",
 } as const;
@@ -22,5 +23,4 @@ export const APP_NAV = [
   { label: 'Planos', href: '/dashboard/billing', icon: 'CreditCard' },
   { label: 'Configurações', href: '/dashboard/settings', icon: 'Settings' },
   { label: 'Perfil', href: '/dashboard/profile', icon: 'User' },
-  { label: 'Manual', href: '/dashboard/manual', icon: 'BookOpen' },
 ] as const;
