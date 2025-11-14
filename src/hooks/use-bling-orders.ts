@@ -86,7 +86,21 @@ export function useBlingOrders() {
         return { orders: [] };
       }
 
-      console.log('[useBlingOrders] Pedidos recebidos:', ordersArray.length);
+      // Validar estrutura dos pedidos
+      ordersArray = ordersArray.filter(order => {
+        if (!order || typeof order !== 'object') {
+          console.warn('[useBlingOrders] Item inválido ignorado:', order);
+          return false;
+        }
+        // Verificar se tem ID - propriedade obrigatória
+        if (!order.id) {
+          console.warn('[useBlingOrders] Pedido sem ID ignorado:', order);
+          return false;
+        }
+        return true;
+      });
+
+      console.log('[useBlingOrders] Pedidos válidos recebidos:', ordersArray.length);
 
       const token = localStorage.getItem('session_token');
       const { data: existingShipmentsData } = await supabase
@@ -104,15 +118,21 @@ export function useBlingOrders() {
 
       const normalizedOrders: BlingOrderSummary[] = ordersArray.map(order => {
         const orderId = String(order.id);
+        // Garantir que valores numéricos sejam realmente números
+        const total = order.total != null ? Number(order.total) : 0;
+        const totalProdutos = order.totalProdutos != null ? Number(order.totalProdutos) : undefined;
+        const situacaoId = order.situacao?.id != null ? Number(order.situacao.id) : 0;
+        const situacaoValor = order.situacao?.valor != null ? Number(order.situacao.valor) : 0;
+        
         return {
           id: orderId,
           orderId,
           numero: order.numero ? String(order.numero) : orderId,
           data: order.data,
-          totalProdutos: order.totalProdutos,
-          total: Number(order.total ?? 0),
-          situacaoId: Number(order.situacao?.id ?? 0),
-          situacaoValor: Number(order.situacao?.valor ?? 0),
+          totalProdutos,
+          total: isNaN(total) ? 0 : total,
+          situacaoId: isNaN(situacaoId) ? 0 : situacaoId,
+          situacaoValor: isNaN(situacaoValor) ? 0 : situacaoValor,
           situacao: order.situacao,
           contatoNome: order.contato?.nome || 'Cliente',
           isTracked: alreadyTrackedOrderIds.has(orderId),

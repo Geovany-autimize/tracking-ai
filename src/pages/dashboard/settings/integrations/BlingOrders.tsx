@@ -29,9 +29,32 @@ const getStatusVariant = (statusId: number): 'default' | 'secondary' | 'outline'
 
 const formatDate = (value?: string) => {
   if (!value) return 'Sem data';
+  if (typeof value !== 'string') return 'Data inválida';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString('pt-BR');
+};
+
+const safeFormatCurrency = (value: unknown): string => {
+  if (value == null) return 'R$ 0,00';
+  if (typeof value === 'object') {
+    console.error('[BlingOrders] Tentativa de formatar objeto como moeda:', value);
+    return 'Valor inválido';
+  }
+  const num = Number(value);
+  if (isNaN(num)) return 'R$ 0,00';
+  return formatCurrency(num);
+};
+
+const safeString = (value: unknown, fallback = 'N/A'): string => {
+  if (value == null) return fallback;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    console.error('[BlingOrders] Tentativa de renderizar objeto como string:', value);
+    return fallback;
+  }
+  return String(value);
 };
 
 export default function BlingOrders() {
@@ -235,13 +258,13 @@ export default function BlingOrders() {
                     />
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Pedido #{order.numero}</span>
+                        <span className="font-medium">Pedido #{safeString(order.numero, order.orderId)}</span>
                         <Badge variant={getStatusVariant(order.situacaoId)}>
                           {getStatusLabel(order.situacaoId)}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        Cliente: {order.contatoNome}
+                        Cliente: {safeString(order.contatoNome, 'Cliente')}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         Data: {formatDate(order.data)}
@@ -249,7 +272,7 @@ export default function BlingOrders() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 justify-between md:justify-end">
-                    <span className="font-semibold">{formatCurrency(order.total)}</span>
+                    <span className="font-semibold">{safeFormatCurrency(order.total)}</span>
                     {order.isTracked && (
                       <Badge variant="outline" className="gap-1">
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -280,17 +303,17 @@ export default function BlingOrders() {
               <div key={order.orderId} className="border rounded-lg p-4 bg-muted/40 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">Pedido #{order.numero}</span>
+                    <span className="font-medium">Pedido #{safeString(order.numero, order.orderId)}</span>
                     <Badge variant={getStatusVariant(order.situacaoId)}>
                       {getStatusLabel(order.situacaoId)}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Cliente: {order.contatoNome} • Data: {formatDate(order.data)}
+                    Cliente: {safeString(order.contatoNome, 'Cliente')} • Data: {formatDate(order.data)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-semibold">{formatCurrency(order.total)}</span>
+                  <span className="font-semibold">{safeFormatCurrency(order.total)}</span>
                   <Badge variant="outline">Rastreado</Badge>
                 </div>
               </div>
