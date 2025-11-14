@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, RefreshCw } from 'lucide-react';
 import ShipmentForm from '@/components/forms/ShipmentForm';
 import ShipmentList from '@/components/shipments/ShipmentList';
 import { ImportDialog } from '@/components/dialogs/ImportDialog';
@@ -14,10 +14,44 @@ export default function ShipmentsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleFormClose = (open: boolean) => {
     setFormOpen(open);
     if (!open) setRefreshTrigger(prev => prev + 1);
+  };
+
+  const handleRefreshAll = async () => {
+    if (!customer?.id) return;
+    
+    setIsRefreshing(true);
+    toast({
+      title: "Atualizando rastreamentos",
+      description: "Buscando atualizações para todos os rastreamentos ativos...",
+    });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('refresh-active-trackings');
+      
+      if (error) throw error;
+
+      toast({
+        title: "Rastreamentos atualizados",
+        description: `${data?.updated || 0} rastreamentos foram atualizados com sucesso`,
+      });
+
+      // Forçar recarregamento da lista
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error refreshing trackings:', error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar os rastreamentos. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const handleImport = async (data: any[]) => {
@@ -144,6 +178,15 @@ export default function ShipmentsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            className="gap-2 shrink-0" 
+            onClick={handleRefreshAll}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Atualizar Todos
+          </Button>
           <Button variant="outline" className="gap-2 shrink-0" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4" />
             Importar
