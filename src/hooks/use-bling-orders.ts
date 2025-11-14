@@ -69,20 +69,36 @@ export function useBlingOrders() {
       }
 
       const data = await response.json();
+      console.log('[useBlingOrders] Resposta raw do webhook:', JSON.stringify(data).substring(0, 200));
 
-      // Processar resposta do webhook
+      // Processar resposta do webhook - desembrulhar estrutura aninhada
       let ordersArray: BlingWebhookOrder[] = [];
       
-      if (Array.isArray(data)) {
-        // Se é um array de pedidos
+      // Estrutura: [{ data: [{ data: { id, ... } }] }]
+      if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
+        // Pegar o array interno data[0].data
+        const innerArray = data[0].data;
+        
+        if (Array.isArray(innerArray)) {
+          // Extrair o objeto 'data' de cada item
+          ordersArray = innerArray
+            .map(item => item?.data)
+            .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
+          
+          console.log('[useBlingOrders] Estrutura aninhada detectada, extraídos', ordersArray.length, 'pedidos');
+        }
+      } else if (Array.isArray(data)) {
+        // Fallback: estrutura direta (compatibilidade)
         ordersArray = data;
+        console.log('[useBlingOrders] Estrutura direta detectada');
       } else if (data && typeof data === 'object') {
-        // Se é um único pedido, transformar em array
+        // Fallback: objeto único
         ordersArray = [data];
+        console.log('[useBlingOrders] Objeto único detectado');
       }
 
       if (!ordersArray.length) {
-        console.warn('[useBlingOrders] Resposta do webhook vazia ou inesperada', data);
+        console.warn('[useBlingOrders] Nenhum pedido encontrado na resposta:', data);
         return { orders: [] };
       }
 
@@ -124,11 +140,16 @@ export function useBlingOrders() {
         const situacaoId = order.situacao?.id != null ? Number(order.situacao.id) : 0;
         const situacaoValor = order.situacao?.valor != null ? Number(order.situacao.valor) : 0;
         
+        // Usar 'numero' se disponível, senão 'numeroLoja', senão o ID
+        const numeroDisplay = order.numero 
+          ? String(order.numero) 
+          : (order.numeroLoja ? String(order.numeroLoja) : orderId);
+        
         return {
           id: orderId,
           orderId,
-          numero: order.numero ? String(order.numero) : orderId,
-          data: order.data,
+          numero: numeroDisplay,
+          data: order.data || order.dataSaida,
           totalProdutos,
           total: isNaN(total) ? 0 : total,
           situacaoId: isNaN(situacaoId) ? 0 : situacaoId,
