@@ -16,6 +16,7 @@ export default function BlingIntegration() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isSuccessCallback = searchParams.get('success') === 'true';
+  const errorType = searchParams.get('error');
   
   const {
     integration,
@@ -33,6 +34,76 @@ export default function BlingIntegration() {
     isValidating,
   } = useBlingIntegration();
 
+  // Se é erro de timeout, mostrar página de instruções
+  if (errorType === 'timeout' || errorType === 'unknown_error') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/30 to-background p-4">
+        <Card className="max-w-2xl w-full">
+          <CardContent className="pt-12 pb-8 space-y-6">
+            <div className="flex justify-center">
+              <div className="rounded-full bg-amber-500/10 p-4">
+                <Clock className="h-16 w-16 text-amber-500" />
+              </div>
+            </div>
+            
+            <div className="space-y-2 text-center">
+              <h2 className="text-2xl font-bold">Tempo Limite Excedido</h2>
+              <p className="text-muted-foreground">
+                A conexão com o Bling demorou mais que o esperado.
+              </p>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-6 space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                Como resolver:
+              </h3>
+              
+              <ol className="space-y-3 text-sm text-muted-foreground list-decimal list-inside">
+                <li>
+                  <strong>Verifique sua conexão:</strong> Aguarde alguns instantes e tente novamente
+                </li>
+                <li>
+                  <strong>Consulte o status:</strong> Volte para a página de integração e verifique se a conexão foi estabelecida
+                </li>
+                <li>
+                  <strong>Tente reconectar:</strong> Se ainda não estiver conectado, clique em "Conectar com Bling" novamente
+                </li>
+                <li>
+                  <strong>Sincronização automática:</strong> Mesmo com timeout no navegador, a conexão pode ter sido concluída. Aguarde 1-2 minutos e atualize a página
+                </li>
+              </ol>
+            </div>
+
+            <div className="space-y-3 pt-4">
+              <Button
+                onClick={() => navigate('/dashboard/settings/integrations/bling')}
+                className="w-full gap-2"
+                size="lg"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Voltar para Integrações
+              </Button>
+              
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                className="w-full"
+              >
+                Tentar Novamente
+              </Button>
+            </div>
+
+            <div className="text-xs text-center text-muted-foreground space-y-1">
+              <p>💡 <strong>Dica:</strong> A primeira sincronização pode levar alguns minutos</p>
+              <p>Se o problema persistir, entre em contato com o suporte</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Se é callback de sucesso, mostrar tela de sucesso
   if (isSuccessCallback) {
     return (
@@ -49,6 +120,17 @@ export default function BlingIntegration() {
               <h2 className="text-2xl font-bold">Autenticação bem-sucedida!</h2>
               <p className="text-muted-foreground">
                 Sua conta Bling foi conectada com sucesso ao Tracking AI.
+              </p>
+            </div>
+
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 text-blue-600">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                <span className="font-medium text-sm">Sincronização Iniciada</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Seus pedidos do Bling estão sendo importados em segundo plano. 
+                Este processo pode levar alguns minutos dependendo da quantidade de pedidos.
               </p>
             </div>
 

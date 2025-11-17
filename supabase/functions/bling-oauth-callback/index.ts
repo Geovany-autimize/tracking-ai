@@ -15,7 +15,8 @@ serve(async (req) => {
   }
 
   try {
-    console.log('[BLING-OAUTH-CALLBACK] Callback received');
+    const startTime = Date.now();
+    console.log(`[BLING-OAUTH-CALLBACK] Starting at ${new Date().toISOString()}`);
 
     const url = new URL(req.url);
     const code = url.searchParams.get('code');
@@ -82,7 +83,7 @@ serve(async (req) => {
     }
 
     const tokenData = await tokenResponse.json();
-    console.log('[BLING-OAUTH-CALLBACK] Token received successfully');
+    console.log(`[BLING-OAUTH-CALLBACK] Token received successfully after ${Date.now() - startTime}ms`);
     console.log('[BLING-OAUTH-CALLBACK] Token data:', JSON.stringify(tokenData, null, 2));
 
     // Buscar informações do usuário/empresa autenticada
@@ -144,7 +145,7 @@ serve(async (req) => {
       if (updateError) {
         console.error('[BLING-OAUTH-CALLBACK] Error updating integration:', updateError);
       } else {
-        console.log('[BLING-OAUTH-CALLBACK] Integration updated successfully');
+        console.log(`[BLING-OAUTH-CALLBACK] Integration updated successfully after ${Date.now() - startTime}ms`);
       }
     } else {
       // Criar nova integração
@@ -162,29 +163,28 @@ serve(async (req) => {
       if (insertError) {
         console.error('[BLING-OAUTH-CALLBACK] Error creating integration:', insertError);
       } else {
-        console.log('[BLING-OAUTH-CALLBACK] Integration created successfully');
+        console.log(`[BLING-OAUTH-CALLBACK] Integration created successfully after ${Date.now() - startTime}ms`);
       }
     }
 
-    // Iniciar sincronização automática em background
-    console.log('[BLING-OAUTH-CALLBACK] Triggering automatic sync');
-    try {
-      const syncResponse = await supabase.functions.invoke('bling-sync-orders', {
-        headers: {
-          'x-customer-id': customerId,
-        },
-      });
-      
+    // Iniciar sincronização automática em background (não aguardar)
+    console.log('[BLING-OAUTH-CALLBACK] Triggering automatic sync in background');
+    supabase.functions.invoke('bling-sync-orders', {
+      headers: {
+        'x-customer-id': customerId,
+      },
+    }).then(syncResponse => {
       if (syncResponse.error) {
         console.error('[BLING-OAUTH-CALLBACK] Auto-sync failed:', syncResponse.error);
       } else {
         console.log('[BLING-OAUTH-CALLBACK] Auto-sync triggered successfully');
       }
-    } catch (syncError) {
+    }).catch(syncError => {
       console.error('[BLING-OAUTH-CALLBACK] Auto-sync error:', syncError);
-    }
+    });
 
-    // Redirecionar para página de settings com sucesso
+    // Redirecionar IMEDIATAMENTE para página de settings com sucesso
+    console.log(`[BLING-OAUTH-CALLBACK] Redirecting after ${Date.now() - startTime}ms`);
     const baseUrl = normalizeBaseUrl(Deno.env.get('APP_URL') || 'https://pvnwcxfnazwqpfasuztv.lovableproject.com');
     return new Response(null, {
       status: 302,
