@@ -74,19 +74,14 @@ export function useBlingOrders() {
       // Processar resposta do webhook - desembrulhar estrutura aninhada
       let ordersArray: BlingWebhookOrder[] = [];
       
-      // Estrutura: [{ data: [{ data: { id, ... } }] }]
+      // Estrutura: [{ data: { id, ... } }, { data: { id, ... } }] ou [{ data: [{ data: { id, ... } }] }]
       if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
-        // Pegar o array interno data[0].data
-        const innerArray = data[0].data;
+        // Se cada item do array tem 'data', extrair de TODOS
+        ordersArray = data
+          .map(item => item?.data)
+          .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
         
-        if (Array.isArray(innerArray)) {
-          // Extrair o objeto 'data' de cada item
-          ordersArray = innerArray
-            .map(item => item?.data)
-            .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
-          
-          console.log('[useBlingOrders] Estrutura aninhada detectada, extraídos', ordersArray.length, 'pedidos');
-        }
+        console.log('[useBlingOrders] Estrutura com wrapper detectada, extraídos', ordersArray.length, 'pedidos');
       } else if (Array.isArray(data)) {
         // Fallback: estrutura direta (compatibilidade)
         ordersArray = data;
