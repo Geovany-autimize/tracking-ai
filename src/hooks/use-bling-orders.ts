@@ -93,8 +93,14 @@ export function useBlingOrders() {
         console.log('[useBlingOrders] Estrutura direta detectada');
       } else if (data && typeof data === 'object') {
         // Fallback: objeto único
-        ordersArray = [data];
-        console.log('[useBlingOrders] Objeto único detectado');
+        // Se tem propriedade 'data', desembrulhar
+        if (data.data && typeof data.data === 'object') {
+          ordersArray = [data.data];
+          console.log('[useBlingOrders] Objeto único com wrapper detectado, desembrulhado');
+        } else {
+          ordersArray = [data];
+          console.log('[useBlingOrders] Objeto único detectado (sem wrapper)');
+        }
       }
 
       if (!ordersArray.length) {
