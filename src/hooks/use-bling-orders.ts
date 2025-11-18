@@ -79,6 +79,20 @@ export function useBlingOrders() {
       console.log('[useBlingOrders] 📊 Tipo de data:', Array.isArray(data) ? 'Array' : typeof data);
       console.log('[useBlingOrders] 📏 Tamanho do array:', Array.isArray(data) ? data.length : 'N/A');
       
+      // CASO 0: { data: [{ data: {...} }, { data: {...} }] }
+      // Objeto direto (sem array externo) com data como array de wrappers
+      if (!Array.isArray(data) && data?.data && Array.isArray(data.data)) {
+        console.log('[useBlingOrders] ✅ Estrutura direta de objeto com array interno detectada');
+        console.log('[useBlingOrders] 📦 Itens no array:', data.data.length);
+        ordersArray = data.data
+          .map((item, index) => {
+            console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, item?.data ? `Pedido #${item.data.numero || item.data.id}` : 'SEM DATA');
+            return item?.data;
+          })
+          .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
+        console.log(`[useBlingOrders] ✅ Total extraído: ${ordersArray.length} pedidos`);
+        console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
+      }
       // CASO 1: [{ data: [{ data: {...} }, { data: {...} }] }]
       // Array externo com 1 elemento, que tem data como array de wrappers
       if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
