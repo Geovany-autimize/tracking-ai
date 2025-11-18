@@ -46,9 +46,11 @@ export function useBlingOrders() {
   const { customer } = useAuth();
 
   // Fetch orders from Bling
-  const { data: ordersData, isLoading, refetch, isFetching } = useQuery({
+  const { data: ordersData, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['bling-orders', customer?.id],
     enabled: false,
+    staleTime: 0, // Always fetch fresh data
+    gcTime: 0, // Don't cache old data
     queryFn: async () => {
       if (!customer?.id) {
         throw new Error('Cliente não autenticado');
@@ -289,9 +291,15 @@ export function useBlingOrders() {
         throw error;
       }
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['bling-orders', customer?.id] });
-      queryClient.invalidateQueries({ queryKey: ['shipments'] });
+    onSuccess: async (data) => {
+      // Invalidar e refetch imediatamente para atualizar UI
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['bling-orders', customer?.id] }),
+        queryClient.invalidateQueries({ queryKey: ['shipments'] }),
+      ]);
+      
+      // Refetch para atualizar a lista
+      refetch();
       
       if (data.imported > 0) {
         toast.success(
@@ -325,5 +333,6 @@ export function useBlingOrders() {
     refetch,
     importOrders: (orderIds: string[]) => importOrdersMutation.mutate(orderIds),
     isImporting: importOrdersMutation.isPending,
+    lastUpdated: dataUpdatedAt,
   };
 }
