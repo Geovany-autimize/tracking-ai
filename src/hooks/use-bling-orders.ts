@@ -77,13 +77,24 @@ export function useBlingOrders() {
       console.log('[useBlingOrders] 🔍 ===== INÍCIO DO PARSING =====');
       console.log('[useBlingOrders] 📊 Tipo raiz:', Array.isArray(data) ? 'Array' : typeof data);
       console.log('[useBlingOrders] 📏 Tamanho raiz:', Array.isArray(data) ? data.length : 'N/A');
+      console.log('[useBlingOrders] 🔍 Estrutura completa (primeiros 2000 chars):', JSON.stringify(data).substring(0, 2000));
       
       if (Array.isArray(data) && data.length > 0) {
-        console.log('[useBlingOrders] 🔸 Primeiro elemento:', typeof data[0]);
+        console.log('[useBlingOrders] 🔸 Primeiro elemento tipo:', typeof data[0]);
         console.log('[useBlingOrders] 🔸 Tem data?', data[0]?.data ? 'SIM' : 'NÃO');
         if (data[0]?.data) {
           console.log('[useBlingOrders] 🔸 Tipo de data[0].data:', Array.isArray(data[0].data) ? 'Array' : typeof data[0].data);
           console.log('[useBlingOrders] 🔸 Tamanho de data[0].data:', Array.isArray(data[0].data) ? data[0].data.length : 'N/A');
+          
+          // Log dos primeiros itens dentro de data[0].data se for array
+          if (Array.isArray(data[0].data) && data[0].data.length > 0) {
+            console.log('[useBlingOrders] 🔍 Primeiro item em data[0].data:', JSON.stringify(data[0].data[0]).substring(0, 300));
+            console.log('[useBlingOrders] 🔍 data[0].data[0] tem .data?', data[0].data[0]?.data ? 'SIM' : 'NÃO');
+            if (data[0].data[0]?.data) {
+              console.log('[useBlingOrders] 🔍 data[0].data[0].data.numero:', data[0].data[0].data.numero);
+              console.log('[useBlingOrders] 🔍 data[0].data[0].data.id:', data[0].data[0].data.id);
+            }
+          }
         }
       }
       
@@ -113,16 +124,35 @@ export function useBlingOrders() {
         console.log('[useBlingOrders] ✅ Estrutura aninhada detectada (array dentro de array)');
         console.log('[useBlingOrders] 📦 Itens no array aninhado:', firstItemData.length);
         
-        ordersArray = firstItemData
-          .map((item, index) => {
-            const orderData = item?.data;
-            console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, orderData ? `Pedido #${orderData.numero || orderData.id}` : 'SEM DATA');
-            return orderData;
-          })
-          .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
+        // Log antes do .map()
+        console.log('[useBlingOrders] 🔄 Iniciando .map() sobre', firstItemData.length, 'itens');
+        
+        const mappedItems = firstItemData.map((item, index) => {
+          const orderData = item?.data;
+          console.log(`[useBlingOrders] 🔸 Item ${index + 1}/${firstItemData.length}:`, {
+            temData: !!orderData,
+            numero: orderData?.numero,
+            id: orderData?.id,
+            tipo: typeof orderData
+          });
+          return orderData;
+        });
+        
+        console.log('[useBlingOrders] 🔄 .map() concluído. Items mapeados:', mappedItems.length);
+        console.log('[useBlingOrders] 🔍 Items mapeados (resumo):', mappedItems.map((o, i) => `${i+1}: ${o?.numero || o?.id || 'null'}`).join(', '));
+        
+        // Log antes do .filter()
+        console.log('[useBlingOrders] 🔄 Iniciando .filter()');
+        ordersArray = mappedItems.filter((order, index) => {
+          const isValid = order && typeof order === 'object';
+          if (!isValid) {
+            console.log(`[useBlingOrders] ⚠️ Item ${index + 1} removido no filter:`, order);
+          }
+          return isValid;
+        }) as BlingWebhookOrder[];
           
         console.log(`[useBlingOrders] ✅ Total extraído após .map().filter(): ${ordersArray.length} pedidos`);
-        console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
+        console.log('[useBlingOrders] 📋 Números dos pedidos finais:', ordersArray.map(o => o.numero).join(', '));
       }
       // CASO 2: [{ data: {...} }, { data: {...} }]
       // Array de wrappers simples
