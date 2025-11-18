@@ -74,18 +74,30 @@ export function useBlingOrders() {
       // Processar resposta do webhook - desembrulhar estrutura aninhada
       let ordersArray: BlingWebhookOrder[] = [];
       
+      // DEBUG: Log completo da estrutura recebida
+      console.log('[useBlingOrders] 🔍 ESTRUTURA RECEBIDA:', JSON.stringify(data, null, 2).substring(0, 500));
+      console.log('[useBlingOrders] 📊 Tipo de data:', Array.isArray(data) ? 'Array' : typeof data);
+      console.log('[useBlingOrders] 📏 Tamanho do array:', Array.isArray(data) ? data.length : 'N/A');
+      
       // CASO 1: [{ data: [{ data: {...} }, { data: {...} }] }]
       // Array externo com 1 elemento, que tem data como array de wrappers
       if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
         const firstItemData = data[0].data;
+        console.log('[useBlingOrders] 🔎 firstItemData tipo:', Array.isArray(firstItemData) ? 'Array' : typeof firstItemData);
+        console.log('[useBlingOrders] 🔎 firstItemData length:', Array.isArray(firstItemData) ? firstItemData.length : 'N/A');
         
         if (Array.isArray(firstItemData)) {
           // data[0].data é array de wrappers: [{ data: {...} }, { data: {...} }]
-          console.log('[useBlingOrders] Estrutura aninhada detectada (array dentro de array)');
+          console.log('[useBlingOrders] ✅ Estrutura aninhada detectada (array dentro de array)');
+          console.log('[useBlingOrders] 📦 Itens no array aninhado:', firstItemData.length);
           ordersArray = firstItemData
-            .map(item => item?.data)
+            .map((item, index) => {
+              console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, item?.data ? `Pedido #${item.data.numero || item.data.id}` : 'SEM DATA');
+              return item?.data;
+            })
             .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
-          console.log(`[useBlingOrders] Extraídos ${ordersArray.length} pedidos do array interno`);
+          console.log(`[useBlingOrders] ✅ Total extraído: ${ordersArray.length} pedidos`);
+          console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
         } else if (data.length === 1) {
           // data[0].data é objeto único
           console.log('[useBlingOrders] Objeto único com wrapper detectado');
@@ -182,6 +194,11 @@ export function useBlingOrders() {
           raw: order,
         };
       });
+
+      console.log(`[useBlingOrders] 🎯 RESULTADO FINAL: ${normalizedOrders.length} pedidos processados`);
+      if (normalizedOrders.length > 0) {
+        console.log('[useBlingOrders] 📋 Pedidos finais:', normalizedOrders.map(o => `#${o.numero} (${o.isTracked ? 'JÁ RASTREADO' : 'disponível'})`).join(', '));
+      }
 
       return { orders: normalizedOrders };
     },
