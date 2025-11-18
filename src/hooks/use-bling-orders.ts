@@ -69,15 +69,23 @@ export function useBlingOrders() {
       }
 
       const data = await response.json();
-      console.log('[useBlingOrders] Resposta raw do webhook:', JSON.stringify(data).substring(0, 200));
-
+      
       // Processar resposta do webhook - desembrulhar estrutura aninhada
       let ordersArray: BlingWebhookOrder[] = [];
       
-      // DEBUG: Log completo da estrutura recebida
-      console.log('[useBlingOrders] 🔍 ESTRUTURA RECEBIDA:', JSON.stringify(data, null, 2).substring(0, 500));
-      console.log('[useBlingOrders] 📊 Tipo de data:', Array.isArray(data) ? 'Array' : typeof data);
-      console.log('[useBlingOrders] 📏 Tamanho do array:', Array.isArray(data) ? data.length : 'N/A');
+      // DEBUG: Log COMPLETO da estrutura recebida
+      console.log('[useBlingOrders] 🔍 ===== INÍCIO DO PARSING =====');
+      console.log('[useBlingOrders] 📊 Tipo raiz:', Array.isArray(data) ? 'Array' : typeof data);
+      console.log('[useBlingOrders] 📏 Tamanho raiz:', Array.isArray(data) ? data.length : 'N/A');
+      
+      if (Array.isArray(data) && data.length > 0) {
+        console.log('[useBlingOrders] 🔸 Primeiro elemento:', typeof data[0]);
+        console.log('[useBlingOrders] 🔸 Tem data?', data[0]?.data ? 'SIM' : 'NÃO');
+        if (data[0]?.data) {
+          console.log('[useBlingOrders] 🔸 Tipo de data[0].data:', Array.isArray(data[0].data) ? 'Array' : typeof data[0].data);
+          console.log('[useBlingOrders] 🔸 Tamanho de data[0].data:', Array.isArray(data[0].data) ? data[0].data.length : 'N/A');
+        }
+      }
       
       // CASO 0: { data: [{ data: {...} }, { data: {...} }] }
       // Objeto direto (sem array externo) com data como array de wrappers
@@ -97,6 +105,7 @@ export function useBlingOrders() {
       // Array externo com 1 elemento, que tem data como array de wrappers
       else if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
         const firstItemData = data[0].data;
+        console.log('[useBlingOrders] 🎯 CASO 1 ATIVADO!');
         console.log('[useBlingOrders] 🔎 firstItemData tipo:', Array.isArray(firstItemData) ? 'Array' : typeof firstItemData);
         console.log('[useBlingOrders] 🔎 firstItemData length:', Array.isArray(firstItemData) ? firstItemData.length : 'N/A');
         
@@ -104,12 +113,15 @@ export function useBlingOrders() {
           // data[0].data é array de wrappers: [{ data: {...} }, { data: {...} }]
           console.log('[useBlingOrders] ✅ Estrutura aninhada detectada (array dentro de array)');
           console.log('[useBlingOrders] 📦 Itens no array aninhado:', firstItemData.length);
+          
           ordersArray = firstItemData
             .map((item, index) => {
-              console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, item?.data ? `Pedido #${item.data.numero || item.data.id}` : 'SEM DATA');
-              return item?.data;
+              const orderData = item?.data;
+              console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, orderData ? `Pedido #${orderData.numero || orderData.id}` : 'SEM DATA');
+              return orderData;
             })
             .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
+            
           console.log(`[useBlingOrders] ✅ Total extraído: ${ordersArray.length} pedidos`);
           console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
         } else if (data.length === 1) {
@@ -146,9 +158,14 @@ export function useBlingOrders() {
       }
 
       if (!ordersArray.length) {
-        console.warn('[useBlingOrders] Nenhum pedido encontrado na resposta:', data);
+        console.warn('[useBlingOrders] ⚠️ Nenhum pedido encontrado na resposta');
+        console.log('[useBlingOrders] 📄 Estrutura recebida:', JSON.stringify(data, null, 2).substring(0, 1000));
         return { orders: [] };
       }
+
+      console.log('[useBlingOrders] ===== FIM DO PARSING =====');
+      console.log(`[useBlingOrders] 🎯 RESULTADO FINAL: ${ordersArray.length} pedidos processados`);
+
 
       // Validar estrutura dos pedidos
       ordersArray = ordersArray.filter(order => {
