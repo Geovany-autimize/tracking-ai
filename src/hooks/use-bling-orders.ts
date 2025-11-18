@@ -103,57 +103,55 @@ export function useBlingOrders() {
       }
       // CASO 1: [{ data: [{ data: {...} }, { data: {...} }] }]
       // Array externo com 1 elemento, que tem data como array de wrappers
-      else if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
+      else if (Array.isArray(data) && data.length > 0 && data[0]?.data && Array.isArray(data[0].data)) {
         const firstItemData = data[0].data;
         console.log('[useBlingOrders] 🎯 CASO 1 ATIVADO!');
         console.log('[useBlingOrders] 🔎 firstItemData tipo:', Array.isArray(firstItemData) ? 'Array' : typeof firstItemData);
-        console.log('[useBlingOrders] 🔎 firstItemData length:', Array.isArray(firstItemData) ? firstItemData.length : 'N/A');
+        console.log('[useBlingOrders] 🔎 firstItemData length:', firstItemData.length);
         
-        if (Array.isArray(firstItemData)) {
-          // data[0].data é array de wrappers: [{ data: {...} }, { data: {...} }]
-          console.log('[useBlingOrders] ✅ Estrutura aninhada detectada (array dentro de array)');
-          console.log('[useBlingOrders] 📦 Itens no array aninhado:', firstItemData.length);
+        // data[0].data é array de wrappers: [{ data: {...} }, { data: {...} }]
+        console.log('[useBlingOrders] ✅ Estrutura aninhada detectada (array dentro de array)');
+        console.log('[useBlingOrders] 📦 Itens no array aninhado:', firstItemData.length);
+        
+        ordersArray = firstItemData
+          .map((item, index) => {
+            const orderData = item?.data;
+            console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, orderData ? `Pedido #${orderData.numero || orderData.id}` : 'SEM DATA');
+            return orderData;
+          })
+          .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
           
-          ordersArray = firstItemData
-            .map((item, index) => {
-              const orderData = item?.data;
-              console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, orderData ? `Pedido #${orderData.numero || orderData.id}` : 'SEM DATA');
-              return orderData;
-            })
-            .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
-            
-          console.log(`[useBlingOrders] ✅ Total extraído: ${ordersArray.length} pedidos`);
-          console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
-        } else if (data.length === 1) {
-          // data[0].data é objeto único
-          console.log('[useBlingOrders] Objeto único com wrapper detectado');
-          ordersArray = [firstItemData];
-        } else {
-          // CASO 2: [{ data: {...} }, { data: {...} }]
-          // Array de wrappers simples (estrutura antiga)
-          console.log('[useBlingOrders] Array de wrappers detectado');
-          ordersArray = data
-            .map(item => item?.data)
-            .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
-          console.log(`[useBlingOrders] Extraídos ${ordersArray.length} pedidos do array`);
-        }
+        console.log(`[useBlingOrders] ✅ Total extraído após .map().filter(): ${ordersArray.length} pedidos`);
+        console.log('[useBlingOrders] 📋 Números dos pedidos:', ordersArray.map(o => o.numero).join(', '));
+      }
+      // CASO 2: [{ data: {...} }, { data: {...} }]
+      // Array de wrappers simples
+      else if (Array.isArray(data) && data.length > 0 && data[0]?.data && !Array.isArray(data[0].data)) {
+        console.log('[useBlingOrders] 🎯 CASO 2 ATIVADO: Array de wrappers simples');
+        ordersArray = data
+          .map((item, index) => {
+            console.log(`[useBlingOrders] 🔸 Item ${index + 1}:`, item?.data ? `Pedido #${item.data.numero || item.data.id}` : 'SEM DATA');
+            return item?.data;
+          })
+          .filter(order => order && typeof order === 'object') as BlingWebhookOrder[];
+        console.log(`[useBlingOrders] ✅ Extraídos ${ordersArray.length} pedidos`);
       }
       // CASO 3: [{ id: ..., numero: ... }, { id: ..., numero: ... }]
       // Array direto de pedidos (sem wrapper)
       else if (Array.isArray(data)) {
-        console.log('[useBlingOrders] Estrutura direta detectada');
+        console.log('[useBlingOrders] 🎯 CASO 3 ATIVADO: Estrutura direta');
         ordersArray = data;
       }
       // CASO 4: { data: { id: ..., numero: ... } }
       // Objeto único com wrapper
-      else if (data?.data && typeof data.data === 'object') {
-        console.log('[useBlingOrders] Objeto único com wrapper detectado');
+      else if (data?.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+        console.log('[useBlingOrders] 🎯 CASO 4 ATIVADO: Objeto único com wrapper');
         ordersArray = [data.data];
       }
       // CASO 5: { id: ..., numero: ... }
       // Objeto único sem wrapper
       else if (data && typeof data === 'object') {
-        console.log('[useBlingOrders] Objeto único sem wrapper detectado');
+        console.log('[useBlingOrders] 🎯 CASO 5 ATIVADO: Objeto único sem wrapper');
         ordersArray = [data];
       }
 
