@@ -95,7 +95,7 @@ export function useBlingOrders() {
       }
       // CASO 1: [{ data: [{ data: {...} }, { data: {...} }] }]
       // Array externo com 1 elemento, que tem data como array de wrappers
-      if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
+      else if (Array.isArray(data) && data.length > 0 && data[0]?.data) {
         const firstItemData = data[0].data;
         console.log('[useBlingOrders] 🔎 firstItemData tipo:', Array.isArray(firstItemData) ? 'Array' : typeof firstItemData);
         console.log('[useBlingOrders] 🔎 firstItemData length:', Array.isArray(firstItemData) ? firstItemData.length : 'N/A');
