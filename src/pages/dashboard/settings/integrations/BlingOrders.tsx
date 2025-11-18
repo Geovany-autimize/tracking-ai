@@ -59,9 +59,23 @@ const safeString = (value: unknown, fallback = 'N/A'): string => {
 
 export default function BlingOrders() {
   const navigate = useNavigate();
-  const { orders, isLoading, isFetching, refetch, importOrders, isImporting } = useBlingOrders();
+  const { orders, isLoading, isFetching, refetch, importOrders, isImporting, lastUpdated } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<number | 'todos'>('todos');
+
+  const formatLastUpdated = (timestamp?: number) => {
+    if (!timestamp) return 'Nunca atualizado';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Agora mesmo';
+    if (minutes < 60) return `Há ${minutes} minuto${minutes > 1 ? 's' : ''}`;
+    if (hours < 24) return `Há ${hours} hora${hours > 1 ? 's' : ''}`;
+    return `Há ${days} dia${days > 1 ? 's' : ''}`;
+  };
 
   const { availableOrders, trackedOrders, statusCounts } = useMemo(() => {
     const mapped = orders.reduce(
@@ -125,6 +139,11 @@ export default function BlingOrders() {
     setSelectedOrders(new Set());
   };
 
+  const totalOrders = orders.length;
+  const importedCount = trackedOrders.length;
+  const availableCount = availableOrders.length;
+  const importedPercentage = totalOrders > 0 ? Math.round((importedCount / totalOrders) * 100) : 0;
+
   const isBusy = isLoading || isFetching;
   const showStatusFilter = orders.length > 0;
 
@@ -141,6 +160,38 @@ export default function BlingOrders() {
         title="Pedidos do Bling"
         description="Selecione os pedidos que deseja importar para rastreamento"
       />
+
+      {/* Statistics Card */}
+      {orders.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Resumo de Pedidos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Total</p>
+                <p className="text-2xl font-bold">{totalOrders}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Importados</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-2xl font-bold text-green-600">{importedCount}</p>
+                  <p className="text-sm text-muted-foreground">({importedPercentage}%)</p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Disponíveis</p>
+                <p className="text-2xl font-bold text-blue-600">{availableCount}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Última atualização</p>
+                <p className="text-sm font-medium">{formatLastUpdated(lastUpdated)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {showStatusFilter && (
         <Card>
