@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import PageHeader from '@/components/app/PageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,13 @@ export default function BlingOrders() {
   const { orders, isLoading, isFetching, refetch, importOrders, isImporting, lastUpdated } = useBlingOrders();
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState<number | 'todos'>('todos');
+
+  // Auto-load orders on mount if not already loaded
+  useEffect(() => {
+    if (orders.length === 0 && !isLoading && !isFetching) {
+      refetch();
+    }
+  }, []);
 
   const formatLastUpdated = (timestamp?: number) => {
     if (!timestamp) return 'Nunca atualizado';
