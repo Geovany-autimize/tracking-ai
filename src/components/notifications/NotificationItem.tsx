@@ -16,8 +16,12 @@ export function NotificationItem({ notification }: NotificationItemProps) {
   const navigate = useNavigate();
 
   const handleClick = async () => {
+    if (notification.notification_type === 'new_bling_orders') {
+      navigate('/dashboard/settings/integrations/bling/orders');
+    } else {
+      navigate(`/dashboard/shipments/${notification.shipment_id}`);
+    }
     await deleteNotification(notification.id);
-    navigate(`/dashboard/shipments/${notification.shipment_id}`);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -34,6 +38,8 @@ export function NotificationItem({ notification }: NotificationItemProps) {
         return <AlertCircle className="h-5 w-5 text-destructive" />;
       case 'out_for_delivery':
         return <Truck className="h-5 w-5 text-blue-500" />;
+      case 'new_bling_orders':
+        return <Package className="h-5 w-5 text-primary animate-pulse" />;
       case 'in_transit':
       case 'info_received':
       case 'available_for_pickup':
@@ -84,10 +90,14 @@ export function NotificationItem({ notification }: NotificationItemProps) {
         </p>
         
         <div className="flex items-center gap-2 text-xs">
-          <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">
-            {notification.tracking_code}
-          </code>
-          <span className="text-muted-foreground/70">•</span>
+          {notification.notification_type !== 'new_bling_orders' && (
+            <>
+              <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">
+                {notification.tracking_code}
+              </code>
+              <span className="text-muted-foreground/70">•</span>
+            </>
+          )}
           <span className="text-muted-foreground/70">{timeAgo}</span>
         </div>
       </div>

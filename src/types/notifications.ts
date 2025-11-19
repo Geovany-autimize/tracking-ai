@@ -7,7 +7,8 @@ export type NotificationType =
   | 'available_for_pickup'
   | 'exception'
   | 'pending'
-  | 'expired';
+  | 'expired'
+  | 'new_bling_orders';
 
 export interface Notification {
   id: string;
