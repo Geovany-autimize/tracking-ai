@@ -49,8 +49,8 @@ export function useBlingOrders() {
   const { data: ordersData, isLoading, refetch, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['bling-orders', customer?.id],
     enabled: false,
-    staleTime: 0, // Always fetch fresh data
-    gcTime: 0, // Don't cache old data
+    staleTime: 5 * 60 * 1000, // 5 minutes - dados considerados "frescos"
+    gcTime: 10 * 60 * 1000, // 10 minutes - mantém em cache antes de limpar
     queryFn: async () => {
       if (!customer?.id) {
         throw new Error('Cliente não autenticado');
@@ -292,14 +292,11 @@ export function useBlingOrders() {
       }
     },
     onSuccess: async (data) => {
-      // Invalidar e refetch imediatamente para atualizar UI
+      // Invalidar cache - React Query irá refetch automaticamente
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['bling-orders', customer?.id] }),
         queryClient.invalidateQueries({ queryKey: ['shipments'] }),
       ]);
-      
-      // Refetch para atualizar a lista
-      refetch();
       
       if (data.imported > 0) {
         toast.success(
