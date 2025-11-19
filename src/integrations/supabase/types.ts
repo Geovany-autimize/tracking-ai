@@ -269,6 +269,56 @@ export type Database = {
           },
         ]
       }
+      bling_sync_queue: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          customer_id: string
+          id: string
+          last_error: string | null
+          max_retries: number
+          new_orders_count: number | null
+          priority: number
+          retry_count: number
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number
+          new_orders_count?: number | null
+          priority?: number
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          last_error?: string | null
+          max_retries?: number
+          new_orders_count?: number | null
+          priority?: number
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bling_sync_queue_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       couriers: {
         Row: {
           country_code: string | null
@@ -884,6 +934,7 @@ export type Database = {
         | "available_for_pickup"
         | "expired"
         | "pending"
+        | "new_bling_orders"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1023,6 +1074,7 @@ export const Constants = {
         "available_for_pickup",
         "expired",
         "pending",
+        "new_bling_orders",
       ],
     },
   },
