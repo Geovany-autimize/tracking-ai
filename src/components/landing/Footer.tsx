@@ -41,10 +41,10 @@ const footerLinks = {
   }],
   legal: [{
     label: "Termos de uso",
-    href: "#"
+    href: "/legal?tab=terms"
   }, {
     label: "Política de privacidade",
-    href: "#"
+    href: "/legal?tab=privacy"
   }, {
     label: "LGPD",
     href: "#"
