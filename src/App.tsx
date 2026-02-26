@@ -11,6 +11,8 @@ import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import Manual from "./pages/Manual";
 import Legal from "./pages/Legal";
+import TermsOfUse from "./pages/legal/TermsOfUse";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import AppLayout from "./components/app/AppLayout";
 import DashboardHome from "./pages/dashboard/Home";
 import ShipmentsPage from "./pages/dashboard/Shipments";
@@ -45,7 +47,10 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/manual" element={<Manual />} />
-            <Route path="/legal" element={<Legal />} />
+            <Route path="/legal" element={<Legal />}>
+              <Route path="termos-de-uso" element={<TermsOfUse />} />
+              <Route path="politica-de-privacidade" element={<PrivacyPolicy />} />
+            </Route>
             <Route path="/dashboard" element={<AppLayout />}>
               <Route index element={<DashboardHome />} />
               <Route path="shipments" element={<ShipmentsPage />} />
