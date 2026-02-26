@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 import Manual from "./pages/Manual";
+import Legal from "./pages/Legal";
 import AppLayout from "./components/app/AppLayout";
 import DashboardHome from "./pages/dashboard/Home";
 import ShipmentsPage from "./pages/dashboard/Shipments";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/manual" element={<Manual />} />
+            <Route path="/legal" element={<Legal />} />
             <Route path="/dashboard" element={<AppLayout />}>
               <Route index element={<DashboardHome />} />
               <Route path="shipments" element={<ShipmentsPage />} />
